@@ -43,3 +43,6 @@ out/
 
 # IDE - VS Code
 .vscode/
+
+# Others
+tmp/
