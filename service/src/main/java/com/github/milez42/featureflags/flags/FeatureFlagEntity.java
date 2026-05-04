@@ -16,13 +16,15 @@ public class FeatureFlagEntity implements Persistable<String> {
     @Id
     private final String flagKey;
     private final FeatureFlagStatus status;
+    private final boolean killSwitchActive;
+    private final int rolloutPercentage;
+
     @MappedCollection(idColumn = "flag_key")
     private final Set<TargetEnvironmentEntity> targetEnvironments;
-    @Column("kill_switch_active")
-    private final boolean killSwitchActive;
+    
     @MappedCollection(idColumn = "flag_key")
     private final Set<TenantAllowlistEntity> tenantAllowlist;
-    private final int rolloutPercentage;
+    
     @Transient
     private final boolean newEntity;
 
