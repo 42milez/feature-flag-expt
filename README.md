@@ -1,5 +1,27 @@
 # feature-flag-expt
 
+## Static Analysis
+
+### Check formatting (Spotless)
+
+```bash
+./gradlew :service:spotlessCheck
+```
+
+### Fix formatting automatically (Spotless)
+
+```bash
+./gradlew :service:spotlessApply
+```
+
+### Run static analysis (Error Prone)
+
+Error Prone runs automatically during compilation.
+
+```bash
+./gradlew :service:compileJava
+```
+
 ## Running Tests
 
 ### Run all tests
