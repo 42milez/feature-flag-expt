@@ -49,7 +49,7 @@ class FeatureFlagRepositoryIntegrationTest extends PostgreSqlIntegrationTest {
                 FeatureFlagStatus.ENABLED,
                 Set.of(new TargetEnvironmentEntity("production"), new TargetEnvironmentEntity("staging")),
                 false,
-                Set.of(new TenantAllowlistEntry("tenant-a"), new TenantAllowlistEntry("tenant-b")),
+                Set.of(new TenantAllowlistEntity("tenant-a"), new TenantAllowlistEntity("tenant-b")),
                 25
         ));
 
@@ -61,7 +61,7 @@ class FeatureFlagRepositoryIntegrationTest extends PostgreSqlIntegrationTest {
                 .extracting(TargetEnvironmentEntity::environment)
                 .containsExactlyInAnyOrder("production", "staging");
         assertThat(loaded.tenantAllowlist())
-                .extracting(TenantAllowlistEntry::tenantId)
+                .extracting(TenantAllowlistEntity::tenantId)
                 .containsExactlyInAnyOrder("tenant-a", "tenant-b");
         assertThat(loaded.rolloutPercentage()).isEqualTo(25);
     }
@@ -73,7 +73,7 @@ class FeatureFlagRepositoryIntegrationTest extends PostgreSqlIntegrationTest {
                 FeatureFlagStatus.ENABLED,
                 Set.of(new TargetEnvironmentEntity("production"), new TargetEnvironmentEntity("staging")),
                 false,
-                Set.of(new TenantAllowlistEntry("tenant-a"), new TenantAllowlistEntry("tenant-b")),
+                Set.of(new TenantAllowlistEntity("tenant-a"), new TenantAllowlistEntity("tenant-b")),
                 25
         ));
 

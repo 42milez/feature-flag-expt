@@ -96,7 +96,7 @@ public class FeatureFlagService {
                         .collect(Collectors.toCollection(LinkedHashSet::new)),
                 entity.killSwitchActive(),
                 entity.tenantAllowlist().stream()
-                        .map(TenantAllowlistEntry::tenantId)
+                        .map(TenantAllowlistEntity::tenantId)
                         .collect(Collectors.toCollection(LinkedHashSet::new)),
                 entity.rolloutPercentage()
         );
@@ -111,7 +111,7 @@ public class FeatureFlagService {
                         .collect(Collectors.toCollection(LinkedHashSet::new)),
                 entity.killSwitchActive(),
                 entity.tenantAllowlist().stream()
-                        .map(TenantAllowlistEntry::tenantId)
+                        .map(TenantAllowlistEntity::tenantId)
                         .collect(Collectors.toCollection(LinkedHashSet::new)),
                 entity.rolloutPercentage()
         );
@@ -123,9 +123,9 @@ public class FeatureFlagService {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    private Set<TenantAllowlistEntry> tenantAllowlist(Set<String> values) {
+    private Set<TenantAllowlistEntity> tenantAllowlist(Set<String> values) {
         return normalizeSet(values).stream()
-                .map(TenantAllowlistEntry::new)
+                .map(TenantAllowlistEntity::new)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 

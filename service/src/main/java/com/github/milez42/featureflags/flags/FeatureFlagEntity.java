@@ -21,7 +21,7 @@ public class FeatureFlagEntity implements Persistable<String> {
     @Column("kill_switch_active")
     private final boolean killSwitchActive;
     @MappedCollection(idColumn = "flag_key")
-    private final Set<TenantAllowlistEntry> tenantAllowlist;
+    private final Set<TenantAllowlistEntity> tenantAllowlist;
     private final int rolloutPercentage;
     @Transient
     private final boolean newEntity;
@@ -31,7 +31,7 @@ public class FeatureFlagEntity implements Persistable<String> {
             FeatureFlagStatus status,
             Set<TargetEnvironmentEntity> targetEnvironments,
             boolean killSwitchActive,
-            Set<TenantAllowlistEntry> tenantAllowlist,
+            Set<TenantAllowlistEntity> tenantAllowlist,
             int rolloutPercentage
     ) {
         return new FeatureFlagEntity(
@@ -51,7 +51,7 @@ public class FeatureFlagEntity implements Persistable<String> {
             FeatureFlagStatus status,
             Set<TargetEnvironmentEntity> targetEnvironments,
             boolean killSwitchActive,
-            Set<TenantAllowlistEntry> tenantAllowlist,
+            Set<TenantAllowlistEntity> tenantAllowlist,
             int rolloutPercentage
     ) {
         this(flagKey, status, targetEnvironments, killSwitchActive, tenantAllowlist, rolloutPercentage, false);
@@ -62,7 +62,7 @@ public class FeatureFlagEntity implements Persistable<String> {
             FeatureFlagStatus status,
             Set<TargetEnvironmentEntity> targetEnvironments,
             boolean killSwitchActive,
-            Set<TenantAllowlistEntry> tenantAllowlist,
+            Set<TenantAllowlistEntity> tenantAllowlist,
             int rolloutPercentage,
             boolean newEntity
     ) {
@@ -106,7 +106,7 @@ public class FeatureFlagEntity implements Persistable<String> {
         return killSwitchActive;
     }
 
-    public Set<TenantAllowlistEntry> tenantAllowlist() {
+    public Set<TenantAllowlistEntity> tenantAllowlist() {
         return tenantAllowlist;
     }
 
