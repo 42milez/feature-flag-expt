@@ -7,10 +7,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class ErrorHandler {
-    @ExceptionHandler(HttpException.class)
-    public ResponseEntity<ProblemDetail> handle(HttpException e) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(e.status(), e.getMessage());
-        problem.setTitle(e.title());
-        return ResponseEntity.status(e.status()).body(problem);
-    }
+  @ExceptionHandler(HttpException.class)
+  public ResponseEntity<ProblemDetail> handle(HttpException e) {
+    ProblemDetail problem = ProblemDetail.forStatusAndDetail(e.status(), e.getMessage());
+    problem.setTitle(e.title());
+    return ResponseEntity.status(e.status()).body(problem);
+  }
 }

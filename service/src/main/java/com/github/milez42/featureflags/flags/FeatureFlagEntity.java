@@ -1,118 +1,117 @@
 package com.github.milez42.featureflags.flags;
 
+import java.util.Objects;
+import java.util.Set;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.PersistenceCreator;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.domain.Persistable;
-import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.MappedCollection;
 import org.springframework.data.relational.core.mapping.Table;
 
-import java.util.Objects;
-import java.util.Set;
-
 @Table("feature_flags")
 public class FeatureFlagEntity implements Persistable<String> {
-    @Id
-    private final String flagKey;
-    private final FeatureFlagStatus status;
-    private final boolean killSwitchActive;
-    private final int rolloutPercentage;
+  @Id private final String flagKey;
+  private final FeatureFlagStatus status;
+  private final boolean killSwitchActive;
+  private final int rolloutPercentage;
 
-    @MappedCollection(idColumn = "flag_key")
-    private final Set<TargetEnvironmentEntity> targetEnvironments;
-    
-    @MappedCollection(idColumn = "flag_key")
-    private final Set<TenantAllowlistEntity> tenantAllowlist;
-    
-    @Transient
-    private final boolean newEntity;
+  @MappedCollection(idColumn = "flag_key")
+  private final Set<TargetEnvironmentEntity> targetEnvironments;
 
-    public static FeatureFlagEntity create(
-            String flagKey,
-            FeatureFlagStatus status,
-            Set<TargetEnvironmentEntity> targetEnvironments,
-            boolean killSwitchActive,
-            Set<TenantAllowlistEntity> tenantAllowlist,
-            int rolloutPercentage
-    ) {
-        return new FeatureFlagEntity(
-                flagKey,
-                status,
-                targetEnvironments,
-                killSwitchActive,
-                tenantAllowlist,
-                rolloutPercentage,
-                true
-        );
-    }
+  @MappedCollection(idColumn = "flag_key")
+  private final Set<TenantAllowlistEntity> tenantAllowlist;
 
-    @PersistenceCreator
-    public FeatureFlagEntity(
-            String flagKey,
-            FeatureFlagStatus status,
-            Set<TargetEnvironmentEntity> targetEnvironments,
-            boolean killSwitchActive,
-            Set<TenantAllowlistEntity> tenantAllowlist,
-            int rolloutPercentage
-    ) {
-        this(flagKey, status, targetEnvironments, killSwitchActive, tenantAllowlist, rolloutPercentage, false);
-    }
+  @Transient private final boolean newEntity;
 
-    private FeatureFlagEntity(
-            String flagKey,
-            FeatureFlagStatus status,
-            Set<TargetEnvironmentEntity> targetEnvironments,
-            boolean killSwitchActive,
-            Set<TenantAllowlistEntity> tenantAllowlist,
-            int rolloutPercentage,
-            boolean newEntity
-    ) {
-        Objects.requireNonNull(flagKey, "flagKey must not be null");
-        Objects.requireNonNull(status, "status must not be null");
-        Objects.requireNonNull(targetEnvironments, "targetEnvironments must not be null");
-        Objects.requireNonNull(tenantAllowlist, "tenantAllowlist must not be null");
+  public static FeatureFlagEntity create(
+      String flagKey,
+      FeatureFlagStatus status,
+      Set<TargetEnvironmentEntity> targetEnvironments,
+      boolean killSwitchActive,
+      Set<TenantAllowlistEntity> tenantAllowlist,
+      int rolloutPercentage) {
+    return new FeatureFlagEntity(
+        flagKey,
+        status,
+        targetEnvironments,
+        killSwitchActive,
+        tenantAllowlist,
+        rolloutPercentage,
+        true);
+  }
 
-        this.flagKey = flagKey;
-        this.status = status;
-        this.targetEnvironments = Set.copyOf(targetEnvironments);
-        this.killSwitchActive = killSwitchActive;
-        this.tenantAllowlist = Set.copyOf(tenantAllowlist);
-        this.rolloutPercentage = rolloutPercentage;
-        this.newEntity = newEntity;
-    }
+  @PersistenceCreator
+  public FeatureFlagEntity(
+      String flagKey,
+      FeatureFlagStatus status,
+      Set<TargetEnvironmentEntity> targetEnvironments,
+      boolean killSwitchActive,
+      Set<TenantAllowlistEntity> tenantAllowlist,
+      int rolloutPercentage) {
+    this(
+        flagKey,
+        status,
+        targetEnvironments,
+        killSwitchActive,
+        tenantAllowlist,
+        rolloutPercentage,
+        false);
+  }
 
-    @Override
-    public String getId() {
-        return flagKey;
-    }
+  private FeatureFlagEntity(
+      String flagKey,
+      FeatureFlagStatus status,
+      Set<TargetEnvironmentEntity> targetEnvironments,
+      boolean killSwitchActive,
+      Set<TenantAllowlistEntity> tenantAllowlist,
+      int rolloutPercentage,
+      boolean newEntity) {
+    Objects.requireNonNull(flagKey, "flagKey must not be null");
+    Objects.requireNonNull(status, "status must not be null");
+    Objects.requireNonNull(targetEnvironments, "targetEnvironments must not be null");
+    Objects.requireNonNull(tenantAllowlist, "tenantAllowlist must not be null");
 
-    @Override
-    public boolean isNew() {
-        return newEntity;
-    }
+    this.flagKey = flagKey;
+    this.status = status;
+    this.targetEnvironments = Set.copyOf(targetEnvironments);
+    this.killSwitchActive = killSwitchActive;
+    this.tenantAllowlist = Set.copyOf(tenantAllowlist);
+    this.rolloutPercentage = rolloutPercentage;
+    this.newEntity = newEntity;
+  }
 
-    public String flagKey() {
-        return flagKey;
-    }
+  @Override
+  public String getId() {
+    return flagKey;
+  }
 
-    public FeatureFlagStatus status() {
-        return status;
-    }
+  @Override
+  public boolean isNew() {
+    return newEntity;
+  }
 
-    public Set<TargetEnvironmentEntity> targetEnvironments() {
-        return targetEnvironments;
-    }
+  public String flagKey() {
+    return flagKey;
+  }
 
-    public boolean killSwitchActive() {
-        return killSwitchActive;
-    }
+  public FeatureFlagStatus status() {
+    return status;
+  }
 
-    public Set<TenantAllowlistEntity> tenantAllowlist() {
-        return tenantAllowlist;
-    }
+  public Set<TargetEnvironmentEntity> targetEnvironments() {
+    return targetEnvironments;
+  }
 
-    public int rolloutPercentage() {
-        return rolloutPercentage;
-    }
+  public boolean killSwitchActive() {
+    return killSwitchActive;
+  }
+
+  public Set<TenantAllowlistEntity> tenantAllowlist() {
+    return tenantAllowlist;
+  }
+
+  public int rolloutPercentage() {
+    return rolloutPercentage;
+  }
 }
