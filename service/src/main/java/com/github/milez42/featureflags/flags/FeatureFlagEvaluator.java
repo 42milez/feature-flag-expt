@@ -1,11 +1,14 @@
 package com.github.milez42.featureflags.flags;
 
+import org.springframework.stereotype.Component;
+
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 
+@Component
 public class FeatureFlagEvaluator {
     public EvaluationResult evaluate(FeatureFlag flag, EvaluationContext context) {
         Objects.requireNonNull(flag, "flag must not be null");

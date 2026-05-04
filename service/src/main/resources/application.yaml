@@ -1,0 +1,7 @@
+spring:
+  datasource:
+    url: ${FEATURE_FLAGS_DB_URL:jdbc:postgresql://localhost:5432/featureflags}
+    username: ${FEATURE_FLAGS_DB_USERNAME:featureflags}
+    password: ${FEATURE_FLAGS_DB_PASSWORD:featureflags}
+  flyway:
+    enabled: true
