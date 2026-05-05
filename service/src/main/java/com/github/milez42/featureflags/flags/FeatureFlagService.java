@@ -1,5 +1,6 @@
 package com.github.milez42.featureflags.flags;
 
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -48,7 +49,7 @@ public class FeatureFlagService {
         new FeatureFlagEntity(
             existing.flagKey(),
             request.status() == null ? existing.status() : request.status(),
-            request.targetEnvironments() == null
+            (request.targetEnvironments() == null || request.targetEnvironments().isEmpty())
                 ? existing.targetEnvironments()
                 : targetEnvironments(request.targetEnvironments()),
             request.killSwitchActive() == null
@@ -114,9 +115,13 @@ public class FeatureFlagService {
         entity.rolloutPercentage());
   }
 
-  private Set<TargetEnvironmentEntity> targetEnvironments(Set<String> values) {
-    return normalizeSet(values).stream()
-        .map(TargetEnvironmentEntity::new)
+  private Set<TargetEnvironmentEntity> targetEnvironments(Set<Environment> values) {
+    if (values == null) {
+      return Set.of();
+    }
+    return values.stream()
+        .map(env -> new TargetEnvironmentEntity(env.value()))
+        .sorted(Comparator.comparing(TargetEnvironmentEntity::environment))
         .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 

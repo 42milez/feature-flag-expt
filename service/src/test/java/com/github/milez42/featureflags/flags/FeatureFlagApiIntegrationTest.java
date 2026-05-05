@@ -71,6 +71,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
                                 {
                                   "flagKey": "checkout-redesign",
                                   "status": "ENABLED",
+                                  "targetEnvironments": ["production"],
                                   "killSwitchActive": false,
                                   "rolloutPercentage": 25
                                 }
@@ -125,7 +126,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
   }
 
   @Test
-  void patchWithEmptySetsClearsCollections() throws Exception {
+  void patchWithEmptyTenantAllowlistClearsAllowlist() throws Exception {
     createCheckoutFlag();
 
     mockMvc
@@ -135,13 +136,29 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
                 .content(
                     """
                                 {
-                                  "targetEnvironments": [],
                                   "tenantAllowlist": []
                                 }
                                 """))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.targetEnvironments").isEmpty())
         .andExpect(jsonPath("$.tenantAllowlist").isEmpty());
+  }
+
+  @Test
+  void patchWithEmptyTargetEnvironmentsPreservesExisting() throws Exception {
+    createCheckoutFlag();
+
+    mockMvc
+        .perform(
+            patch("/api/flags/checkout-redesign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "targetEnvironments": []
+                                }
+                                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.targetEnvironments", containsInAnyOrder("production", "staging")));
   }
 
   @Test
@@ -156,6 +173,25 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
                                   "flagKey": "",
                                   "status": "ENABLED",
                                   "rolloutPercentage": 101
+                                }
+                                """))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void unknownEnvironmentReturnsBadRequest() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/flags")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "flagKey": "checkout-redesign",
+                                  "status": "ENABLED",
+                                  "targetEnvironments": ["unknown-env"],
+                                  "killSwitchActive": false,
+                                  "rolloutPercentage": 25
                                 }
                                 """))
         .andExpect(status().isBadRequest());

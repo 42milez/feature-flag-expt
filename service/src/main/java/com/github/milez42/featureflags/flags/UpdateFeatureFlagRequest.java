@@ -7,7 +7,7 @@ import java.util.Set;
 
 public record UpdateFeatureFlagRequest(
     FeatureFlagStatus status,
-    Set<@NotBlank String> targetEnvironments,
+    Set<Environment> targetEnvironments,
     Boolean killSwitchActive,
     Set<@NotBlank String> tenantAllowlist,
     @Min(0) @Max(100) Integer rolloutPercentage) {}
