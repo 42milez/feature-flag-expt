@@ -1,0 +1,11 @@
+package com.github.milez42.featureflags.audit;
+
+public enum AuditEventType {
+  FLAG_CREATED,
+  FLAG_ENABLED,
+  FLAG_DISABLED,
+  ROLLOUT_PERCENTAGE_CHANGED,
+  TENANT_ALLOWLIST_CHANGED,
+  KILL_SWITCH_ENABLED,
+  KILL_SWITCH_DISABLED
+}

@@ -1,5 +1,8 @@
 package com.github.milez42.featureflags.flags;
 
+import com.github.milez42.featureflags.audit.AuditEventDetails;
+import com.github.milez42.featureflags.audit.AuditEventService;
+import com.github.milez42.featureflags.audit.AuditEventType;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.Objects;
@@ -12,10 +15,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class FeatureFlagService {
   private final FeatureFlagRepository repository;
   private final FeatureFlagEvaluator evaluator;
+  private final AuditEventService auditEventService;
 
-  public FeatureFlagService(FeatureFlagRepository repository, FeatureFlagEvaluator evaluator) {
+  public FeatureFlagService(
+      FeatureFlagRepository repository,
+      FeatureFlagEvaluator evaluator,
+      AuditEventService auditEventService) {
     this.repository = repository;
     this.evaluator = evaluator;
+    this.auditEventService = auditEventService;
   }
 
   @Transactional
@@ -34,7 +42,18 @@ public class FeatureFlagService {
             tenantAllowlist(request.tenantAllowlist()),
             request.rolloutPercentage());
 
-    return toResponse(repository.save(entity));
+    FeatureFlagEntity saved = repository.save(entity);
+    auditEventService.record(
+        saved.flagKey(),
+        AuditEventType.FLAG_CREATED,
+        new AuditEventDetails.FlagCreatedDetails(
+            saved.status(),
+            saved.rolloutPercentage(),
+            saved.killSwitchActive(),
+            targetEnvironmentValues(saved),
+            tenantAllowlistValues(saved)));
+
+    return toResponse(saved);
   }
 
   @Transactional(readOnly = true)
@@ -62,7 +81,10 @@ public class FeatureFlagService {
                 ? existing.rolloutPercentage()
                 : request.rolloutPercentage());
 
-    return toResponse(repository.save(updated));
+    FeatureFlagEntity saved = repository.save(updated);
+    recordUpdateEvents(existing, saved);
+
+    return toResponse(saved);
   }
 
   @Transactional(readOnly = true)
@@ -113,6 +135,72 @@ public class FeatureFlagService {
             .map(TenantAllowlistEntity::tenantId)
             .collect(Collectors.toCollection(LinkedHashSet::new)),
         entity.rolloutPercentage());
+  }
+
+  private void recordUpdateEvents(FeatureFlagEntity existing, FeatureFlagEntity updated) {
+    if (existing.status() != updated.status()) {
+      if (updated.status() == FeatureFlagStatus.ENABLED) {
+        auditEventService.record(
+            updated.flagKey(),
+            AuditEventType.FLAG_ENABLED,
+            new AuditEventDetails.FlagEnabledDetails(
+                "status", existing.status(), updated.status()));
+      } else {
+        auditEventService.record(
+            updated.flagKey(),
+            AuditEventType.FLAG_DISABLED,
+            new AuditEventDetails.FlagDisabledDetails(
+                "status", existing.status(), updated.status()));
+      }
+    }
+
+    if (existing.rolloutPercentage() != updated.rolloutPercentage()) {
+      auditEventService.record(
+          updated.flagKey(),
+          AuditEventType.ROLLOUT_PERCENTAGE_CHANGED,
+          new AuditEventDetails.RolloutPercentageChangedDetails(
+              "rolloutPercentage", existing.rolloutPercentage(), updated.rolloutPercentage()));
+    }
+
+    Set<String> oldAllowlist = tenantAllowlistValues(existing);
+    Set<String> newAllowlist = tenantAllowlistValues(updated);
+    if (!oldAllowlist.equals(newAllowlist)) {
+      auditEventService.record(
+          updated.flagKey(),
+          AuditEventType.TENANT_ALLOWLIST_CHANGED,
+          new AuditEventDetails.TenantAllowlistChangedDetails(
+              "tenantAllowlist", oldAllowlist, newAllowlist));
+    }
+
+    if (existing.killSwitchActive() != updated.killSwitchActive()) {
+      if (updated.killSwitchActive()) {
+        auditEventService.record(
+            updated.flagKey(),
+            AuditEventType.KILL_SWITCH_ENABLED,
+            new AuditEventDetails.KillSwitchEnabledDetails(
+                "killSwitchActive", existing.killSwitchActive(), updated.killSwitchActive()));
+      } else {
+        auditEventService.record(
+            updated.flagKey(),
+            AuditEventType.KILL_SWITCH_DISABLED,
+            new AuditEventDetails.KillSwitchDisabledDetails(
+                "killSwitchActive", existing.killSwitchActive(), updated.killSwitchActive()));
+      }
+    }
+  }
+
+  private Set<String> targetEnvironmentValues(FeatureFlagEntity entity) {
+    return entity.targetEnvironments().stream()
+        .map(TargetEnvironmentEntity::environment)
+        .sorted()
+        .collect(Collectors.toCollection(LinkedHashSet::new));
+  }
+
+  private Set<String> tenantAllowlistValues(FeatureFlagEntity entity) {
+    return entity.tenantAllowlist().stream()
+        .map(TenantAllowlistEntity::tenantId)
+        .sorted()
+        .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
   private Set<TargetEnvironmentEntity> targetEnvironments(Set<Environment> values) {
