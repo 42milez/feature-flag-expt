@@ -71,6 +71,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
                                 {
                                   "flagKey": "checkout-redesign",
                                   "status": "ENABLED",
+                                  "killSwitchActive": false,
                                   "rolloutPercentage": 25
                                 }
                                 """))

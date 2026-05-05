@@ -29,7 +29,7 @@ public class FeatureFlagService {
             flagKey,
             request.status(),
             targetEnvironments(request.targetEnvironments()),
-            Boolean.TRUE.equals(request.killSwitchActive()),
+            request.killSwitchActive(),
             tenantAllowlist(request.tenantAllowlist()),
             request.rolloutPercentage());
 

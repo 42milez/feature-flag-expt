@@ -10,6 +10,6 @@ public record CreateFeatureFlagRequest(
     @NotBlank String flagKey,
     @NotNull FeatureFlagStatus status,
     Set<@NotBlank String> targetEnvironments,
-    Boolean killSwitchActive,
+    @NotNull Boolean killSwitchActive,
     Set<@NotBlank String> tenantAllowlist,
     @NotNull @Min(0) @Max(100) Integer rolloutPercentage) {}
