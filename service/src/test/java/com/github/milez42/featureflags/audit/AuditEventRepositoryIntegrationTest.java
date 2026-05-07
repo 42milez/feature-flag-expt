@@ -43,22 +43,19 @@ class AuditEventRepositoryIntegrationTest extends PostgreSqlIntegrationTest {
   @Test
   void savesAndLoadsJsonbDetailsByFlagKey() {
     Instant occurredAt = Instant.parse("2026-05-05T00:00:00Z");
-    AuditEvent saved =
-        repository.save(
-            AuditEvent.newEvent(
-                "checkout-redesign",
-                AuditEventType.FLAG_CREATED,
-                new AuditEventDetails.FlagCreatedDetails(
-                    FeatureFlagStatus.ENABLED, 50, false, Set.of("production"), Set.of("tenant-a")),
-                occurredAt));
-
-    assertThat(saved.id()).isNotNull();
+    repository.save(
+        AuditEvent.newEvent(
+            "checkout-redesign",
+            AuditEventType.FLAG_CREATED,
+            new AuditEventDetails.FlagCreatedDetails(
+                FeatureFlagStatus.ENABLED, 50, false, Set.of("production"), Set.of("tenant-a")),
+            occurredAt));
 
     assertThat(repository.findByFlagKey("checkout-redesign"))
         .singleElement()
         .satisfies(
             event -> {
-              assertThat(event.id()).isEqualTo(saved.id());
+              assertThat(event.id()).isNotNull();
               assertThat(event.eventType()).isEqualTo(AuditEventType.FLAG_CREATED);
               assertThat(event.occurredAt()).isEqualTo(occurredAt);
               assertThat(event.details())

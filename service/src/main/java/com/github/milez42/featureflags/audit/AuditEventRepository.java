@@ -20,25 +20,19 @@ public class AuditEventRepository {
     this.objectMapper = objectMapper;
   }
 
-  public AuditEvent save(AuditEvent event) {
+  public void save(AuditEvent event) {
     String detailsJson = serialize(event.details());
-    Long id =
-        jdbcClient
-            .sql(
-                """
-                insert into audit_events (flag_key, event_type, details, occurred_at)
-                values (:flagKey, :eventType, cast(:details as jsonb), :occurredAt)
-                returning id
-                """)
-            .param("flagKey", event.flagKey())
-            .param("eventType", event.eventType().name())
-            .param("details", detailsJson)
-            .param("occurredAt", event.occurredAt().atOffset(ZoneOffset.UTC))
-            .query(Long.class)
-            .single();
-
-    return new AuditEvent(
-        id, event.flagKey(), event.eventType(), event.details(), event.occurredAt());
+    jdbcClient
+        .sql(
+            """
+            insert into audit_events (flag_key, event_type, details, occurred_at)
+            values (:flagKey, :eventType, cast(:details as jsonb), :occurredAt)
+            """)
+        .param("flagKey", event.flagKey())
+        .param("eventType", event.eventType().name())
+        .param("details", detailsJson)
+        .param("occurredAt", event.occurredAt().atOffset(ZoneOffset.UTC))
+        .update();
   }
 
   public List<AuditEvent> findByFlagKey(String flagKey) {
