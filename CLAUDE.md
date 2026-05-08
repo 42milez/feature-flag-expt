@@ -12,6 +12,11 @@
   Always use `tools.jackson.*` imports, never `com.fasterxml.jackson.*` (Jackson 2.x).
   Mixing the two causes `NoSuchBeanDefinitionException` at runtime.
 
+- This project uses Spring Data JDBC (`spring-boot-starter-data-jdbc`), not Spring Data JPA.
+  JPA / Hibernate is not on the classpath. `CrudRepository` methods (e.g., `save`, `deleteAll`)
+  are implemented by Spring Data JDBC and execute SQL via `JdbcTemplate` — not via an ORM session.
+  Do not describe any repository behavior as "JPA-managed" or "Hibernate-backed".
+
 ## Coding Rules
 
 When implementing or refactoring code in this project, add a new rule below **only** if the work reveals a principle that satisfies at least one of the following criteria and is non-obvious (i.e., not already enforced by Spotless, Error Prone, or evident from the surrounding code):
