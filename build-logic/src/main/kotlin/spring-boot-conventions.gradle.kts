@@ -17,13 +17,12 @@ kotlin {
 spotless {
     java {
         googleJavaFormat()
-        trimTrailingWhitespace()
-        endWithNewline()
+    }
+    kotlin {
+        ktfmt("0.62")
     }
     kotlinGradle {
-        ktlint()
-        trimTrailingWhitespace()
-        endWithNewline()
+        ktfmt("0.62")
     }
 }
 
