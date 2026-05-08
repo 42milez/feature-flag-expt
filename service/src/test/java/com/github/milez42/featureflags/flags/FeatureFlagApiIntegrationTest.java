@@ -14,6 +14,7 @@ import com.github.milez42.featureflags.audit.AuditEvent;
 import com.github.milez42.featureflags.audit.AuditEventDetails;
 import com.github.milez42.featureflags.audit.AuditEventRepository;
 import com.github.milez42.featureflags.audit.AuditEventType;
+import com.github.milez42.featureflags.support.PostgreSqlIntegrationTest;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

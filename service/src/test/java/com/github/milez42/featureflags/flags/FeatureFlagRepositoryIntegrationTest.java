@@ -2,6 +2,7 @@ package com.github.milez42.featureflags.flags;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.github.milez42.featureflags.support.PostgreSqlIntegrationTest;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

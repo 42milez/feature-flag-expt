@@ -1,4 +1,4 @@
-package com.github.milez42.featureflags.flags;
+package com.github.milez42.featureflags.support;
 
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;

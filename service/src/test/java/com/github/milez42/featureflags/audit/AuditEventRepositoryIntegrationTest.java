@@ -3,7 +3,7 @@ package com.github.milez42.featureflags.audit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.milez42.featureflags.flags.FeatureFlagStatus;
-import com.github.milez42.featureflags.flags.PostgreSqlIntegrationTest;
+import com.github.milez42.featureflags.support.PostgreSqlIntegrationTest;
 import java.time.Instant;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
