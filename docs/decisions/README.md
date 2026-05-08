@@ -7,3 +7,4 @@ This directory contains Architecture Decision Records (ADRs) for this project, f
 | ID   | Title                          | Status   |
 |------|--------------------------------|----------|
 | [0001](0001-use-zero-configuration-formatters.md) | Use zero-configuration formatters for Java and Kotlin | Accepted |
+| [0002](0002-use-spring-data-jdbc-instead-of-jpa.md) | Use Spring Data JDBC instead of JPA/Hibernate | Accepted |
