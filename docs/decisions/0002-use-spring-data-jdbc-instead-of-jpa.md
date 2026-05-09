@@ -99,45 +99,10 @@ This is small, explicit, and visible in the entity class.
 - Bad: requires a code-generation step and additional setup
 - Bad: more SQL modeling surface than the current CRUD and audit persistence needs
 
-## Signals to Reconsider This Decision
-
-The following signals indicate that the current Spring Data JDBC approach may no longer
-be the best fit and that jOOQ or Spring Data JPA should be evaluated.
-
-### Consider adding jOOQ (before JPA)
-
-- The same JOIN query appears in five or more repository methods with minor variations.
-- Read-side queries become complex enough that hand-written SQL strings are hard to
-  compose, validate, or refactor safely.
-- A CQRS split is introduced: JDBC remains on the command (write) side while the
-  query (read) side needs type-safe, optimized SQL.
-
-jOOQ can be added incrementally alongside Spring Data JDBC without replacing it.
-Prefer jOOQ over JPA when the driver is complex queries rather than rich object graphs.
-
-### Consider migrating to Spring Data JPA
-
-- Entity relationships become deep (four or more levels of nesting) and managing the
-  object graph manually in repository code becomes repetitive or error-prone.
-- Partial updates across large aggregates are frequent and full-column UPDATE statements
-  cause concurrency or performance issues that dirty checking would solve.
-- Object-graph traversal becomes central to business logic rather than an edge case.
-
-### When to stay with Spring Data JDBC at scale
-
-Spring Data JDBC remains appropriate even as the system grows if:
-
-- Each service in a microservice architecture owns a small, self-contained bounded
-  context — the system is large, but no individual service's persistence layer is.
-- The architecture uses CQRS: JDBC on the write side, jOOQ or custom SQL on the
-  read side.
-- The access pattern is performance-critical and read-heavy (e.g., flag evaluation,
-  rate limiting, A/B assignment), where explicit SQL and predictable execution are
-  more valuable than ORM convenience.
-
 ## More Information
 
 - [`gradle/libs.versions.toml`](../../gradle/libs.versions.toml)
 - [`service/build.gradle.kts`](../../service/build.gradle.kts)
 - [`FeatureFlagEntity.java`](../../service/src/main/java/com/github/milez42/featureflags/flags/FeatureFlagEntity.java)
 - [Spring Data JDBC reference](https://docs.spring.io/spring-data/relational/reference/jdbc.html)
+- [Persistence layer design notes](../notes/persistence-layer.md) — migration signals and service-extraction thinking
