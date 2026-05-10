@@ -1,7 +1,18 @@
 package com.github.milez42.featureflags.flags;
 
+import com.github.milez42.featureflags.audit.AuditEventResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.List;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -13,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api")
+@Tag(name = "Feature Flags", description = "Feature flag management, evaluation, and audit APIs.")
 public class FeatureFlagController {
   private final FeatureFlagService service;
 
@@ -21,6 +33,21 @@ public class FeatureFlagController {
   }
 
   @PostMapping("/flags")
+  @Operation(summary = "Create a feature flag")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "201",
+        description = "Feature flag created",
+        content = @Content(schema = @Schema(implementation = FeatureFlagResponse.class))),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Invalid request",
+        content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+    @ApiResponse(
+        responseCode = "409",
+        description = "Feature flag already exists",
+        content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+  })
   public ResponseEntity<FeatureFlagResponse> create(
       @Valid @RequestBody CreateFeatureFlagRequest request) {
     FeatureFlagResponse response = service.create(request);
@@ -28,17 +55,82 @@ public class FeatureFlagController {
   }
 
   @GetMapping("/flags/{flagKey}")
-  public FeatureFlagResponse get(@PathVariable String flagKey) {
+  @Operation(summary = "Get a feature flag")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Feature flag found",
+        content = @Content(schema = @Schema(implementation = FeatureFlagResponse.class))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Feature flag not found",
+        content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+  })
+  public FeatureFlagResponse get(
+      @Parameter(description = "Feature flag key.", example = "checkout-redesign") @PathVariable
+          String flagKey) {
     return service.get(flagKey);
   }
 
+  @GetMapping("/flags/{flagKey}/audit-events")
+  @Operation(summary = "List audit events for a feature flag")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Audit events ordered oldest first",
+        content =
+            @Content(
+                array = @ArraySchema(schema = @Schema(implementation = AuditEventResponse.class)))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Feature flag not found",
+        content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+  })
+  public List<AuditEventResponse> auditEvents(
+      @Parameter(description = "Feature flag key.", example = "checkout-redesign") @PathVariable
+          String flagKey) {
+    return service.auditEvents(flagKey);
+  }
+
   @PatchMapping("/flags/{flagKey}")
+  @Operation(summary = "Update a feature flag")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Feature flag updated",
+        content = @Content(schema = @Schema(implementation = FeatureFlagResponse.class))),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Invalid request",
+        content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Feature flag not found",
+        content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+  })
   public FeatureFlagResponse update(
-      @PathVariable String flagKey, @Valid @RequestBody UpdateFeatureFlagRequest request) {
+      @Parameter(description = "Feature flag key.", example = "checkout-redesign") @PathVariable
+          String flagKey,
+      @Valid @RequestBody UpdateFeatureFlagRequest request) {
     return service.update(flagKey, request);
   }
 
   @PostMapping("/evaluate")
+  @Operation(summary = "Evaluate a feature flag")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Evaluation result",
+        content = @Content(schema = @Schema(implementation = EvaluateFeatureFlagResponse.class))),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Invalid request",
+        content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Feature flag not found",
+        content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+  })
   public EvaluateFeatureFlagResponse evaluate(
       @Valid @RequestBody EvaluateFeatureFlagRequest request) {
     return service.evaluate(request);

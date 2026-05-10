@@ -5,3 +5,7 @@ spring:
     password: ${FEATURE_FLAGS_DB_PASSWORD:featureflags}
   flyway:
     enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

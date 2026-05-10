@@ -2,6 +2,7 @@ package com.github.milez42.featureflags.audit;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,5 +20,10 @@ public class AuditEventService {
   @Transactional(propagation = Propagation.MANDATORY)
   public void record(String flagKey, AuditEventType eventType, AuditEventDetails details) {
     repository.save(AuditEvent.newEvent(flagKey, eventType, details, Instant.now(clock)));
+  }
+
+  @Transactional(readOnly = true)
+  public List<AuditEvent> findByFlagKey(String flagKey) {
+    return repository.findByFlagKey(flagKey);
   }
 }

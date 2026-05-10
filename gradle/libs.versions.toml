@@ -4,6 +4,7 @@ kotlin = "2.3.21"
 spotless = "8.4.0"
 spring-boot = "4.0.6"
 spring-dependency-management = "1.1.7"
+springdoc-openapi = "3.0.3"
 testcontainers = "1.21.3"
 
 [libraries]
@@ -20,6 +21,7 @@ spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-start
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
 spring-boot-flyway = { module = "org.springframework.boot:spring-boot-flyway" }
 spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
+springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc-openapi" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
 

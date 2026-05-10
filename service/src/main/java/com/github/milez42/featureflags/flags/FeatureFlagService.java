@@ -1,10 +1,12 @@
 package com.github.milez42.featureflags.flags;
 
 import com.github.milez42.featureflags.audit.AuditEventDetails;
+import com.github.milez42.featureflags.audit.AuditEventResponse;
 import com.github.milez42.featureflags.audit.AuditEventService;
 import com.github.milez42.featureflags.audit.AuditEventType;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -59,6 +61,21 @@ public class FeatureFlagService {
   @Transactional(readOnly = true)
   public FeatureFlagResponse get(String flagKey) {
     return toResponse(findEntity(flagKey));
+  }
+
+  @Transactional(readOnly = true)
+  public List<AuditEventResponse> auditEvents(String flagKey) {
+    FeatureFlagEntity entity = findEntity(flagKey);
+    return auditEventService.findByFlagKey(entity.flagKey()).stream()
+        .map(
+            event ->
+                new AuditEventResponse(
+                    event.id(),
+                    event.flagKey(),
+                    event.eventType(),
+                    event.details(),
+                    event.occurredAt()))
+        .toList();
   }
 
   @Transactional

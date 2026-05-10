@@ -10,6 +10,7 @@ dependencies {
   implementation(libs.spring.boot.starter.validation)
   implementation(libs.spring.boot.starter.web)
   implementation(libs.spring.boot.flyway)
+  implementation(libs.springdoc.openapi.starter.webmvc.ui)
   implementation(libs.kotlin.reflect)
   implementation(libs.flyway.core)
   implementation(libs.flyway.database.postgresql)

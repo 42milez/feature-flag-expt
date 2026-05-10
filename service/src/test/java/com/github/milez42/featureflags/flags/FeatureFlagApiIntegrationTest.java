@@ -135,6 +135,55 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
   }
 
   @Test
+  void auditEventsReturnsEventsOldestFirst() throws Exception {
+    createCheckoutFlag();
+
+    mockMvc
+        .perform(
+            patch("/api/flags/checkout-redesign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "rolloutPercentage": 50
+                                }
+                                """))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(get("/api/flags/checkout-redesign/audit-events"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id", notNullValue()))
+        .andExpect(jsonPath("$[0].flagKey").value("checkout-redesign"))
+        .andExpect(jsonPath("$[0].eventType").value("FLAG_CREATED"))
+        .andExpect(jsonPath("$[0].details.status").value("ENABLED"))
+        .andExpect(jsonPath("$[0].occurredAt", notNullValue()))
+        .andExpect(jsonPath("$[1].eventType").value("ROLLOUT_PERCENTAGE_CHANGED"))
+        .andExpect(jsonPath("$[1].details.field").value("rolloutPercentage"))
+        .andExpect(jsonPath("$[1].details.oldValue").value(100))
+        .andExpect(jsonPath("$[1].details.newValue").value(50));
+  }
+
+  @Test
+  void auditEventsMissingFlagReturnsNotFound() throws Exception {
+    mockMvc
+        .perform(get("/api/flags/missing-flag/audit-events"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.title").value("Feature flag not found"));
+  }
+
+  @Test
+  void auditEventsExistingFlagWithoutEventsReturnsEmptyList() throws Exception {
+    createCheckoutFlag();
+    jdbcClient.sql("delete from audit_events").update();
+
+    mockMvc
+        .perform(get("/api/flags/checkout-redesign/audit-events"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isEmpty());
+  }
+
+  @Test
   void patchUpdatesOnlySuppliedFields() throws Exception {
     createCheckoutFlag();
 

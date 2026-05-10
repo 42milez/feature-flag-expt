@@ -1,0 +1,416 @@
+openapi: 3.1.0
+info:
+  title: Feature Flag API
+  description: "Feature flag management, evaluation, and audit APIs."
+  version: 0.1.0
+servers:
+- url: http://localhost
+  description: Generated server url
+tags:
+- name: Feature Flags
+  description: "Feature flag management, evaluation, and audit APIs."
+paths:
+  /api/flags:
+    post:
+      tags:
+      - Feature Flags
+      summary: Create a feature flag
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFeatureFlagRequest"
+        required: true
+      responses:
+        "201":
+          description: Feature flag created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/FeatureFlagResponse"
+        "400":
+          description: Invalid request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Feature flag already exists
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/evaluate:
+    post:
+      tags:
+      - Feature Flags
+      summary: Evaluate a feature flag
+      operationId: evaluate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvaluateFeatureFlagRequest"
+        required: true
+      responses:
+        "200":
+          description: Evaluation result
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EvaluateFeatureFlagResponse"
+        "400":
+          description: Invalid request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Feature flag not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/flags/{flagKey}:
+    get:
+      tags:
+      - Feature Flags
+      summary: Get a feature flag
+      operationId: get
+      parameters:
+      - name: flagKey
+        in: path
+        description: Feature flag key.
+        required: true
+        schema:
+          type: string
+        example: checkout-redesign
+      responses:
+        "200":
+          description: Feature flag found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/FeatureFlagResponse"
+        "404":
+          description: Feature flag not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    patch:
+      tags:
+      - Feature Flags
+      summary: Update a feature flag
+      operationId: update
+      parameters:
+      - name: flagKey
+        in: path
+        description: Feature flag key.
+        required: true
+        schema:
+          type: string
+        example: checkout-redesign
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFeatureFlagRequest"
+        required: true
+      responses:
+        "200":
+          description: Feature flag updated
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/FeatureFlagResponse"
+        "400":
+          description: Invalid request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Feature flag not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/flags/{flagKey}/audit-events:
+    get:
+      tags:
+      - Feature Flags
+      summary: List audit events for a feature flag
+      operationId: auditEvents
+      parameters:
+      - name: flagKey
+        in: path
+        description: Feature flag key.
+        required: true
+        schema:
+          type: string
+        example: checkout-redesign
+      responses:
+        "200":
+          description: Audit events ordered oldest first
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditEventResponse"
+        "404":
+          description: Feature flag not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+components:
+  schemas:
+    CreateFeatureFlagRequest:
+      type: object
+      description: Request to create a feature flag.
+      properties:
+        flagKey:
+          type: string
+          description: Stable feature flag key.
+          example: checkout-redesign
+          minLength: 1
+        status:
+          type: string
+          description: Initial flag status.
+          enum:
+          - ENABLED
+          - DISABLED
+          example: ENABLED
+        targetEnvironments:
+          type: array
+          description: Environments where the flag may be evaluated.
+          example:
+          - production
+          - staging
+          items:
+            type: string
+            enum:
+            - development
+            - staging
+            - production
+          minItems: 1
+          uniqueItems: true
+        killSwitchActive:
+          type: boolean
+          description: Whether the emergency kill switch is active.
+          example: false
+        tenantAllowlist:
+          type: array
+          description: Tenant IDs that are always allowed.
+          example:
+          - tenant-a
+          items:
+            type: string
+            minLength: 1
+          uniqueItems: true
+        rolloutPercentage:
+          type: integer
+          format: int32
+          description: Percentage rollout from 0 to 100.
+          example: 25
+          maximum: 100
+          minimum: 0
+      required:
+      - flagKey
+      - killSwitchActive
+      - rolloutPercentage
+      - status
+      - targetEnvironments
+    FeatureFlagResponse:
+      type: object
+      description: Feature flag representation.
+      properties:
+        flagKey:
+          type: string
+          description: Stable feature flag key.
+          example: checkout-redesign
+        status:
+          type: string
+          description: Current flag status.
+          enum:
+          - ENABLED
+          - DISABLED
+          example: ENABLED
+        targetEnvironments:
+          type: array
+          description: Target environments.
+          example:
+          - production
+          - staging
+          items:
+            type: string
+          uniqueItems: true
+        killSwitchActive:
+          type: boolean
+          description: Whether the emergency kill switch is active.
+          example: false
+        tenantAllowlist:
+          type: array
+          description: Tenant IDs that are always allowed.
+          example:
+          - tenant-a
+          items:
+            type: string
+          uniqueItems: true
+        rolloutPercentage:
+          type: integer
+          format: int32
+          description: Percentage rollout from 0 to 100.
+          example: 25
+    ProblemDetail:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        properties:
+          type: object
+          additionalProperties: {}
+    EvaluateFeatureFlagRequest:
+      type: object
+      description: Request to evaluate a feature flag for a context.
+      properties:
+        flagKey:
+          type: string
+          description: Feature flag key to evaluate.
+          example: checkout-redesign
+          minLength: 1
+        environment:
+          type: string
+          description: Runtime environment.
+          example: production
+          minLength: 1
+        tenantId:
+          type: string
+          description: Optional tenant identifier.
+          example: tenant-a
+        userId:
+          type: string
+          description: Optional user identifier.
+          example: user-123
+      required:
+      - environment
+      - flagKey
+    EvaluateFeatureFlagResponse:
+      type: object
+      description: Feature flag evaluation result.
+      properties:
+        flagKey:
+          type: string
+          description: Evaluated feature flag key.
+          example: checkout-redesign
+        enabled:
+          type: boolean
+          description: Whether the flag is enabled for the supplied context.
+          example: true
+        reason:
+          type: string
+          description: Reason for the evaluation result.
+          enum:
+          - FLAG_DISABLED
+          - ENVIRONMENT_NOT_TARGETED
+          - KILL_SWITCH_ACTIVE
+          - TENANT_ALLOWLIST_MATCH
+          - ROLLOUT_MATCH
+          - ROLLOUT_MISS
+          example: ROLLOUT_MATCH
+        bucket:
+          type: integer
+          format: int32
+          description: "Deterministic rollout bucket, when rollout logic was evaluated."
+          example: 42
+    UpdateFeatureFlagRequest:
+      type: object
+      description: Request to partially update a feature flag.
+      properties:
+        status:
+          type: string
+          description: Updated flag status.
+          enum:
+          - ENABLED
+          - DISABLED
+          example: DISABLED
+        targetEnvironments:
+          type: array
+          description: Replacement target environments. Empty input preserves existing
+            values.
+          example:
+          - production
+          items:
+            type: string
+            enum:
+            - development
+            - staging
+            - production
+          uniqueItems: true
+        killSwitchActive:
+          type: boolean
+          description: Updated kill switch state.
+          example: true
+        tenantAllowlist:
+          type: array
+          description: Replacement tenant allowlist.
+          example:
+          - tenant-a
+          - tenant-b
+          items:
+            type: string
+            minLength: 1
+          uniqueItems: true
+        rolloutPercentage:
+          type: integer
+          format: int32
+          description: Updated percentage rollout from 0 to 100.
+          example: 50
+          maximum: 100
+          minimum: 0
+    AuditEventResponse:
+      type: object
+      description: Audit event emitted when a feature flag changes.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Audit event identifier.
+          example: 42
+        flagKey:
+          type: string
+          description: Feature flag key associated with the event.
+          example: checkout-redesign
+        eventType:
+          type: string
+          description: Type of audit event.
+          enum:
+          - FLAG_CREATED
+          - FLAG_ENABLED
+          - FLAG_DISABLED
+          - ROLLOUT_PERCENTAGE_CHANGED
+          - TENANT_ALLOWLIST_CHANGED
+          - KILL_SWITCH_ENABLED
+          - KILL_SWITCH_DISABLED
+          example: ROLLOUT_PERCENTAGE_CHANGED
+        details:
+          description: Event-specific details. Shape depends on eventType.
+        occurredAt:
+          type: string
+          format: date-time
+          description: Time the event occurred.
+          example: 2026-05-05T00:00:00Z
