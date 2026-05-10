@@ -4,7 +4,7 @@ info:
   description: "Feature flag management, evaluation, and audit APIs."
   version: 0.1.0
 servers:
-- url: http://localhost
+- url: http://localhost:8080
   description: Generated server url
 tags:
 - name: Feature Flags
@@ -137,6 +137,18 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+  /hello:
+    get:
+      tags:
+      - hello-world-controller
+      operationId: hello
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
   /api/flags/{flagKey}/audit-events:
     get:
       tags:

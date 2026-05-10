@@ -4,6 +4,7 @@ kotlin = "2.3.21"
 spotless = "8.4.0"
 spring-boot = "4.0.6"
 spring-dependency-management = "1.1.7"
+springdoc-openapi-gradle-plugin = "1.9.0"
 springdoc-openapi = "3.0.3"
 testcontainers = "1.21.3"
 
@@ -14,6 +15,7 @@ spotless-gradle-plugin = { module = "com.diffplug.spotless:spotless-plugin-gradl
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
 flyway-core = { module = "org.flywaydb:flyway-core" }
 flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
+h2 = { module = "com.h2database:h2" }
 postgresql = { module = "org.postgresql:postgresql" }
 spring-boot-starter-data-jdbc = { module = "org.springframework.boot:spring-boot-starter-data-jdbc" }
 spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation" }
@@ -29,3 +31,4 @@ testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.
 kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
 spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+springdoc-openapi = { id = "org.springdoc.openapi-gradle-plugin", version.ref = "springdoc-openapi-gradle-plugin" }
