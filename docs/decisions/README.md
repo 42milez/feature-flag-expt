@@ -4,7 +4,10 @@ This directory contains Architecture Decision Records (ADRs) for this project, f
 
 ## Index
 
-| ID   | Title                          | Status   |
-|------|--------------------------------|----------|
-| [0001](0001-use-zero-configuration-formatters.md) | Use zero-configuration formatters for Java and Kotlin | Accepted |
-| [0002](0002-use-spring-data-jdbc-instead-of-jpa.md) | Use Spring Data JDBC instead of JPA/Hibernate | Accepted |
+| ID                                                   | Title                                                         | Status   |
+|------------------------------------------------------|---------------------------------------------------------------|----------|
+| [0001](0001-use-zero-configuration-formatters.md)    | Use zero-configuration formatters for Java and Kotlin         | Accepted |
+| [0002](0002-use-spring-data-jdbc-instead-of-jpa.md)  | Use Spring Data JDBC instead of JPA/Hibernate                 | Accepted |
+| [0003](0003-represent-audit-event-details-as-sealed-interface-with-records.md) | Represent audit event details as a sealed interface with records | Accepted |
+| [0004](0004-enforce-audit-atomicity-with-propagation-mandatory.md) | Enforce audit atomicity with `Propagation.MANDATORY`          | Accepted |
+| [0005](0005-separate-domain-records-from-persistence-entities.md) | Separate domain records from persistence entities             | Accepted |
