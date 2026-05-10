@@ -11,3 +11,4 @@ This directory contains Architecture Decision Records (ADRs) for this project, f
 | [0003](0003-represent-audit-event-details-as-sealed-interface-with-records.md) | Represent audit event details as a sealed interface with records | Accepted |
 | [0004](0004-enforce-audit-atomicity-with-propagation-mandatory.md) | Enforce audit atomicity with `Propagation.MANDATORY`          | Accepted |
 | [0005](0005-separate-domain-records-from-persistence-entities.md) | Separate domain records from persistence entities             | Accepted |
+| [0006](0006-use-code-first-openapi-with-springdoc-openapi.md) | Use code-first OpenAPI with springdoc-openapi                 | Accepted |
