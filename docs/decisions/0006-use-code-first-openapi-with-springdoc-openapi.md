@@ -10,7 +10,7 @@ informed: []
 
 ## Context and Problem Statement
 
-Phase 4 introduces OpenAPI documentation for the feature flag service. The
+This ADR introduces OpenAPI documentation for the feature flag service. The
 project already has Spring MVC controllers, request and response records, Bean
 Validation constraints, and Spring `ProblemDetail` error handling.
 
@@ -32,8 +32,8 @@ maintained static snapshot?
 * The project should stay on the Spring Boot 4 and Jackson 3 stack for
   application HTTP JSON handling; OpenAPI support must not require adding a
   Jackson 2 fallback for the service API.
-* Phase 4 should document the API shape that exists now, while leaving stricter
-  contract governance for a later phase.
+* The goal at this stage is to document the API shape that exists now, while
+  leaving stricter contract governance for a later phase.
 
 ## Considered Options
 
@@ -53,7 +53,7 @@ OpenAPI document. `springdoc-openapi-starter-webmvc-ui` exposes Swagger UI at
 `/swagger-ui.html` and generated OpenAPI documents at `/v3/api-docs` and
 `/v3/api-docs.yaml`.
 
-The Phase 4 documented API surface is:
+The documented API surface at the time of this decision is:
 
 * `POST /api/flags`
 * `GET /api/flags/{flagKey}`
@@ -65,7 +65,7 @@ Error responses continue to use Spring's existing `ProblemDetail` representation
 The project does not add a dedicated error DTO for OpenAPI.
 
 `AuditEventResponse.details` is intentionally published as a loose object schema
-in Phase 4. The runtime value is a concrete sealed `AuditEventDetails` record,
+at this stage. The runtime value is a concrete sealed `AuditEventDetails` record,
 but the OpenAPI schema does not model every detail variant with `oneOf` yet.
 That keeps the initial documentation small and avoids treating the audit details
 wire shape as a fully governed public contract before consumers need that
@@ -82,7 +82,7 @@ baseline, even though some infrastructure libraries can still bring
   validation rules that define the runtime API.
 * Good: Swagger UI makes the API easy to inspect locally once the service is
   running.
-* Good: Phase 4 adds documentation without introducing generated controller
+* Good: This decision adds documentation without introducing generated controller
   code or a spec-first workflow.
 * Good: existing `ProblemDetail` error handling remains the error contract.
 * Bad: contract governance is weaker than a spec-first workflow; annotations and
