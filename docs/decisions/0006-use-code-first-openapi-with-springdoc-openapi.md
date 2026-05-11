@@ -53,9 +53,6 @@ OpenAPI document. `springdoc-openapi-starter-webmvc-ui` exposes Swagger UI at
 `/swagger-ui.html` and generated OpenAPI documents at `/v3/api-docs` and
 `/v3/api-docs.yaml`.
 
-`OpenApiConfig` defines the API metadata: title `Feature Flag API`, version
-`0.1.0`, and description `Feature flag management, evaluation, and audit APIs.`
-
 The Phase 4 documented API surface is:
 
 * `POST /api/flags`
