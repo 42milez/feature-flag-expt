@@ -79,6 +79,9 @@ public class AuditEventRepository {
         case ROLLOUT_PERCENTAGE_CHANGED ->
             objectMapper.readValue(
                 detailsJson, AuditEventDetails.RolloutPercentageChangedDetails.class);
+        case TARGET_ENVIRONMENTS_CHANGED ->
+            objectMapper.readValue(
+                detailsJson, AuditEventDetails.TargetEnvironmentsChangedDetails.class);
         case TENANT_ALLOWLIST_CHANGED ->
             objectMapper.readValue(
                 detailsJson, AuditEventDetails.TenantAllowlistChangedDetails.class);

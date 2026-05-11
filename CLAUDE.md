@@ -37,3 +37,7 @@ Format for each entry (add under the relevant category heading, creating the hea
 ```
 - **[Category]** _What to do / avoid_, and why. Reference the relevant class or pattern if helpful.
 ```
+
+- **[Security]** Put explicit size limits on externally supplied collections before iterating over
+  them in request handlers or services. Bean Validation constraints such as `@Size(max = ...)`
+  should document and enforce the bound at the API edge.

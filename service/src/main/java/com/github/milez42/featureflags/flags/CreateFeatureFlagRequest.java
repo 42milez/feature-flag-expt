@@ -6,11 +6,14 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.util.Set;
 
 @Schema(description = "Request to create a feature flag.")
 public record CreateFeatureFlagRequest(
-    @Schema(description = "Stable feature flag key.", example = "checkout-redesign") @NotBlank
+    @Schema(description = "Stable feature flag key.", example = "checkout-redesign", minLength = 1)
+        @NotBlank
+        @Size(max = 200)
         String flagKey,
     @Schema(description = "Initial flag status.", example = "ENABLED") @NotNull
         FeatureFlagStatus status,
@@ -24,7 +27,8 @@ public record CreateFeatureFlagRequest(
         @NotNull
         Boolean killSwitchActive,
     @Schema(description = "Tenant IDs that are always allowed.", example = "[\"tenant-a\"]")
-        Set<@NotBlank String> tenantAllowlist,
+        @Size(max = 1000)
+        Set<@NotBlank @Size(max = 255) String> tenantAllowlist,
     @Schema(description = "Percentage rollout from 0 to 100.", example = "25")
         @NotNull
         @Min(0)

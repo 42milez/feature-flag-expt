@@ -85,7 +85,7 @@ public class FeatureFlagService {
         new FeatureFlagEntity(
             existing.flagKey(),
             request.status() == null ? existing.status() : request.status(),
-            (request.targetEnvironments() == null || request.targetEnvironments().isEmpty())
+            request.targetEnvironments() == null
                 ? existing.targetEnvironments()
                 : targetEnvironments(request.targetEnvironments()),
             request.killSwitchActive() == null
@@ -177,6 +177,16 @@ public class FeatureFlagService {
           AuditEventType.ROLLOUT_PERCENTAGE_CHANGED,
           new AuditEventDetails.RolloutPercentageChangedDetails(
               "rolloutPercentage", existing.rolloutPercentage(), updated.rolloutPercentage()));
+    }
+
+    Set<String> oldTargetEnvironments = targetEnvironmentValues(existing);
+    Set<String> newTargetEnvironments = targetEnvironmentValues(updated);
+    if (!oldTargetEnvironments.equals(newTargetEnvironments)) {
+      auditEventService.record(
+          updated.flagKey(),
+          AuditEventType.TARGET_ENVIRONMENTS_CHANGED,
+          new AuditEventDetails.TargetEnvironmentsChangedDetails(
+              "targetEnvironments", oldTargetEnvironments, newTargetEnvironments));
     }
 
     Set<String> oldAllowlist = tenantAllowlistValues(existing);

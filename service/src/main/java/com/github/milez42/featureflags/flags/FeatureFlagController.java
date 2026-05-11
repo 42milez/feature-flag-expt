@@ -10,10 +10,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.net.URI;
 import java.util.List;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api")
 @Tag(name = "Feature Flags", description = "Feature flag management, evaluation, and audit APIs.")
+@Validated
 public class FeatureFlagController {
   private final FeatureFlagService service;
 
@@ -67,7 +71,13 @@ public class FeatureFlagController {
         content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
   })
   public FeatureFlagResponse get(
-      @Parameter(description = "Feature flag key.", example = "checkout-redesign") @PathVariable
+      @Parameter(
+              description = "Feature flag key.",
+              example = "checkout-redesign",
+              schema = @Schema(minLength = 1, maxLength = 200))
+          @PathVariable
+          @NotBlank
+          @Size(max = 200)
           String flagKey) {
     return service.get(flagKey);
   }
@@ -87,7 +97,13 @@ public class FeatureFlagController {
         content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
   })
   public List<AuditEventResponse> auditEvents(
-      @Parameter(description = "Feature flag key.", example = "checkout-redesign") @PathVariable
+      @Parameter(
+              description = "Feature flag key.",
+              example = "checkout-redesign",
+              schema = @Schema(minLength = 1, maxLength = 200))
+          @PathVariable
+          @NotBlank
+          @Size(max = 200)
           String flagKey) {
     return service.auditEvents(flagKey);
   }
@@ -109,7 +125,13 @@ public class FeatureFlagController {
         content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
   })
   public FeatureFlagResponse update(
-      @Parameter(description = "Feature flag key.", example = "checkout-redesign") @PathVariable
+      @Parameter(
+              description = "Feature flag key.",
+              example = "checkout-redesign",
+              schema = @Schema(minLength = 1, maxLength = 200))
+          @PathVariable
+          @NotBlank
+          @Size(max = 200)
           String flagKey,
       @Valid @RequestBody UpdateFeatureFlagRequest request) {
     return service.update(flagKey, request);

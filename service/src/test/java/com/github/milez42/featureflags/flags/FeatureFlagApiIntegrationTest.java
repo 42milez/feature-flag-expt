@@ -23,6 +23,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -236,7 +237,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
   }
 
   @Test
-  void patchWithEmptyTargetEnvironmentsPreservesExisting() throws Exception {
+  void patchWithEmptyTargetEnvironmentsClearsTargetEnvironments() throws Exception {
     createCheckoutFlag();
 
     mockMvc
@@ -250,11 +251,43 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
                                 }
                                 """))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.targetEnvironments", containsInAnyOrder("production", "staging")));
+        .andExpect(jsonPath("$.targetEnvironments").isEmpty());
 
-    assertThat(auditEventRepository.findByFlagKey("checkout-redesign"))
+    var events = auditEventRepository.findByFlagKey("checkout-redesign");
+    assertThat(events)
         .extracting(AuditEvent::eventType)
-        .containsExactly(AuditEventType.FLAG_CREATED);
+        .containsExactly(AuditEventType.FLAG_CREATED, AuditEventType.TARGET_ENVIRONMENTS_CHANGED);
+    assertThat(events.get(1).details())
+        .isEqualTo(
+            new AuditEventDetails.TargetEnvironmentsChangedDetails(
+                "targetEnvironments", Set.of("production", "staging"), Set.of()));
+  }
+
+  @Test
+  void patchWithTargetEnvironmentsReplacementRecordsAuditEvent() throws Exception {
+    createCheckoutFlag();
+
+    mockMvc
+        .perform(
+            patch("/api/flags/checkout-redesign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "targetEnvironments": ["production"]
+                                }
+                                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.targetEnvironments", containsInAnyOrder("production")));
+
+    var events = auditEventRepository.findByFlagKey("checkout-redesign");
+    assertThat(events)
+        .extracting(AuditEvent::eventType)
+        .containsExactly(AuditEventType.FLAG_CREATED, AuditEventType.TARGET_ENVIRONMENTS_CHANGED);
+    assertThat(events.get(1).details())
+        .isEqualTo(
+            new AuditEventDetails.TargetEnvironmentsChangedDetails(
+                "targetEnvironments", Set.of("production", "staging"), Set.of("production")));
   }
 
   @Test
@@ -342,6 +375,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
                                 {
                                   "status": "ENABLED",
                                   "killSwitchActive": false,
+                                  "targetEnvironments": ["production", "staging"],
                                   "tenantAllowlist": ["tenant-a"],
                                   "rolloutPercentage": 100
                                 }
@@ -367,6 +401,65 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
                                   "rolloutPercentage": 101
                                 }
                                 """))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void createWithOverlongFlagKeyReturnsBadRequest() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/flags")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "flagKey": "%s",
+                                  "status": "ENABLED",
+                                  "targetEnvironments": ["production"],
+                                  "killSwitchActive": false,
+                                  "rolloutPercentage": 25
+                                }
+                                """
+                        .formatted(longString(201))))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void createWithOverlongTenantAllowlistEntryReturnsBadRequest() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/flags")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "flagKey": "checkout-redesign",
+                                  "status": "ENABLED",
+                                  "targetEnvironments": ["production"],
+                                  "killSwitchActive": false,
+                                  "tenantAllowlist": ["%s"],
+                                  "rolloutPercentage": 25
+                                }
+                                """
+                        .formatted(longString(256))))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void updateWithOverlongTenantAllowlistEntryReturnsBadRequest() throws Exception {
+    createCheckoutFlag();
+
+    mockMvc
+        .perform(
+            patch("/api/flags/checkout-redesign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "tenantAllowlist": ["%s"]
+                                }
+                                """
+                        .formatted(longString(256))))
         .andExpect(status().isBadRequest());
   }
 
@@ -430,8 +523,459 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
                                   "environment": "production",
                                   "tenantId": "tenant-z"
                                 }
-                                """))
+                """))
         .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void evaluateWithOverlongIdentifiersReturnsBadRequest() throws Exception {
+    createCheckoutFlag();
+
+    mockMvc
+        .perform(
+            post("/api/evaluate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "flagKey": "%s",
+                                  "environment": "production"
+                                }
+                                """
+                        .formatted(longString(201))))
+        .andExpect(status().isBadRequest());
+
+    mockMvc
+        .perform(
+            post("/api/evaluate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "flagKey": "checkout-redesign",
+                                  "environment": "%s"
+                                }
+                                """
+                        .formatted(longString(256))))
+        .andExpect(status().isBadRequest());
+
+    mockMvc
+        .perform(
+            post("/api/evaluate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "flagKey": "checkout-redesign",
+                                  "environment": "production",
+                                  "tenantId": "%s"
+                                }
+                                """
+                        .formatted(longString(256))))
+        .andExpect(status().isBadRequest());
+
+    mockMvc
+        .perform(
+            post("/api/evaluate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "flagKey": "checkout-redesign",
+                                  "environment": "production",
+                                  "userId": "%s"
+                                }
+                                """
+                        .formatted(longString(256))))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void previewReturnsBeforeAfterDiffsAndSummary() throws Exception {
+    createCheckoutFlag();
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": {
+                                    "killSwitchActive": true
+                                  },
+                                  "sampleContexts": [
+                                    {
+                                      "environment": "production",
+                                      "tenantId": "tenant-a",
+                                      "userId": "user-a"
+                                    },
+                                    {
+                                      "environment": "production",
+                                      "tenantId": "tenant-z",
+                                      "userId": "user-z"
+                                    }
+                                  ]
+                                }
+                                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.flagKey").value("checkout-redesign"))
+        .andExpect(jsonPath("$.diffs[0].before.enabled").value(true))
+        .andExpect(jsonPath("$.diffs[0].after.enabled").value(false))
+        .andExpect(jsonPath("$.diffs[0].after.reason").value("KILL_SWITCH_ACTIVE"))
+        .andExpect(jsonPath("$.diffs[0].changed").value(true))
+        .andExpect(jsonPath("$.diffs[1].before.enabled").value(true))
+        .andExpect(jsonPath("$.diffs[1].after.enabled").value(false))
+        .andExpect(jsonPath("$.summary.sampleCount").value(2))
+        .andExpect(jsonPath("$.summary.beforeEnabledCount").value(2))
+        .andExpect(jsonPath("$.summary.beforeDisabledCount").value(0))
+        .andExpect(jsonPath("$.summary.enabledCount").value(0))
+        .andExpect(jsonPath("$.summary.disabledCount").value(2))
+        .andExpect(jsonPath("$.summary.changedCount").value(2));
+  }
+
+  @Test
+  void previewDoesNotPersistProposedChange() throws Exception {
+    createCheckoutFlag();
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": {
+                                    "killSwitchActive": true,
+                                    "rolloutPercentage": 0
+                                  },
+                                  "sampleContexts": [
+                                    {
+                                      "environment": "production",
+                                      "tenantId": "tenant-z",
+                                      "userId": "user-z"
+                                    }
+                                  ]
+                                }
+                                """))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(get("/api/flags/checkout-redesign"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.killSwitchActive").value(false))
+        .andExpect(jsonPath("$.rolloutPercentage").value(100));
+
+    assertThat(auditEventRepository.findByFlagKey("checkout-redesign"))
+        .extracting(AuditEvent::eventType)
+        .containsExactly(AuditEventType.FLAG_CREATED);
+  }
+
+  @Test
+  void previewMissingFlagReturnsNotFound() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/flags/missing-flag/preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": {
+                                    "rolloutPercentage": 50
+                                  },
+                                  "sampleContexts": [
+                                    {
+                                      "environment": "production",
+                                      "tenantId": "tenant-a"
+                                    }
+                                  ]
+                                }
+                                """))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.title").value("Feature flag not found"));
+  }
+
+  @Test
+  void previewWithEmptySampleContextsReturnsBadRequest() throws Exception {
+    createCheckoutFlag();
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": {
+                                    "rolloutPercentage": 50
+                                  },
+                                  "sampleContexts": []
+                                }
+                                """))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void previewWithTooManySampleContextsReturnsBadRequest() throws Exception {
+    createCheckoutFlag();
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": {
+                                    "rolloutPercentage": 50
+                                  },
+                                  "sampleContexts": %s
+                                }
+                                """
+                        .formatted(sampleContextsJson(101))))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void previewWithInvalidSampleContextReturnsBadRequest() throws Exception {
+    createCheckoutFlag();
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": {
+                                    "rolloutPercentage": 50
+                                  },
+                                  "sampleContexts": [
+                                    {
+                                      "environment": " ",
+                                      "tenantId": "tenant-a"
+                                    }
+                                  ]
+                                }
+                                """))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void previewWithBlankSampleContextOptionalIdentifiersReturnsBadRequest() throws Exception {
+    createCheckoutFlag();
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": {
+                                    "rolloutPercentage": 50
+                                  },
+                                  "sampleContexts": [
+                                    {
+                                      "environment": "production",
+                                      "tenantId": " "
+                                    }
+                                  ]
+                                }
+                                """))
+        .andExpect(status().isBadRequest());
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": {
+                                    "rolloutPercentage": 50
+                                  },
+                                  "sampleContexts": [
+                                    {
+                                      "environment": "production",
+                                      "userId": " "
+                                    }
+                                  ]
+                                }
+                                """))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void previewWithOverlongPathFlagKeyReturnsBadRequest() throws Exception {
+    MvcResult result =
+        mockMvc
+            .perform(
+                post("/api/flags/%s/preview".formatted(longString(201)))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                                    {
+                                      "proposedChange": {
+                                        "rolloutPercentage": 50
+                                      },
+                                      "sampleContexts": [
+                                        {
+                                          "environment": "production"
+                                        }
+                                      ]
+                                    }
+                                    """))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+
+    assertThat(result.getResponse().getContentAsString())
+        .contains("preview.flagKey: size must be between 0 and 200");
+  }
+
+  @Test
+  void previewWithOverlongSampleContextValuesReturnsBadRequest() throws Exception {
+    createCheckoutFlag();
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": {
+                                    "rolloutPercentage": 50
+                                  },
+                                  "sampleContexts": [
+                                    {
+                                      "environment": "%s"
+                                    }
+                                  ]
+                                }
+                                """
+                        .formatted(longString(256))))
+        .andExpect(status().isBadRequest());
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": {
+                                    "rolloutPercentage": 50
+                                  },
+                                  "sampleContexts": [
+                                    {
+                                      "environment": "production",
+                                      "tenantId": "%s"
+                                    }
+                                  ]
+                                }
+                                """
+                        .formatted(longString(256))))
+        .andExpect(status().isBadRequest());
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": {
+                                    "rolloutPercentage": 50
+                                  },
+                                  "sampleContexts": [
+                                    {
+                                      "environment": "production",
+                                      "userId": "%s"
+                                    }
+                                  ]
+                                }
+                                """
+                        .formatted(longString(256))))
+        .andExpect(status().isBadRequest());
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": {
+                                    "tenantAllowlist": ["%s"]
+                                  },
+                                  "sampleContexts": [
+                                    {
+                                      "environment": "production"
+                                    }
+                                  ]
+                                }
+                                """
+                        .formatted(longString(256))))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void previewWithTooManyTenantAllowlistEntriesReturnsBadRequest() throws Exception {
+    createCheckoutFlag();
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": {
+                                    "tenantAllowlist": %s
+                                  },
+                                  "sampleContexts": [
+                                    {
+                                      "environment": "production"
+                                    }
+                                  ]
+                                }
+                                """
+                        .formatted(tenantAllowlistJson(1001))))
+        .andExpect(status().isBadRequest());
+  }
+
+  private static String sampleContextsJson(int count) {
+    StringBuilder json = new StringBuilder("[");
+    for (int i = 0; i < count; i++) {
+      if (i > 0) {
+        json.append(",");
+      }
+      json.append(
+          """
+                      {
+                        "environment": "production",
+                        "tenantId": "tenant-%d"
+                      }
+                      """
+              .formatted(i));
+    }
+    return json.append("]").toString();
+  }
+
+  private static String tenantAllowlistJson(int count) {
+    StringBuilder json = new StringBuilder("[");
+    for (int i = 0; i < count; i++) {
+      if (i > 0) {
+        json.append(",");
+      }
+      json.append("\"tenant-").append(i).append("\"");
+    }
+    return json.append("]").toString();
+  }
+
+  private static String longString(int length) {
+    return "a".repeat(length);
   }
 
   private void createCheckoutFlag() throws Exception {

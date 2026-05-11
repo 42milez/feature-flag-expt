@@ -8,6 +8,7 @@ public sealed interface AuditEventDetails
         AuditEventDetails.FlagEnabledDetails,
         AuditEventDetails.FlagDisabledDetails,
         AuditEventDetails.RolloutPercentageChangedDetails,
+        AuditEventDetails.TargetEnvironmentsChangedDetails,
         AuditEventDetails.TenantAllowlistChangedDetails,
         AuditEventDetails.KillSwitchEnabledDetails,
         AuditEventDetails.KillSwitchDisabledDetails {
@@ -26,6 +27,9 @@ public sealed interface AuditEventDetails
       implements AuditEventDetails {}
 
   record RolloutPercentageChangedDetails(String field, int oldValue, int newValue)
+      implements AuditEventDetails {}
+
+  record TargetEnvironmentsChangedDetails(String field, Set<String> oldValue, Set<String> newValue)
       implements AuditEventDetails {}
 
   record TenantAllowlistChangedDetails(String field, Set<String> oldValue, Set<String> newValue)

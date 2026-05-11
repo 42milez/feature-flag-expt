@@ -9,6 +9,8 @@ servers:
 tags:
 - name: Feature Flags
   description: "Feature flag management, evaluation, and audit APIs."
+- name: Feature Flag Preview
+  description: Preview proposed feature flag changes.
 paths:
   /api/flags:
     post:
@@ -37,6 +39,47 @@ paths:
                 $ref: "#/components/schemas/ProblemDetail"
         "409":
           description: Feature flag already exists
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/flags/{flagKey}/preview:
+    post:
+      tags:
+      - Feature Flag Preview
+      summary: Preview a feature flag change
+      operationId: preview
+      parameters:
+      - name: flagKey
+        in: path
+        description: Feature flag key.
+        required: true
+        schema:
+          type: string
+          maxLength: 200
+          minLength: 1
+        example: checkout-redesign
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvaluationPreviewRequest"
+        required: true
+      responses:
+        "200":
+          description: Preview diff
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EvaluationPreviewResponse"
+        "400":
+          description: Invalid request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Feature flag not found
           content:
             '*/*':
               schema:
@@ -85,6 +128,8 @@ paths:
         required: true
         schema:
           type: string
+          maxLength: 200
+          minLength: 1
         example: checkout-redesign
       responses:
         "200":
@@ -111,6 +156,8 @@ paths:
         required: true
         schema:
           type: string
+          maxLength: 200
+          minLength: 1
         example: checkout-redesign
       requestBody:
         content:
@@ -137,18 +184,6 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
-  /hello:
-    get:
-      tags:
-      - hello-world-controller
-      operationId: hello
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: string
   /api/flags/{flagKey}/audit-events:
     get:
       tags:
@@ -162,6 +197,8 @@ paths:
         required: true
         schema:
           type: string
+          maxLength: 200
+          minLength: 1
         example: checkout-redesign
       responses:
         "200":
@@ -188,6 +225,7 @@ components:
           type: string
           description: Stable feature flag key.
           example: checkout-redesign
+          maxLength: 200
           minLength: 1
         status:
           type: string
@@ -221,7 +259,10 @@ components:
           - tenant-a
           items:
             type: string
+            maxLength: 255
             minLength: 1
+          maxItems: 1000
+          minItems: 0
           uniqueItems: true
         rolloutPercentage:
           type: integer
@@ -296,6 +337,216 @@ components:
         properties:
           type: object
           additionalProperties: {}
+    EvaluationPreviewContext:
+      type: object
+      description: Sample context to evaluate during preview.
+      properties:
+        environment:
+          type: string
+          description: Environment to evaluate.
+          example: production
+          maxLength: 255
+          minLength: 1
+        tenantId:
+          type:
+          - string
+          - "null"
+          description: Optional tenant ID to evaluate. Omit or send null when unknown.
+          example: tenant-a
+          maxLength: 255
+          minLength: 0
+          pattern: .*\S.*
+        userId:
+          type:
+          - string
+          - "null"
+          description: Optional user ID to evaluate. Omit or send null when unknown.
+          example: user-a
+          maxLength: 255
+          minLength: 0
+          pattern: .*\S.*
+      required:
+      - environment
+    EvaluationPreviewRequest:
+      type: object
+      description: Request to preview a proposed feature flag change.
+      properties:
+        proposedChange:
+          $ref: "#/components/schemas/ProposedFeatureFlagChange"
+          description: Partial change to apply in memory.
+        sampleContexts:
+          type: array
+          description: Sample contexts to evaluate before and after the change.
+          items:
+            $ref: "#/components/schemas/EvaluationPreviewContext"
+          maxItems: 100
+          minItems: 0
+      required:
+      - proposedChange
+      - sampleContexts
+    ProposedFeatureFlagChange:
+      type: object
+      description: Partial feature flag change used only for preview.
+      properties:
+        status:
+          type:
+          - string
+          - "null"
+          description: Proposed flag status.
+          enum:
+          - ENABLED
+          - DISABLED
+          example: ENABLED
+        targetEnvironments:
+          type:
+          - array
+          - "null"
+          description: Proposed target environments. Empty input clears target environments.
+          example:
+          - production
+          - staging
+          items:
+            type: string
+            enum:
+            - development
+            - staging
+            - production
+          uniqueItems: true
+        killSwitchActive:
+          type:
+          - boolean
+          - "null"
+          description: Proposed kill switch state.
+          example: false
+        tenantAllowlist:
+          type:
+          - array
+          - "null"
+          description: Proposed tenant allowlist. Empty input clears the allowlist.
+          example:
+          - tenant-a
+          items:
+            type: string
+            maxLength: 255
+            minLength: 1
+          maxItems: 1000
+          minItems: 0
+          uniqueItems: true
+        rolloutPercentage:
+          type:
+          - integer
+          - "null"
+          format: int32
+          description: Proposed percentage rollout from 0 to 100.
+          example: 50
+          maximum: 100
+          minimum: 0
+    EvaluationDiff:
+      type: object
+      description: Before and after evaluation result for one sample context.
+      properties:
+        environment:
+          type: string
+          description: Sample environment.
+          example: production
+        tenantId:
+          type:
+          - string
+          - "null"
+          description: Sample tenant ID.
+          example: tenant-a
+        userId:
+          type:
+          - string
+          - "null"
+          description: Sample user ID.
+          example: user-a
+        before:
+          $ref: "#/components/schemas/EvaluationPreviewResult"
+          description: Evaluation result for the current persisted flag.
+        after:
+          $ref: "#/components/schemas/EvaluationPreviewResult"
+          description: Evaluation result for the proposed in-memory flag.
+        changed:
+          type: boolean
+          description: Whether the enabled value changed.
+          example: true
+    EvaluationPreviewResponse:
+      type: object
+      description: Preview result for a proposed feature flag change.
+      properties:
+        flagKey:
+          type: string
+          description: Feature flag key.
+          example: checkout-redesign
+        diffs:
+          type: array
+          description: Per-sample evaluation diffs.
+          items:
+            $ref: "#/components/schemas/EvaluationDiff"
+        summary:
+          $ref: "#/components/schemas/EvaluationPreviewSummary"
+          description: Aggregate counts for the preview.
+    EvaluationPreviewResult:
+      type: object
+      description: Evaluation result captured inside a preview diff.
+      properties:
+        enabled:
+          type: boolean
+          description: Whether the flag is enabled.
+          example: true
+        reason:
+          type: string
+          description: Reason returned by the evaluator.
+          enum:
+          - FLAG_DISABLED
+          - ENVIRONMENT_NOT_TARGETED
+          - KILL_SWITCH_ACTIVE
+          - TENANT_ALLOWLIST_MATCH
+          - ROLLOUT_MATCH
+          - ROLLOUT_MISS
+          example: ROLLOUT_MATCH
+        bucket:
+          type:
+          - integer
+          - "null"
+          format: int32
+          description: "Rollout bucket, when bucket evaluation was used."
+          example: 42
+    EvaluationPreviewSummary:
+      type: object
+      description: Aggregate counts for a preview response.
+      properties:
+        sampleCount:
+          type: integer
+          format: int32
+          description: Number of sample contexts evaluated.
+          example: 3
+        beforeEnabledCount:
+          type: integer
+          format: int32
+          description: Samples enabled before the proposed change.
+          example: 1
+        beforeDisabledCount:
+          type: integer
+          format: int32
+          description: Convenience count of samples disabled before the proposed change.
+          example: 2
+        enabledCount:
+          type: integer
+          format: int32
+          description: Samples enabled after the proposed change.
+          example: 2
+        disabledCount:
+          type: integer
+          format: int32
+          description: Convenience count of samples disabled after the proposed change.
+          example: 1
+        changedCount:
+          type: integer
+          format: int32
+          description: Samples whose enabled value changed.
+          example: 1
     EvaluateFeatureFlagRequest:
       type: object
       description: Request to evaluate a feature flag for a context.
@@ -304,20 +555,26 @@ components:
           type: string
           description: Feature flag key to evaluate.
           example: checkout-redesign
+          maxLength: 200
           minLength: 1
         environment:
           type: string
           description: Runtime environment.
           example: production
+          maxLength: 255
           minLength: 1
         tenantId:
           type: string
           description: Optional tenant identifier.
           example: tenant-a
+          maxLength: 255
+          minLength: 0
         userId:
           type: string
           description: Optional user identifier.
           example: user-123
+          maxLength: 255
+          minLength: 0
       required:
       - environment
       - flagKey
@@ -362,8 +619,8 @@ components:
           example: DISABLED
         targetEnvironments:
           type: array
-          description: Replacement target environments. Empty input preserves existing
-            values.
+          description: Replacement target environments. Empty input clears target
+            environments.
           example:
           - production
           items:
@@ -379,13 +636,16 @@ components:
           example: true
         tenantAllowlist:
           type: array
-          description: Replacement tenant allowlist.
+          description: Replacement tenant allowlist. Empty input clears the allowlist.
           example:
           - tenant-a
           - tenant-b
           items:
             type: string
+            maxLength: 255
             minLength: 1
+          maxItems: 1000
+          minItems: 0
           uniqueItems: true
         rolloutPercentage:
           type: integer
@@ -415,6 +675,7 @@ components:
           - FLAG_ENABLED
           - FLAG_DISABLED
           - ROLLOUT_PERCENTAGE_CHANGED
+          - TARGET_ENVIRONMENTS_CHANGED
           - TENANT_ALLOWLIST_CHANGED
           - KILL_SWITCH_ENABLED
           - KILL_SWITCH_DISABLED

@@ -10,7 +10,13 @@ version = "0.1.0"
 kotlin {
     jvmToolchain(25)
     compilerOptions {
-        freeCompilerArgs.addAll("-Xjsr305=strict")
+        freeCompilerArgs.addAll(
+            // Keep Kotlin calls to Java/Spring APIs aligned with their declared nullability contracts.
+            "-Xjsr305=strict",
+            // Preserve Kotlin type-use annotations so Bean Validation can enforce container element
+            // constraints such as Set<@NotBlank @Size(...) String> on request DTOs.
+            "-Xemit-jvm-type-annotations",
+        )
     }
 }
 

@@ -70,6 +70,31 @@ class AuditEventRepositoryIntegrationTest extends PostgreSqlIntegrationTest {
   }
 
   @Test
+  void savesAndLoadsTargetEnvironmentsChangedDetails() {
+    Instant occurredAt = Instant.parse("2026-05-05T00:00:00Z");
+    repository.save(
+        AuditEvent.newEvent(
+            "checkout-redesign",
+            AuditEventType.TARGET_ENVIRONMENTS_CHANGED,
+            new AuditEventDetails.TargetEnvironmentsChangedDetails(
+                "targetEnvironments", Set.of("production", "staging"), Set.of("production")),
+            occurredAt));
+
+    assertThat(repository.findByFlagKey("checkout-redesign"))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.eventType()).isEqualTo(AuditEventType.TARGET_ENVIRONMENTS_CHANGED);
+              assertThat(event.details())
+                  .isEqualTo(
+                      new AuditEventDetails.TargetEnvironmentsChangedDetails(
+                          "targetEnvironments",
+                          Set.of("production", "staging"),
+                          Set.of("production")));
+            });
+  }
+
+  @Test
   void readsOnlyEventsForRequestedFlagKeyInInsertOrder() {
     Instant occurredAt = Instant.parse("2026-05-05T00:00:00Z");
     repository.save(
