@@ -10,8 +10,7 @@ informed: []
 
 ## Context and Problem Statement
 
-Phase 4, the OpenAPI documentation phase, introduces code-first OpenAPI with
-springdoc-openapi as described in ADR-0006. The generated OpenAPI document is
+Code-first OpenAPI with springdoc-openapi is introduced as described in ADR-0006. The generated OpenAPI document is
 available from the running service at `/v3/api-docs.yaml`, but the repository
 also includes `docs/openapi.yaml` so that the API snapshot is visible without
 starting the application.
@@ -29,7 +28,7 @@ How should the project keep the committed OpenAPI snapshot up to date?
 * OpenAPI generation should not require a local PostgreSQL or Docker dependency.
 * The generation setup should avoid changing normal application runtime
   behavior.
-* CI drift checking is useful, but Phase 4 should first establish a stable local
+* CI drift checking is useful, but this ADR should first establish a stable local
   generation workflow.
 
 ## Considered Options
@@ -67,7 +66,7 @@ CI drift checking is deferred because it complements, rather than replaces, the
 snapshot generation mechanism. A future workflow can run
 `:service:generateOpenApiDocs` and then check `git diff --exit-code
 docs/openapi.yaml`, but this ADR only establishes the reproducible generation
-path for Phase 4.
+path.
 
 ### Consequences
 
