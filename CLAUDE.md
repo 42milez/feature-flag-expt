@@ -23,6 +23,7 @@ When implementing or refactoring code in this project, add a new rule below **on
 
 - **Security**: The change prevents or mitigates a concrete vulnerability class (e.g., input validation gap, timing attack, improper credential handling, injection risk, insecure default).
 - **Modern Java**: The change replaces a pre-Java-21 idiom with a canonical modern equivalent that meaningfully improves clarity or safety (e.g., adopting `switch` pattern matching, replacing a class hierarchy with a `sealed interface` + `record` ADT, replacing `Optional.get()` with `orElseThrow`).
+- **Modern Kotlin**: The change replaces a Java-oriented or pre-idiomatic Kotlin pattern with a canonical Kotlin equivalent that meaningfully improves clarity, null-safety, or type-safety (e.g., using `data class`, `sealed interface`, extension functions, scope functions, or nullable types instead of manual boilerplate or sentinel values).
 - **API / Framework contract**: The change fixes or prevents a silent violation of a library or framework contract that could cause subtle runtime failures (e.g., correct use of Spring Data `Persistable`, `@Transactional` propagation semantics, Jackson deserialization contracts).
 - **Observability**: The change adds or corrects structured logging, metrics, or tracing in a way that materially improves diagnosability in production.
 - **Testability**: The change restructures code to eliminate a category of test fragility (e.g., replacing time-dependent logic with an injected `Clock`, isolating I/O behind an interface).
