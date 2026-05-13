@@ -31,7 +31,6 @@ class ErrorHandlerTest {
             "flagKey: must not be blank, flagKey: size must be between 0 and 200, sampleContexts: must not be empty");
   }
 
-  @SuppressWarnings("unchecked")
   private static ConstraintViolation<?> violation(String path, String message) {
     ConstraintViolation<?> violation = mock(ConstraintViolation.class);
     Path propertyPath = mock(Path.class);
