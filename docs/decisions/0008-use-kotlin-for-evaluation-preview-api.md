@@ -63,14 +63,18 @@ The response includes the `flagKey`, a per-context `diffs` list, and an
 aggregate `summary`. Each diff includes the input sample context, the evaluation
 result before the proposed change, the evaluation result after the proposed
 change, and `changed`. The `changed` value means the `enabled` boolean changed;
-it does not count reason-only or bucket-only differences.
+it does not count reason-only or bucket-only differences. This keeps the
+summary focused on the operator's primary on/off question, while the per-context
+`before` and `after` values still expose reason and bucket changes.
 
 The Kotlin `EvaluationPreviewService` loads the current flag through the Java
 `FeatureFlagService`, maps the response to the Java `FeatureFlag` domain record,
 applies the proposed change in memory, and evaluates both versions through the
-Java `FeatureFlagEvaluator` for each sample context. The preview method is
-read-only transactional and does not call the update flow, repository save
-methods, or audit event service.
+Java `FeatureFlagEvaluator` for each sample context. The mapping goes through
+`FeatureFlagResponse` because `FeatureFlagService` exposes response DTOs as its
+public read API, while entity-to-domain conversion remains private to the Java
+flag service. The preview method is read-only transactional and does not call
+the update flow, repository save methods, or audit event service.
 
 Java remains responsible for persisted feature flag state, Spring Data JDBC
 repositories, audit event behavior, and the production evaluation rules. Kotlin
@@ -88,7 +92,8 @@ diffs, and summary aggregation.
 * Good: OpenAPI generation continues to derive the preview contract from Spring
   MVC, Bean Validation, and focused schema annotations.
 * Bad: the feature introduces a Java/Kotlin boundary that must stay explicit,
-  especially when mapping `FeatureFlagResponse` back to the Java domain record.
+  especially when mapping the public `FeatureFlagResponse` read model back to
+  the Java domain record for evaluator reuse.
 * Bad: preview is sample-based; it does not prove the effect across every
   possible tenant, user, or environment.
 * Neutral: validation annotations on Kotlin DTOs must use field targets so Bean
@@ -103,6 +108,8 @@ diffs, and summary aggregation.
 * `EvaluationPreviewService` maps the current `FeatureFlagResponse` to
   `FeatureFlag`, applies proposed changes in memory, and evaluates before and
   after states with `FeatureFlagEvaluator`.
+* `EvaluationPreviewService.preview()` is annotated with
+  `@Transactional(readOnly = true)`.
 * Integration tests verify preview diffs and summaries, missing-flag behavior,
   validation failures, and that preview does not persist proposed changes or
   write audit events.
@@ -118,14 +125,16 @@ diffs, and summary aggregation.
 * Good: keeps diff and summary aggregation close to immutable data models
 * Good: reuses Java production evaluation rules without adding persistence
 * Bad: requires careful Java/Kotlin DTO and enum mapping at the boundary
+* Bad: preview conclusions are sample-based and cannot cover every possible
+  tenant, user, or environment combination
 
 ### Implement Preview Entirely in Java
 
 * Good: avoids introducing another language boundary for this feature
 * Good: matches the existing persisted flag and evaluator implementation
-* Bad: produces more boilerplate for nested DTOs and aggregation structures
-* Bad: misses the opportunity to use Kotlin where the code is mostly immutable
-  response composition
+* Bad: Java records narrow the boilerplate gap for simple immutable types, but
+  collection-heavy aggregation and nested response composition remain more
+  verbose than Kotlin's equivalent
 
 ### Add Preview Behavior Directly to the Update Flow
 
@@ -149,6 +158,7 @@ diffs, and summary aggregation.
 
 * [ADR-0006: Use Code-First OpenAPI with springdoc-openapi](0006-use-code-first-openapi-with-springdoc-openapi.md)
 * [ADR-0007: Generate the Committed OpenAPI Snapshot with the springdoc Gradle Plugin](0007-generate-committed-openapi-snapshot-with-springdoc-gradle-plugin.md)
+* [JEP 395: Records](https://openjdk.org/jeps/395)
 * [`EvaluationPreviewController.kt`](../../service/src/main/kotlin/com/github/milez42/featureflags/preview/EvaluationPreviewController.kt)
 * [`EvaluationPreviewRequest.kt`](../../service/src/main/kotlin/com/github/milez42/featureflags/preview/EvaluationPreviewRequest.kt)
 * [`EvaluationPreviewService.kt`](../../service/src/main/kotlin/com/github/milez42/featureflags/preview/EvaluationPreviewService.kt)
