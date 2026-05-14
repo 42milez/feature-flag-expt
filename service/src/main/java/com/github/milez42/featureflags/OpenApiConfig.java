@@ -42,7 +42,8 @@ public class OpenApiConfig {
                                 .forEach(OpenApiConfig::setMinLengthOne);
                           }));
 
-      Map<String, Schema> schemas = openApi.getComponents().getSchemas();
+      @SuppressWarnings({"rawtypes", "unchecked"})
+      Map<String, Schema<?>> schemas = (Map) openApi.getComponents().getSchemas();
       setPropertyMinLength(schemas, "CreateFeatureFlagRequest", "flagKey");
       setArrayItemMinLength(schemas, "CreateFeatureFlagRequest", "tenantAllowlist");
       setPropertyMinLength(schemas, "EvaluationPreviewContext", "environment");
@@ -58,28 +59,28 @@ public class OpenApiConfig {
   }
 
   private static void setPropertyMinLength(
-      Map<String, Schema> schemas, String schemaName, String propertyName) {
-    Schema schema = schemas.get(schemaName);
+      Map<String, Schema<?>> schemas, String schemaName, String propertyName) {
+    Schema<?> schema = schemas.get(schemaName);
     if (schema == null || schema.getProperties() == null) {
       return;
     }
-    setMinLengthOne((Schema) schema.getProperties().get(propertyName));
+    setMinLengthOne((Schema<?>) schema.getProperties().get(propertyName));
   }
 
   private static void setArrayItemMinLength(
-      Map<String, Schema> schemas, String schemaName, String propertyName) {
-    Schema schema = schemas.get(schemaName);
+      Map<String, Schema<?>> schemas, String schemaName, String propertyName) {
+    Schema<?> schema = schemas.get(schemaName);
     if (schema == null || schema.getProperties() == null) {
       return;
     }
-    Schema property = (Schema) schema.getProperties().get(propertyName);
+    Schema<?> property = (Schema<?>) schema.getProperties().get(propertyName);
     if (property == null) {
       return;
     }
     setMinLengthOne(property.getItems());
   }
 
-  private static void setMinLengthOne(Schema schema) {
+  private static void setMinLengthOne(Schema<?> schema) {
     if (schema != null) {
       schema.setMinLength(1);
     }
