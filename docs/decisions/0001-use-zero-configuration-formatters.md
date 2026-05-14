@@ -1,5 +1,6 @@
 ---
 status: "accepted"
+date: 2026-05-09
 decision-makers: ["Akihiro TAKASE"]
 consulted: []
 informed: []
