@@ -55,13 +55,13 @@ Spring bean from within `@Transactional` service methods.
 
 ### Consequences
 
-* Good: for mutation paths that call `record()` inside their transaction, the flag
+* Good, because for mutation paths that call `record()` inside their transaction, the flag
   mutation and its audit event commit atomically. Those paths cannot commit one
   write without the other.
-* Good: calling `record()` without an active transaction throws
+* Good, because calling `record()` without an active transaction throws
   `IllegalTransactionStateException` immediately, surfacing misconfigured callers
   at call time rather than allowing an independently committed audit write.
-* Trade-off: `AuditEventService` cannot be called from a non-transactional context (e.g.,
+* Bad, because `AuditEventService` cannot be called from a non-transactional context (e.g.,
   a scheduled job or event listener that has not opened a transaction). Any future
   caller must ensure a transaction is active before invoking `record()`.
 
@@ -69,28 +69,28 @@ Spring bean from within `@Transactional` service methods.
 
 ### `Propagation.MANDATORY`
 
-* Good: the atomicity contract is enforced — `record()` always participates in the
+* Good, because the atomicity contract is enforced — `record()` always participates in the
   caller's transaction, when invoked through Spring's transactional proxy, and
   cannot silently write outside it
-* Good: misconfigured callers fail fast with a clear exception
-* Bad: imposes a constraint on every future caller; any new call site must be inside
+* Good, because misconfigured callers fail fast with a clear exception
+* Bad, because imposes a constraint on every future caller; any new call site must be inside
   a transaction
 
 ### `Propagation.REQUIRED` (Spring default)
 
-* Good: zero friction for callers — works with or without an existing transaction
-* Good: participates in the caller's transaction when one already exists, so the
+* Good, because zero friction for callers — works with or without an existing transaction
+* Good, because participates in the caller's transaction when one already exists, so the
   current `FeatureFlagService` call paths would remain atomic
-* Bad: without an active transaction, Spring silently opens a standalone
+* Bad, because without an active transaction, Spring silently opens a standalone
   transaction for `record()` alone, allowing a future caller to decouple audit
   writes from flag mutations without a framework error
 
 ### `Propagation.REQUIRES_NEW`
 
-* Good: always runs in its own transaction regardless of the caller
-* Bad: if the outer transaction rolls back after the inner transaction commits,
+* Good, because always runs in its own transaction regardless of the caller
+* Bad, because if the outer transaction rolls back after the inner transaction commits,
   the audit record remains durable — a phantom event with no corresponding state change
-* Bad: the committed audit row is visible to other readers before the flag mutation
+* Bad, because the committed audit row is visible to other readers before the flag mutation
   completes, creating a window of inconsistency
 
 ## More Information

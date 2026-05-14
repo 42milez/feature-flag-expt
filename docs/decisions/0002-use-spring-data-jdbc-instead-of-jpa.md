@@ -49,18 +49,18 @@ This is small, explicit, and visible in the entity class.
 
 ### Consequences
 
-* Good: persistence behavior is transparent — repository operations have direct,
+* Good, because persistence behavior is transparent — repository operations have direct,
   traceable database effects, with no lazy loading, proxy behavior, or ORM session
   lifecycle to reason about.
-* Good: domain records such as `FeatureFlag` stay immutable; `FeatureFlagEntity` is the
+* Good, because domain records such as `FeatureFlag` stay immutable; `FeatureFlagEntity` is the
   persistence-aware representation.
-* Good: integration tests can exercise repository behavior without managing an
+* Good, because integration tests can exercise repository behavior without managing an
   EntityManager, Hibernate session, or lazy-loading proxy behavior.
-* Bad: `Persistable<String>` must be implemented manually. `FeatureFlagEntity` carries a
+* Bad, because `Persistable<String>` must be implemented manually. `FeatureFlagEntity` carries a
   `@Transient boolean newEntity` flag and constructor paths for new vs loaded entities.
-* Neutral: a separate entity class exists alongside each domain record, adding a thin
+* Neutral, because a separate entity class exists alongside each domain record, adding a thin
   conversion layer in the service.
-* Neutral: if the project later needs complex SQL queries, jOOQ or custom JDBC queries may
+* Neutral, because if the project later needs complex SQL queries, jOOQ or custom JDBC queries may
   be reconsidered for those specific use cases.
 
 ### Confirmation
@@ -75,30 +75,30 @@ This is small, explicit, and visible in the entity class.
 
 ### Spring Data JDBC
 
-* Good: familiar Spring Data repository model without an ORM session
-* Good: simpler persistence behavior for CRUD-oriented relational tables
-* Good: no lazy loading, dirty checking, or proxy behavior to account for in services or tests
-* Bad: requires `Persistable<T>` for entities with application-assigned IDs
-* Bad: less convenient than JPA/Hibernate for rich relationship-heavy domain models
+* Good, because familiar Spring Data repository model without an ORM session
+* Good, because simpler persistence behavior for CRUD-oriented relational tables
+* Good, because no lazy loading, dirty checking, or proxy behavior to account for in services or tests
+* Bad, because requires `Persistable<T>` for entities with application-assigned IDs
+* Bad, because less convenient than JPA/Hibernate for rich relationship-heavy domain models
 
 ### Spring Data JPA with Hibernate
 
-* Good: mainstream Spring Boot choice with a large ecosystem
-* Good: useful for applications with rich entity relationships and ORM-friendly data access
-* Good: dirty checking and lazy loading can reduce boilerplate in relationship-heavy models
-* Bad: JPA entities typically require ORM-specific construction and mutation rules,
+* Good, because mainstream Spring Boot choice with a large ecosystem
+* Good, because useful for applications with rich entity relationships and ORM-friendly data access
+* Good, because dirty checking and lazy loading can reduce boilerplate in relationship-heavy models
+* Bad, because JPA entities typically require ORM-specific construction and mutation rules,
   which would either add a separate persistence model or weaken the preference for
   immutable Java records at the domain boundary
-* Bad: persistence context, proxy behavior, lazy loading, and dirty checking add lifecycle
+* Bad, because persistence context, proxy behavior, lazy loading, and dirty checking add lifecycle
   complexity that is unnecessary for the current feature set
-* Bad: lazy loading can introduce runtime surprises outside an active transaction
+* Bad, because lazy loading can introduce runtime surprises outside an active transaction
 
 ### jOOQ
 
-* Good: excellent when type-safe, SQL-first data access is the primary design goal
-* Good: makes SQL shape highly explicit
-* Bad: requires a code-generation step and additional setup
-* Bad: more SQL modeling surface than the current CRUD and audit persistence needs
+* Good, because excellent when type-safe, SQL-first data access is the primary design goal
+* Good, because makes SQL shape highly explicit
+* Bad, because requires a code-generation step and additional setup
+* Bad, because more SQL modeling surface than the current CRUD and audit persistence needs
 
 ## More Information
 

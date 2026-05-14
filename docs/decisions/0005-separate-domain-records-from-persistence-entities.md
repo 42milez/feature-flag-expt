@@ -67,19 +67,19 @@ is acceptable while the mapping remains simple and local to the feature-flag ser
 
 ### Consequences
 
-* Good: `FeatureFlagEvaluator` is insulated from Spring Data JDBC annotations,
+* Good, because `FeatureFlagEvaluator` is insulated from Spring Data JDBC annotations,
   `Persistable<String>`, and child table entity types.
-* Good: the domain model remains immutable and value-oriented; validation and defensive
+* Good, because the domain model remains immutable and value-oriented; validation and defensive
   collection copying happen in the `FeatureFlag` canonical constructor.
-* Good: INSERT vs UPDATE behavior is explicit through `FeatureFlagEntity.create()`,
+* Good, because INSERT vs UPDATE behavior is explicit through `FeatureFlagEntity.create()`,
   `@PersistenceCreator`, and `isNew()`.
-* Good: persistence can evolve independently, for example by changing child table mapping,
+* Good, because persistence can evolve independently, for example by changing child table mapping,
   without changing the evaluator's input type.
-* Bad: the service layer carries conversion code between `FeatureFlagEntity`,
+* Bad, because the service layer carries conversion code between `FeatureFlagEntity`,
   `FeatureFlag`, and API response types such as `FeatureFlagResponse`.
-* Bad: future domain fields must be added in more than one place, so reviews and tests must
+* Bad, because future domain fields must be added in more than one place, so reviews and tests must
   verify that mappings stay complete.
-* Neutral: if mapping grows beyond simple field and collection conversion, a dedicated
+* Neutral, because if mapping grows beyond simple field and collection conversion, a dedicated
   mapper may be introduced later.
 
 ### Confirmation
@@ -98,19 +98,19 @@ is acceptable while the mapping remains simple and local to the feature-flag ser
 
 ### Separate Domain Record and Persistence Entity
 
-* Good: keeps evaluator input persistence-agnostic
-* Good: keeps `Persistable<String>` state out of the domain record
-* Bad: requires explicit conversion code
+* Good, because keeps evaluator input persistence-agnostic
+* Good, because keeps `Persistable<String>` state out of the domain record
+* Bad, because requires explicit conversion code
 
 ### Single Spring Data JDBC Entity Used Everywhere
 
-* Good: fewer classes and less conversion code
-* Good: API, service, evaluator, and repository code would all share one type
-* Bad: evaluation logic would depend on Spring Data JDBC-specific mapping and lifecycle
+* Good, because fewer classes and less conversion code
+* Good, because API, service, evaluator, and repository code would all share one type
+* Bad, because evaluation logic would depend on Spring Data JDBC-specific mapping and lifecycle
   concerns
-* Bad: the evaluator would see persistence child entity types instead of plain domain
+* Bad, because the evaluator would see persistence child entity types instead of plain domain
   values
-* Bad: persistence-oriented constructors and `isNew()` state would become part of the
+* Bad, because persistence-oriented constructors and `isNew()` state would become part of the
   domain-facing model
 
 ## More Information

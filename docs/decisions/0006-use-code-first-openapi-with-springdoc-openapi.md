@@ -78,22 +78,22 @@ baseline, even though some infrastructure libraries can still bring
 
 ### Consequences
 
-* Good: OpenAPI documentation stays near the controller methods, DTO fields, and
+* Good, because OpenAPI documentation stays near the controller methods, DTO fields, and
   validation rules that define the runtime API.
-* Good: Swagger UI makes the API easy to inspect locally once the service is
+* Good, because Swagger UI makes the API easy to inspect locally once the service is
   running.
-* Good: This decision adds documentation without introducing generated controller
+* Good, because this decision adds documentation without introducing generated controller
   code or a spec-first workflow.
-* Good: existing `ProblemDetail` error handling remains the error contract.
-* Bad: contract governance is weaker than a spec-first workflow; annotations and
+* Good, because existing `ProblemDetail` error handling remains the error contract.
+* Bad, because contract governance is weaker than a spec-first workflow; annotations and
   generated output can drift from intended API policy unless checked.
-* Bad: Swagger UI and `/v3/api-docs` are enabled by default. Production profiles
+* Bad, because Swagger UI and `/v3/api-docs` are enabled by default. Production profiles
   must explicitly set `springdoc.api-docs.enabled=false` and
   `springdoc.swagger-ui.enabled=false` to avoid exposing the API surface.
-* Bad: publishing `AuditEventDetails` as a loose object schema means tightening
+* Bad, because publishing `AuditEventDetails` as a loose object schema means tightening
   it with `oneOf` or variant-specific schemas in a later phase may be a breaking
   change for existing clients.
-* Neutral: committed snapshot generation and future schema drift checks are
+* Neutral, because committed snapshot generation and future schema drift checks are
   covered by ADR-0007; this decision only selects the code-first source of truth
   for the generated OpenAPI contract.
 
@@ -119,28 +119,28 @@ baseline, even though some infrastructure libraries can still bring
 
 ### Code-First OpenAPI with springdoc-openapi
 
-* Good: low adoption cost for an existing Spring MVC service
-* Good: keeps request mappings, validation, and documentation close together
-* Good: exposes Swagger UI and generated JSON/YAML documents automatically
-* Bad: the generated contract depends on framework and annotation behavior
-* Bad: additional checks are needed if the committed snapshot must never drift
+* Good, because low adoption cost for an existing Spring MVC service
+* Good, because keeps request mappings, validation, and documentation close together
+* Good, because exposes Swagger UI and generated JSON/YAML documents automatically
+* Bad, because the generated contract depends on framework and annotation behavior
+* Bad, because additional checks are needed if the committed snapshot must never drift
 
 ### Spec-First OpenAPI with Generated Server Code
 
-* Good: makes the OpenAPI document the primary API contract
-* Good: stronger fit for consumer-first API governance
-* Good: generated server interfaces or stubs can catch type-level drift between
+* Good, because makes the OpenAPI document the primary API contract
+* Good, because stronger fit for consumer-first API governance
+* Good, because generated server interfaces or stubs can catch type-level drift between
   the contract and implementation earlier.
-* Bad: higher migration cost for the existing controller-first codebase
-* Bad: generated interfaces and models would add another layer that must stay
+* Bad, because higher migration cost for the existing controller-first codebase
+* Bad, because generated interfaces and models would add another layer that must stay
   aligned with the existing Spring MVC controllers and DTOs
 
 ### Manually Maintained Static `docs/openapi.yaml`
 
-* Good: simple to read and commit
-* Good: does not depend on runtime OpenAPI generation
-* Bad: easy for the static file to drift from controllers and DTOs
-* Bad: duplicates API shape already expressed in Spring MVC code
+* Good, because simple to read and commit
+* Good, because does not depend on runtime OpenAPI generation
+* Bad, because easy for the static file to drift from controllers and DTOs
+* Bad, because duplicates API shape already expressed in Spring MVC code
 
 ## More Information
 

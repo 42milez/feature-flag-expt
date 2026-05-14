@@ -70,19 +70,19 @@ path.
 
 ### Consequences
 
-* Good: `docs/openapi.yaml` can be regenerated with one Gradle task.
-* Good: the committed snapshot matches the runtime `/v3/api-docs.yaml` output.
-* Good: OpenAPI generation does not require Docker or a local PostgreSQL
+* Good, because `docs/openapi.yaml` can be regenerated with one Gradle task.
+* Good, because the committed snapshot matches the runtime `/v3/api-docs.yaml` output.
+* Good, because OpenAPI generation does not require Docker or a local PostgreSQL
   instance.
-* Good: the generation-only H2 database is isolated behind the `openapi-gen`
+* Good, because the generation-only H2 database is isolated behind the `openapi-gen`
   profile.
-* Bad: generating the snapshot starts the application, so it is heavier than a
+* Bad, because generating the snapshot starts the application, so it is heavier than a
   pure static export.
-* Bad: the generation profile is separate from normal runtime configuration and
+* Bad, because the generation profile is separate from normal runtime configuration and
   must be kept minimal.
-* Bad: generation uses a fixed localhost port through the configured OpenAPI
+* Bad, because generation uses a fixed localhost port through the configured OpenAPI
   endpoint, so the task can fail if port `8080` is already in use.
-* Neutral: CI can later enforce that generated output and the committed snapshot
+* Neutral, because CI can later enforce that generated output and the committed snapshot
   stay in sync.
 
 ### Confirmation
@@ -101,34 +101,34 @@ path.
 
 ### springdoc Gradle Plugin with an `openapi-gen` H2 Profile
 
-* Good: generates the committed snapshot from the same endpoint used at runtime
-* Good: avoids manual YAML edits
-* Good: avoids requiring PostgreSQL or Docker for OpenAPI generation
-* Bad: requires a dedicated generation profile
-* Bad: depends on the springdoc Gradle plugin's forked Spring Boot process
+* Good, because generates the committed snapshot from the same endpoint used at runtime
+* Good, because avoids manual YAML edits
+* Good, because avoids requiring PostgreSQL or Docker for OpenAPI generation
+* Bad, because requires a dedicated generation profile
+* Bad, because depends on the springdoc Gradle plugin's forked Spring Boot process
 
 ### Manual Snapshot Updates
 
-* Good: no build plugin or generation profile required
-* Good: easy for small one-off edits
-* Bad: high risk of drift from the generated runtime OpenAPI document
-* Bad: reviewers must manually verify that YAML edits match controller and DTO
+* Good, because no build plugin or generation profile required
+* Good, because easy for small one-off edits
+* Bad, because high risk of drift from the generated runtime OpenAPI document
+* Bad, because reviewers must manually verify that YAML edits match controller and DTO
   changes
 
 ### Testcontainers PostgreSQL during OpenAPI Generation
 
-* Good: closer to normal runtime infrastructure
-* Good: would exercise startup with PostgreSQL and Flyway
-* Bad: too heavy for an API documentation generation task
-* Bad: requires Docker even though OpenAPI generation does not depend on database
+* Good, because closer to normal runtime infrastructure
+* Good, because would exercise startup with PostgreSQL and Flyway
+* Bad, because too heavy for an API documentation generation task
+* Bad, because requires Docker even though OpenAPI generation does not depend on database
   data
 
 ### Dedicated OpenAPI-Only Spring Boot Application
 
-* Good: could minimize the context needed for OpenAPI generation
-* Good: avoids database configuration for generation
-* Bad: adds another application entry point and configuration surface
-* Bad: can drift from the real application context that exposes `/v3/api-docs.yaml`
+* Good, because could minimize the context needed for OpenAPI generation
+* Good, because avoids database configuration for generation
+* Bad, because adds another application entry point and configuration surface
+* Bad, because can drift from the real application context that exposes `/v3/api-docs.yaml`
 
 ## More Information
 

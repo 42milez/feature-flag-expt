@@ -83,21 +83,21 @@ diffs, and summary aggregation.
 
 ### Consequences
 
-* Good: preview evaluation stays aligned with production evaluation because both
-  paths use `FeatureFlagEvaluator`.
-* Good: Kotlin data classes keep nested preview DTOs, diffs, and aggregate
+* Good, because preview evaluation stays aligned with production evaluation; both paths
+  use `FeatureFlagEvaluator`.
+* Good, because Kotlin data classes keep nested preview DTOs, diffs, and aggregate
   summaries compact and immutable.
-* Good: the feature stays read-only and avoids introducing draft persistence or
+* Good, because the feature stays read-only and avoids introducing draft persistence or
   audit records for unsaved proposals.
-* Good: OpenAPI generation continues to derive the preview contract from Spring
+* Good, because OpenAPI generation continues to derive the preview contract from Spring
   MVC, Bean Validation, and focused schema annotations.
-* Bad: the preview path depends on the `FeatureFlagService` read-model
+* Bad, because the preview path depends on the `FeatureFlagService` read-model
   boundary: the service exposes `FeatureFlagResponse` while entity-to-domain
   conversion remains private, so preview maps the public read model back to the
   Java domain record for evaluator reuse.
-* Bad: preview is sample-based; it does not prove the effect across every
+* Bad, because preview is sample-based; it does not prove the effect across every
   possible tenant, user, or environment.
-* Bad: validation annotations on Kotlin DTOs must use field targets; omitting
+* Bad, because validation annotations on Kotlin DTOs must use field targets; omitting
   `@field:` can cause Bean Validation and springdoc to inspect the wrong target
   and silently miss constraints or schema metadata.
 
@@ -123,41 +123,41 @@ diffs, and summary aggregation.
 
 ### Kotlin Preview Layer with Shared Java Evaluator
 
-* Good: compact fit for nested request and response DTOs
-* Good: keeps diff and summary aggregation close to immutable data models
-* Good: reuses Java production evaluation rules without adding persistence
-* Bad: requires explicit mapping across the Java service read-model boundary and
+* Good, because compact fit for nested request and response DTOs
+* Good, because keeps diff and summary aggregation close to immutable data models
+* Good, because reuses Java production evaluation rules without adding persistence
+* Bad, because requires explicit mapping across the Java service read-model boundary and
   the Kotlin preview DTO boundary
-* Bad: preview conclusions are sample-based and cannot cover every possible
+* Bad, because preview conclusions are sample-based and cannot cover every possible
   tenant, user, or environment combination
 
 ### Implement Preview Entirely in Java
 
-* Good: avoids introducing another language boundary for this feature
-* Good: matches the existing persisted flag and evaluator implementation
-* Good: could colocate preview with entity-to-domain conversion or expose
+* Good, because avoids introducing another language boundary for this feature
+* Good, because matches the existing persisted flag and evaluator implementation
+* Good, because could colocate preview with entity-to-domain conversion or expose
   package-private conversion, reducing reverse-mapping pressure if service
   encapsulation were relaxed
-* Bad: Java records narrow the boilerplate gap for simple immutable types, but
+* Bad, because Java records narrow the boilerplate gap for simple immutable types, but
   collection-heavy aggregation and nested response composition remain more
   verbose than Kotlin's equivalent
 
 ### Add Preview Behavior Directly to the Update Flow
 
-* Good: could reuse update request handling directly
-* Good: would reduce the number of endpoint-specific code paths
-* Bad: risks mixing read-only preview semantics with persistence and audit
+* Good, because could reuse update request handling directly
+* Good, because would reduce the number of endpoint-specific code paths
+* Bad, because risks mixing read-only preview semantics with persistence and audit
   behavior
-* Bad: couples preview tests to mutation-path behavior, increasing the surface
+* Bad, because couples preview tests to mutation-path behavior, increasing the surface
   that must prove no save or audit side effect occurs
 
 ### Persist Draft or Proposed Flag Versions
 
-* Good: could support longer-lived review workflows in the future
-* Good: would allow proposed states to be shared or revisited
-* Bad: adds schema, lifecycle, cleanup, and audit policy complexity before the
+* Good, because could support longer-lived review workflows in the future
+* Good, because would allow proposed states to be shared or revisited
+* Bad, because adds schema, lifecycle, cleanup, and audit policy complexity before the
   product needs it
-* Bad: makes a lightweight before/after preview depend on additional persistence
+* Bad, because makes a lightweight before/after preview depend on additional persistence
   concepts
 
 ## More Information

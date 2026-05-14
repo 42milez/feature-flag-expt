@@ -58,19 +58,19 @@ same conceptual set and should evolve together.
 
 ### Consequences
 
-* Good: adding a new `AuditEventType` value without updating the `switch` in
+* Good, because adding a new `AuditEventType` value without updating the `switch` in
   `deserialize()` is a compile error, not a silent runtime failure. The compiler enforces
   that every enum value has a deserialize branch; it does not enforce that the chosen
   `AuditEventDetails` subtype semantically matches the `AuditEventType` — that pairing
   must be verified by review and tests.
-* Good: each detail record is immutable and carries only the fields that are relevant to
+* Good, because each detail record is immutable and carries only the fields that are relevant to
   its event type, making the payload shape self-documenting.
-* Good: Jackson 3.x handles records without annotation — serialization reads accessor
+* Good, because Jackson 3.x handles records without annotation — serialization reads accessor
   methods; deserialization invokes the canonical constructor. No `@JsonCreator`,
   `@JsonProperty`, or `@JsonTypeInfo` is needed.
-* Bad: the `AuditEventType` enum and the `deserialize` switch are a coupled pair; adding a
+* Bad, because the `AuditEventType` enum and the `deserialize` switch are a coupled pair; adding a
   new event type requires changes in both places.
-* Neutral: `record` requires Java 16+ (JEP 395) and `sealed interface` requires Java 17+
+* Neutral, because `record` requires Java 16+ (JEP 395) and `sealed interface` requires Java 17+
   (JEP 409); this project uses a JDK 25 toolchain.
 
 ### Confirmation
@@ -87,28 +87,28 @@ same conceptual set and should evolve together.
 
 ### Sealed Interface with Record Subtypes
 
-* Good: compile-time exhaustiveness checking over `AuditEventType` enum values in the
+* Good, because compile-time exhaustiveness checking over `AuditEventType` enum values in the
   `deserialize` switch expression
-* Good: each subtype is immutable, structurally comparable, and carries only its own fields
-* Good: Jackson 3.x serializes records without annotation; deserialization is handled
+* Good, because each subtype is immutable, structurally comparable, and carries only its own fields
+* Good, because Jackson 3.x serializes records without annotation; deserialization is handled
   explicitly in the repository, not via Jackson's polymorphism mechanism
-* Bad: deserialization is driven by `AuditEventType`, coupling the enum and the switch
+* Bad, because deserialization is driven by `AuditEventType`, coupling the enum and the switch
 
 ### Abstract Class Hierarchy with `@JsonTypeInfo`
 
-* Good: Jackson handles polymorphic deserialization automatically via a `type` field
-* Bad: requires a `type` discriminator in the JSON payload, coupling the serialized form to
+* Good, because Jackson handles polymorphic deserialization automatically via a `type` field
+* Bad, because requires a `type` discriminator in the JSON payload, coupling the serialized form to
   the class hierarchy
-* Bad: no compile-time enforcement that all subtypes are covered; a new subtype that is
+* Bad, because no compile-time enforcement that all subtypes are covered; a new subtype that is
   not registered causes a runtime `InvalidTypeIdException`
-* Bad: class hierarchy with abstract base class adds inheritance for what is purely a data
+* Bad, because class hierarchy with abstract base class adds inheritance for what is purely a data
   structure
 
 ### Single `Map<String, Object>` or Untyped JSON Node
 
-* Good: no structural coupling between event types and Java types
-* Bad: field access is untyped; errors surface at runtime rather than at compile time
-* Bad: no self-documentation of which fields belong to which event type
+* Good, because no structural coupling between event types and Java types
+* Bad, because field access is untyped; errors surface at runtime rather than at compile time
+* Bad, because no self-documentation of which fields belong to which event type
 
 ## More Information
 

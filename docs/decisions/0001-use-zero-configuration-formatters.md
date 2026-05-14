@@ -32,10 +32,10 @@ Both formatters share a similar philosophy: deterministic, highly opinionated fo
 
 ### Consequences
 
-* Good: Kotlin source files (`.kt`) are now formatted on every `spotlessApply` run, closing the previous coverage gap.
-* Good: `.gradle.kts` build scripts are also reformatted to ktfmt style, unifying all Kotlin files under one formatter.
-* Good: `trimTrailingWhitespace()` and `endWithNewline()` helpers are no longer needed — both ktfmt and googleJavaFormat handle trailing whitespace removal and final-newline enforcement automatically.
-* Neutral: ktfmt version must be pinned explicitly. ktfmt 0.62 is required for Kotlin 2.3.20+ compatibility because Kotlin's compiler PSI renamed `CONTEXT_RECEIVER_LIST` to `CONTEXT_PARAMETER_LIST` in 2.3.20; older ktfmt versions can fail when run against Kotlin 2.3.20 or later (this project uses 2.3.21).
+* Good, because Kotlin source files (`.kt`) are now formatted on every `spotlessApply` run, closing the previous coverage gap.
+* Good, because `.gradle.kts` build scripts are also reformatted to ktfmt style, unifying all Kotlin files under one formatter.
+* Good, because `trimTrailingWhitespace()` and `endWithNewline()` helpers are no longer needed — both ktfmt and googleJavaFormat handle trailing whitespace removal and final-newline enforcement automatically.
+* Neutral, because ktfmt version must be pinned explicitly. ktfmt 0.62 is required for Kotlin 2.3.20+ compatibility because Kotlin's compiler PSI renamed `CONTEXT_RECEIVER_LIST` to `CONTEXT_PARAMETER_LIST` in 2.3.20; older ktfmt versions can fail when run against Kotlin 2.3.20 or later (this project uses 2.3.21).
 
 ### Confirmation
 
@@ -45,17 +45,17 @@ Both formatters share a similar philosophy: deterministic, highly opinionated fo
 
 ### ktlint
 
-* Good: well-established, widely used in the Kotlin ecosystem
-* Good: compatible with a broad range of Kotlin versions out of the box
-* Neutral: works for both `.kt` and `.gradle.kts` via Spotless `kotlin {}` and `kotlinGradle {}` blocks
-* Bad: rule-based and configurable via `.editorconfig` — leaves room for per-project drift
+* Good, because well-established, widely used in the Kotlin ecosystem
+* Good, because compatible with a broad range of Kotlin versions out of the box
+* Neutral, because works for both `.kt` and `.gradle.kts` via Spotless `kotlin {}` and `kotlinGradle {}` blocks
+* Bad, because rule-based and configurable via `.editorconfig` — leaves room for per-project drift
 
 ### ktfmt
 
-* Good: single enforced style, no configuration surface
-* Good: developed by Facebook, explicitly modeled after googleJavaFormat — consistent philosophy with the Java formatter
-* Good: handles trailing whitespace and final newlines automatically
-* Bad: tightly coupled to the Kotlin compiler's internal PSI API, causing version incompatibilities with newer Kotlin releases (required pinning to 0.62 for Kotlin 2.3.20+ support)
+* Good, because single enforced style, no configuration surface
+* Good, because developed by Facebook, explicitly modeled after googleJavaFormat — consistent philosophy with the Java formatter
+* Good, because handles trailing whitespace and final newlines automatically
+* Bad, because tightly coupled to the Kotlin compiler's internal PSI API, causing version incompatibilities with newer Kotlin releases (required pinning to 0.62 for Kotlin 2.3.20+ support)
 
 ## More Information
 
