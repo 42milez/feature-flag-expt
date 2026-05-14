@@ -7,6 +7,8 @@ servers:
 - url: http://localhost:8080
   description: Generated server url
 tags:
+- name: Rollout Policy
+  description: Validate proposed feature flag changes.
 - name: Feature Flags
   description: "Feature flag management, evaluation, and audit APIs."
 - name: Feature Flag Preview
@@ -39,6 +41,51 @@ paths:
                 $ref: "#/components/schemas/ProblemDetail"
         "409":
           description: Feature flag already exists
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/flags/{flagKey}/validate-change:
+    post:
+      tags:
+      - Rollout Policy
+      summary: Validate a feature flag change
+      description: "Validates the feature flag end state after applying proposedChange\
+        \ to the current flag. This endpoint does not validate only the request delta,\
+        \ so it may also return pre-existing violations from the current flag state\
+        \ whenever they still exist in the proposed end state."
+      operationId: validateChange
+      parameters:
+      - name: flagKey
+        in: path
+        description: Feature flag key.
+        required: true
+        schema:
+          type: string
+          maxLength: 200
+          minLength: 1
+        example: checkout-redesign
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RolloutPolicyValidationRequest"
+        required: true
+      responses:
+        "200":
+          description: Policy validation result
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RolloutPolicyValidationResult"
+        "400":
+          description: Invalid request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Feature flag not found
           content:
             '*/*':
               schema:
@@ -337,56 +384,9 @@ components:
         properties:
           type: object
           additionalProperties: {}
-    EvaluationPreviewContext:
-      type: object
-      description: Sample context to evaluate during preview.
-      properties:
-        environment:
-          type: string
-          description: Environment to evaluate.
-          example: production
-          maxLength: 255
-          minLength: 1
-        tenantId:
-          type:
-          - string
-          - "null"
-          description: Optional tenant ID to evaluate. Omit or send null when unknown.
-          example: tenant-a
-          maxLength: 255
-          minLength: 0
-          pattern: .*\S.*
-        userId:
-          type:
-          - string
-          - "null"
-          description: Optional user ID to evaluate. Omit or send null when unknown.
-          example: user-a
-          maxLength: 255
-          minLength: 0
-          pattern: .*\S.*
-      required:
-      - environment
-    EvaluationPreviewRequest:
-      type: object
-      description: Request to preview a proposed feature flag change.
-      properties:
-        proposedChange:
-          $ref: "#/components/schemas/ProposedFeatureFlagChange"
-          description: Partial change to apply in memory.
-        sampleContexts:
-          type: array
-          description: Sample contexts to evaluate before and after the change.
-          items:
-            $ref: "#/components/schemas/EvaluationPreviewContext"
-          maxItems: 100
-          minItems: 0
-      required:
-      - proposedChange
-      - sampleContexts
     ProposedFeatureFlagChange:
       type: object
-      description: Partial feature flag change used only for preview.
+      description: Partial feature flag change.
       properties:
         status:
           type:
@@ -441,6 +441,108 @@ components:
           example: 50
           maximum: 100
           minimum: 0
+    RolloutPolicyValidationRequest:
+      type: object
+      description: Request to validate a proposed feature flag change.
+      properties:
+        proposedChange:
+          $ref: "#/components/schemas/ProposedFeatureFlagChange"
+          description: Partial change to validate.
+        highRisk:
+          type:
+          - boolean
+          - "null"
+          description: Whether this change is considered operationally high risk.
+            Null is treated as false.
+        approvalGranted:
+          type:
+          - boolean
+          - "null"
+          description: Whether the required approval for a high-risk change was granted.
+            Null is treated as false.
+        reason:
+          type:
+          - string
+          - "null"
+          description: Business reason for enabling production access without an allowlist.
+          maxLength: 1000
+          minLength: 0
+      required:
+      - proposedChange
+    RolloutPolicyValidationResult:
+      type: object
+      description: Result of validating a proposed rollout policy change.
+      properties:
+        flagKey:
+          type: string
+        allowed:
+          type: boolean
+          description: True only when no policy violations were found.
+        violations:
+          type: array
+          items:
+            $ref: "#/components/schemas/RolloutPolicyViolation"
+    RolloutPolicyViolation:
+      type: object
+      description: Rollout policy violation.
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        severity:
+          $ref: "#/components/schemas/Severity"
+    Severity:
+      type: string
+      enum:
+      - ERROR
+    EvaluationPreviewContext:
+      type: object
+      description: Sample context to evaluate during preview.
+      properties:
+        environment:
+          type: string
+          description: Environment to evaluate.
+          example: production
+          maxLength: 255
+          minLength: 1
+        tenantId:
+          type:
+          - string
+          - "null"
+          description: Optional tenant ID to evaluate. Omit or send null when unknown.
+          example: tenant-a
+          maxLength: 255
+          minLength: 0
+          pattern: .*\S.*
+        userId:
+          type:
+          - string
+          - "null"
+          description: Optional user ID to evaluate. Omit or send null when unknown.
+          example: user-a
+          maxLength: 255
+          minLength: 0
+          pattern: .*\S.*
+      required:
+      - environment
+    EvaluationPreviewRequest:
+      type: object
+      description: Request to preview a proposed feature flag change.
+      properties:
+        proposedChange:
+          $ref: "#/components/schemas/ProposedFeatureFlagChange"
+          description: Partial change to apply in memory.
+        sampleContexts:
+          type: array
+          description: Sample contexts to evaluate before and after the change.
+          items:
+            $ref: "#/components/schemas/EvaluationPreviewContext"
+          maxItems: 100
+          minItems: 0
+      required:
+      - proposedChange
+      - sampleContexts
     EvaluationDiff:
       type: object
       description: Before and after evaluation result for one sample context.

@@ -6,6 +6,7 @@ import com.github.milez42.featureflags.flags.FeatureFlagEvaluator
 import com.github.milez42.featureflags.flags.FeatureFlagResponse
 import com.github.milez42.featureflags.flags.FeatureFlagService
 import com.github.milez42.featureflags.flags.FeatureFlagStatus
+import com.github.milez42.featureflags.flags.ProposedFeatureFlagChange
 import io.mockk.every
 import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat

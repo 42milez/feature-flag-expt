@@ -2,10 +2,10 @@ package com.github.milez42.featureflags.preview
 
 import com.github.milez42.featureflags.flags.EvaluationContext
 import com.github.milez42.featureflags.flags.EvaluationResult
-import com.github.milez42.featureflags.flags.FeatureFlag
 import com.github.milez42.featureflags.flags.FeatureFlagEvaluator
-import com.github.milez42.featureflags.flags.FeatureFlagResponse
 import com.github.milez42.featureflags.flags.FeatureFlagService
+import com.github.milez42.featureflags.flags.toDomainFlag
+import com.github.milez42.featureflags.flags.withProposedChange
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -16,7 +16,7 @@ class EvaluationPreviewService(
 ) {
   @Transactional(readOnly = true)
   fun preview(flagKey: String, request: EvaluationPreviewRequest): EvaluationPreviewResponse {
-    val before = featureFlagService.get(flagKey).toDomain()
+    val before = featureFlagService.get(flagKey).toDomainFlag()
     val after = before.withProposedChange(request.proposedChange)
 
     // Preview is intentionally sample-based: the persisted flag supplies the baseline rules,
@@ -44,26 +44,6 @@ class EvaluationPreviewService(
         summary = diffs.summary(),
     )
   }
-
-  private fun FeatureFlagResponse.toDomain(): FeatureFlag =
-      FeatureFlag(
-          flagKey(),
-          status(),
-          targetEnvironments(),
-          killSwitchActive(),
-          tenantAllowlist(),
-          rolloutPercentage(),
-      )
-
-  private fun FeatureFlag.withProposedChange(change: ProposedFeatureFlagChange): FeatureFlag =
-      FeatureFlag(
-          flagKey(),
-          change.status ?: status(),
-          change.targetEnvironments?.map { it.value() }?.toSet() ?: targetEnvironments(),
-          change.killSwitchActive ?: killSwitchActive(),
-          change.tenantAllowlist ?: tenantAllowlist(),
-          change.rolloutPercentage ?: rolloutPercentage(),
-      )
 
   private fun EvaluationResult.toPreviewResult(): EvaluationPreviewResult =
       EvaluationPreviewResult(enabled = enabled(), reason = reason(), bucket = bucket())

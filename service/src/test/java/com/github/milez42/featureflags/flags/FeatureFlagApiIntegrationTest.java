@@ -15,6 +15,7 @@ import com.github.milez42.featureflags.audit.AuditEventDetails;
 import com.github.milez42.featureflags.audit.AuditEventRepository;
 import com.github.milez42.featureflags.audit.AuditEventType;
 import com.github.milez42.featureflags.support.PostgreSqlIntegrationTest;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
@@ -36,6 +38,8 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
   @Autowired private AuditEventRepository auditEventRepository;
 
   @Autowired private JdbcClient jdbcClient;
+
+  @Autowired private ObjectMapper objectMapper;
 
   private MockMvc mockMvc;
 
@@ -945,6 +949,172 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
         .andExpect(status().isBadRequest());
   }
 
+  @Test
+  void validateChangeReturnsPolicyViolations() throws Exception {
+    createFlag("checkout-redesign", "ENABLED", Set.of("production"), false, Set.of(), 0);
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/validate-change")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": {
+                                    "rolloutPercentage": 100
+                                  },
+                                  "highRisk": true,
+                                  "approvalGranted": false
+                                }
+                                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.flagKey").value("checkout-redesign"))
+        .andExpect(jsonPath("$.allowed").value(false))
+        .andExpect(
+            jsonPath(
+                "$.violations[*].code",
+                containsInAnyOrder(
+                    "FULL_PRODUCTION_ROLLOUT",
+                    "PRODUCTION_WITHOUT_KILL_SWITCH",
+                    "HIGH_RISK_REQUIRES_APPROVAL",
+                    "PRODUCTION_ENABLEMENT_REQUIRES_REASON")))
+        .andExpect(
+            jsonPath(
+                "$.violations[*].severity",
+                containsInAnyOrder("ERROR", "ERROR", "ERROR", "ERROR")));
+  }
+
+  @Test
+  void validateChangeMissingFlagReturnsNotFound() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/flags/missing-flag/validate-change")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": {
+                                    "rolloutPercentage": 50
+                                  }
+                                }
+                                """))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.title").value("Feature flag not found"));
+  }
+
+  @Test
+  void validateChangeWithInvalidRequestFieldsReturnsBadRequest() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/validate-change")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": {
+                                    "rolloutPercentage": 101
+                                  }
+                                }
+                                """))
+        .andExpect(status().isBadRequest());
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/validate-change")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": null
+                                }
+                                """))
+        .andExpect(status().isBadRequest());
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/validate-change")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "reason": "missing proposed change"
+                                }
+                                """))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void validateChangeWithOverlongPathFlagKeyReturnsBadRequest() throws Exception {
+    MvcResult result =
+        mockMvc
+            .perform(
+                post("/api/flags/%s/validate-change".formatted(longString(201)))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                                    {
+                                      "proposedChange": {
+                                        "rolloutPercentage": 50
+                                      }
+                                    }
+                                    """))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+
+    assertThat(result.getResponse().getContentAsString())
+        .contains("validateChange.flagKey: size must be between 0 and 200");
+  }
+
+  @Test
+  void validateChangeWithOverlongReasonReturnsBadRequest() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/validate-change")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        Map.of(
+                            "proposedChange",
+                            Map.of("rolloutPercentage", 50),
+                            "reason",
+                            longString(1001)))))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void validateChangeDoesNotPersistProposedChangeOrWriteAuditEvents() throws Exception {
+    createCheckoutFlag();
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/validate-change")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "proposedChange": {
+                                    "targetEnvironments": ["staging"],
+                                    "killSwitchActive": true,
+                                    "rolloutPercentage": 0
+                                  },
+                                  "approvalGranted": true,
+                                  "reason": "staged rollout validation"
+                                }
+                                """))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(get("/api/flags/checkout-redesign"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.targetEnvironments", containsInAnyOrder("production", "staging")))
+        .andExpect(jsonPath("$.killSwitchActive").value(false))
+        .andExpect(jsonPath("$.rolloutPercentage").value(100));
+
+    assertThat(auditEventRepository.findByFlagKey("checkout-redesign"))
+        .extracting(AuditEvent::eventType)
+        .containsExactly(AuditEventType.FLAG_CREATED);
+  }
+
   private static String sampleContextsJson(int count) {
     StringBuilder json = new StringBuilder("[");
     for (int i = 0; i < count; i++) {
@@ -979,21 +1149,42 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
   }
 
   private void createCheckoutFlag() throws Exception {
+    createFlag(
+        "checkout-redesign",
+        "ENABLED",
+        Set.of("production", "staging"),
+        false,
+        Set.of("tenant-a"),
+        100);
+  }
+
+  private void createFlag(
+      String flagKey,
+      String status,
+      Set<String> targetEnvironments,
+      boolean killSwitchActive,
+      Set<String> tenantAllowlist,
+      int rolloutPercentage)
+      throws Exception {
     mockMvc
         .perform(
             post("/api/flags")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
-                    """
-                                {
-                                  "flagKey": "checkout-redesign",
-                                  "status": "ENABLED",
-                                  "targetEnvironments": ["production", "staging"],
-                                  "killSwitchActive": false,
-                                  "tenantAllowlist": ["tenant-a"],
-                                  "rolloutPercentage": 100
-                                }
-                                """))
+                    objectMapper.writeValueAsString(
+                        Map.of(
+                            "flagKey",
+                            flagKey,
+                            "status",
+                            status,
+                            "targetEnvironments",
+                            targetEnvironments,
+                            "killSwitchActive",
+                            killSwitchActive,
+                            "tenantAllowlist",
+                            tenantAllowlist,
+                            "rolloutPercentage",
+                            rolloutPercentage))))
         .andExpect(status().isCreated());
   }
 }

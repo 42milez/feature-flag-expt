@@ -1,6 +1,8 @@
 package com.github.milez42.featureflags;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -8,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.github.milez42.featureflags.flags.FeatureFlagController;
 import com.github.milez42.featureflags.flags.FeatureFlagService;
+import com.github.milez42.featureflags.policy.RolloutPolicyController;
+import com.github.milez42.featureflags.policy.RolloutPolicyValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,6 +63,7 @@ class OpenApiIntegrationTest {
             .andExpect(jsonPath("$.paths['/api/flags/{flagKey}'].patch").exists())
             .andExpect(jsonPath("$.paths['/api/evaluate'].post").exists())
             .andExpect(jsonPath("$.paths['/api/flags/{flagKey}/audit-events'].get").exists())
+            .andExpect(jsonPath("$.paths['/api/flags/{flagKey}/validate-change'].post").exists())
             .andExpect(
                 jsonPath("$.paths['/api/flags/{flagKey}'].get.parameters[0].schema.minLength")
                     .value(1))
@@ -89,6 +94,19 @@ class OpenApiIntegrationTest {
                 jsonPath(
                         "$.components.schemas.UpdateFeatureFlagRequest.properties.tenantAllowlist.items.minLength")
                     .value(1))
+            .andExpect(
+                jsonPath(
+                        "$.components.schemas.RolloutPolicyValidationRequest.properties.reason.maxLength")
+                    .value(1000))
+            .andExpect(
+                jsonPath("$.components.schemas.RolloutPolicyViolation.properties.code").exists())
+            .andExpect(
+                jsonPath("$.components.schemas.RolloutPolicyViolation.properties.message").exists())
+            .andExpect(
+                jsonPath("$.components.schemas.RolloutPolicyViolation.properties.severity")
+                    .exists())
+            .andExpect(jsonPath("$.components.schemas.Severity.enum", hasSize(1)))
+            .andExpect(jsonPath("$.components.schemas.Severity.enum", contains("ERROR")))
             .andReturn();
 
     String body = result.getResponse().getContentAsString();
@@ -100,6 +118,10 @@ class OpenApiIntegrationTest {
             "\"EvaluateFeatureFlagRequest\"",
             "\"EvaluateFeatureFlagResponse\"",
             "\"AuditEventResponse\"",
+            "\"RolloutPolicyValidationRequest\"",
+            "\"RolloutPolicyValidationResult\"",
+            "\"RolloutPolicyViolation\"",
+            "\"Severity\"",
             "\"ProblemDetail\"",
             "\"TARGET_ENVIRONMENTS_CHANGED\"")
         .doesNotContain("Empty input preserves existing values");
@@ -111,16 +133,25 @@ class OpenApiIntegrationTest {
         mockMvc.perform(get("/v3/api-docs.yaml")).andExpect(status().isOk()).andReturn();
 
     assertThat(result.getResponse().getContentAsString())
-        .contains("openapi:", "Feature Flag API", "/api/flags/{flagKey}/audit-events:");
+        .contains(
+            "openapi:",
+            "Feature Flag API",
+            "/api/flags/{flagKey}/audit-events:",
+            "/api/flags/{flagKey}/validate-change:");
   }
 
   @Configuration
   @EnableAutoConfiguration
-  @Import({FeatureFlagController.class, OpenApiConfig.class})
+  @Import({FeatureFlagController.class, RolloutPolicyController.class, OpenApiConfig.class})
   static class TestApplication {
     @Bean
     FeatureFlagService featureFlagService() {
       return mock(FeatureFlagService.class);
+    }
+
+    @Bean
+    RolloutPolicyValidator rolloutPolicyValidator() {
+      return mock(RolloutPolicyValidator.class);
     }
   }
 }
