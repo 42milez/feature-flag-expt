@@ -32,12 +32,12 @@ feature?
   value modeling important for readability.
 * The API contract should remain visible through the existing code-first
   OpenAPI workflow described in ADR-0006 and ADR-0007.
-* Java should remain the owner of persisted flag state, repositories, audit
-  behavior, and the core evaluator.
+* Preview should fit the existing ownership boundaries for persisted flag state,
+  repositories, audit behavior, and evaluation rules.
 
 ## Considered Options
 
-* Kotlin preview layer with shared Java evaluator (chosen)
+* Kotlin preview layer with shared Java evaluator
 * Implement preview entirely in Java
 * Add preview behavior directly to the update flow
 * Persist draft or proposed flag versions
@@ -91,13 +91,15 @@ diffs, and summary aggregation.
   audit records for unsaved proposals.
 * Good: OpenAPI generation continues to derive the preview contract from Spring
   MVC, Bean Validation, and focused schema annotations.
-* Bad: the feature introduces a Java/Kotlin boundary that must stay explicit,
-  especially when mapping the public `FeatureFlagResponse` read model back to
-  the Java domain record for evaluator reuse.
+* Bad: the preview path depends on the `FeatureFlagService` read-model
+  boundary: the service exposes `FeatureFlagResponse` while entity-to-domain
+  conversion remains private, so preview maps the public read model back to the
+  Java domain record for evaluator reuse.
 * Bad: preview is sample-based; it does not prove the effect across every
   possible tenant, user, or environment.
-* Neutral: validation annotations on Kotlin DTOs must use field targets so Bean
-  Validation and springdoc inspect the intended fields.
+* Bad: validation annotations on Kotlin DTOs must use field targets; omitting
+  `@field:` can cause Bean Validation and springdoc to inspect the wrong target
+  and silently miss constraints or schema metadata.
 
 ### Confirmation
 
@@ -124,7 +126,8 @@ diffs, and summary aggregation.
 * Good: compact fit for nested request and response DTOs
 * Good: keeps diff and summary aggregation close to immutable data models
 * Good: reuses Java production evaluation rules without adding persistence
-* Bad: requires careful Java/Kotlin DTO and enum mapping at the boundary
+* Bad: requires explicit mapping across the Java service read-model boundary and
+  the Kotlin preview DTO boundary
 * Bad: preview conclusions are sample-based and cannot cover every possible
   tenant, user, or environment combination
 
@@ -132,6 +135,9 @@ diffs, and summary aggregation.
 
 * Good: avoids introducing another language boundary for this feature
 * Good: matches the existing persisted flag and evaluator implementation
+* Good: could colocate preview with entity-to-domain conversion or expose
+  package-private conversion, reducing reverse-mapping pressure if service
+  encapsulation were relaxed
 * Bad: Java records narrow the boilerplate gap for simple immutable types, but
   collection-heavy aggregation and nested response composition remain more
   verbose than Kotlin's equivalent
@@ -142,8 +148,8 @@ diffs, and summary aggregation.
 * Good: would reduce the number of endpoint-specific code paths
 * Bad: risks mixing read-only preview semantics with persistence and audit
   behavior
-* Bad: makes it easier for preview requests to accidentally save state or emit
-  audit records
+* Bad: couples preview tests to mutation-path behavior, increasing the surface
+  that must prove no save or audit side effect occurs
 
 ### Persist Draft or Proposed Flag Versions
 
