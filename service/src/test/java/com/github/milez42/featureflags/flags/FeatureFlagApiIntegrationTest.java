@@ -141,7 +141,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
 
   @Test
   void auditEventsReturnsEventsOldestFirst() throws Exception {
-    createCheckoutFlag();
+    createPolicyCompliantCheckoutFlag();
 
     mockMvc
         .perform(
@@ -220,7 +220,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
 
   @Test
   void patchWithEmptyTenantAllowlistClearsAllowlist() throws Exception {
-    createCheckoutFlag();
+    createPolicyCompliantCheckoutFlag();
 
     mockMvc
         .perform(
@@ -269,7 +269,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
 
   @Test
   void patchWithTargetEnvironmentsReplacementRecordsAuditEvent() throws Exception {
-    createCheckoutFlag();
+    createPolicyCompliantCheckoutFlag();
 
     mockMvc
         .perform(
@@ -296,7 +296,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
 
   @Test
   void patchStatusRecordsEnabledAndDisabledEvents() throws Exception {
-    createCheckoutFlag();
+    createPolicyCompliantCheckoutFlag();
 
     mockMvc
         .perform(
@@ -332,7 +332,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
 
   @Test
   void patchKillSwitchFalseRecordsDisabledEvent() throws Exception {
-    createCheckoutFlag();
+    createFlag("checkout-redesign", "ENABLED", Set.of("staging"), false, Set.of("tenant-a"), 100);
 
     mockMvc
         .perform(
@@ -368,7 +368,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
 
   @Test
   void patchWithUnchangedValuesDoesNotRecordAuditEvent() throws Exception {
-    createCheckoutFlag();
+    createPolicyCompliantCheckoutFlag();
 
     mockMvc
         .perform(
@@ -378,7 +378,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
                     """
                                 {
                                   "status": "ENABLED",
-                                  "killSwitchActive": false,
+                                  "killSwitchActive": true,
                                   "targetEnvironments": ["production", "staging"],
                                   "tenantAllowlist": ["tenant-a"],
                                   "rolloutPercentage": 100
@@ -389,6 +389,70 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
     assertThat(auditEventRepository.findByFlagKey("checkout-redesign"))
         .extracting(AuditEvent::eventType)
         .containsExactly(AuditEventType.FLAG_CREATED);
+  }
+
+  @Test
+  void patchPolicyViolationReturnsUnprocessableContentAndDoesNotPersistOrAudit() throws Exception {
+    createFlag("checkout-redesign", "ENABLED", Set.of("production"), false, Set.of(), 0);
+
+    mockMvc
+        .perform(
+            patch("/api/flags/checkout-redesign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "rolloutPercentage": 100,
+                                  "highRisk": true,
+                                  "approvalGranted": false
+                                }
+                                """))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(jsonPath("$.flagKey").value("checkout-redesign"))
+        .andExpect(jsonPath("$.allowed").value(false))
+        .andExpect(
+            jsonPath(
+                "$.violations[*].code",
+                containsInAnyOrder(
+                    "FULL_PRODUCTION_ROLLOUT",
+                    "PRODUCTION_WITHOUT_KILL_SWITCH",
+                    "HIGH_RISK_REQUIRES_APPROVAL",
+                    "PRODUCTION_ENABLEMENT_REQUIRES_REASON")));
+
+    mockMvc
+        .perform(get("/api/flags/checkout-redesign"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.rolloutPercentage").value(0))
+        .andExpect(jsonPath("$.killSwitchActive").value(false))
+        .andExpect(jsonPath("$.tenantAllowlist").isEmpty());
+
+    assertThat(auditEventRepository.findByFlagKey("checkout-redesign"))
+        .extracting(AuditEvent::eventType)
+        .containsExactly(AuditEventType.FLAG_CREATED);
+  }
+
+  @Test
+  void patchHighRiskUpdateSucceedsWhenApprovalGranted() throws Exception {
+    createFlag("checkout-redesign", "ENABLED", Set.of("staging"), false, Set.of("tenant-a"), 25);
+
+    mockMvc
+        .perform(
+            patch("/api/flags/checkout-redesign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "rolloutPercentage": 50,
+                                  "highRisk": true,
+                                  "approvalGranted": true
+                                }
+                                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.rolloutPercentage").value(50));
+
+    assertThat(auditEventRepository.findByFlagKey("checkout-redesign"))
+        .extracting(AuditEvent::eventType)
+        .containsExactly(AuditEventType.FLAG_CREATED, AuditEventType.ROLLOUT_PERCENTAGE_CHANGED);
   }
 
   @Test
@@ -464,6 +528,20 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
                                 }
                                 """
                         .formatted(longString(256))))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void updateWithOverlongReasonReturnsBadRequest() throws Exception {
+    createCheckoutFlag();
+
+    mockMvc
+        .perform(
+            patch("/api/flags/checkout-redesign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        Map.of("rolloutPercentage", 50, "reason", longString(1001)))))
         .andExpect(status().isBadRequest());
   }
 
@@ -1148,12 +1226,26 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
     return "a".repeat(length);
   }
 
+  /**
+   * Creates a policy-non-compliant checkout flag with production targeting and the kill switch
+   * disabled. Use {@link #createPolicyCompliantCheckoutFlag()} for PATCH success-path tests.
+   */
   private void createCheckoutFlag() throws Exception {
     createFlag(
         "checkout-redesign",
         "ENABLED",
         Set.of("production", "staging"),
         false,
+        Set.of("tenant-a"),
+        100);
+  }
+
+  private void createPolicyCompliantCheckoutFlag() throws Exception {
+    createFlag(
+        "checkout-redesign",
+        "ENABLED",
+        Set.of("production", "staging"),
+        true,
         Set.of("tenant-a"),
         100);
   }

@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api")
 @Tag(name = "Rollout Policy", description = "Validate proposed feature flag changes.")
 @Validated
-class RolloutPolicyController(private val validator: RolloutPolicyValidator) {
+class RolloutPolicyController(private val service: RolloutPolicyValidationService) {
   @PostMapping("/flags/{flagKey}/validate-change")
   @Operation(
       summary = "Validate a feature flag change",
@@ -68,5 +68,5 @@ class RolloutPolicyController(private val validator: RolloutPolicyValidator) {
       @Size(max = 200)
       flagKey: String,
       @Valid @RequestBody request: RolloutPolicyValidationRequest,
-  ): RolloutPolicyValidationResult = validator.validate(flagKey, request)
+  ): RolloutPolicyValidationResult = service.validate(flagKey, request)
 }

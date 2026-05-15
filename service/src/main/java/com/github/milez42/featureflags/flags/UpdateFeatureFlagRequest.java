@@ -24,4 +24,15 @@ public record UpdateFeatureFlagRequest(
     @Schema(description = "Updated percentage rollout from 0 to 100.", example = "50")
         @Min(0)
         @Max(100)
-        Integer rolloutPercentage) {}
+        Integer rolloutPercentage,
+    @Schema(
+            description =
+                "Whether this change is considered operationally high risk. Null is treated as false.")
+        Boolean highRisk,
+    @Schema(
+            description =
+                "Whether the required approval for a high-risk change was granted. Null is treated as false.")
+        Boolean approvalGranted,
+    @Schema(description = "Business reason for enabling production access without an allowlist.")
+        @Size(max = 1000)
+        String reason) {}

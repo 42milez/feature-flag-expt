@@ -94,6 +94,6 @@ class RolloutPolicyOpenApiIntegrationTest {
   @EnableAutoConfiguration
   @Import(RolloutPolicyController::class, OpenApiConfig::class)
   class TestApplication {
-    @Bean fun rolloutPolicyValidator(): RolloutPolicyValidator = mockk()
+    @Bean fun rolloutPolicyValidationService(): RolloutPolicyValidationService = mockk()
   }
 }

@@ -42,5 +42,7 @@ Format for each entry (add under the relevant category heading, creating the hea
 - **[Security]** Put explicit size limits on externally supplied collections before iterating over
   them in request handlers or services. Bean Validation constraints such as `@Size(max = ...)`
   should document and enforce the bound at the API edge.
+- **[Security]** Enforce safety policies on the server-side write path, not only through preview
+  or validation endpoints, so alternate clients cannot bypass rollout constraints.
 - **[Testability]** Build test request JSON with `ObjectMapper` when values are supplied through
   variables, so escaping stays correct and helpers do not become fragile string templates.

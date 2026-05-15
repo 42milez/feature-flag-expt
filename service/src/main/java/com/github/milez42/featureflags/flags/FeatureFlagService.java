@@ -4,6 +4,10 @@ import com.github.milez42.featureflags.audit.AuditEventDetails;
 import com.github.milez42.featureflags.audit.AuditEventResponse;
 import com.github.milez42.featureflags.audit.AuditEventService;
 import com.github.milez42.featureflags.audit.AuditEventType;
+import com.github.milez42.featureflags.policy.RolloutPolicyContext;
+import com.github.milez42.featureflags.policy.RolloutPolicyValidationResult;
+import com.github.milez42.featureflags.policy.RolloutPolicyValidator;
+import com.github.milez42.featureflags.policy.RolloutPolicyViolationException;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -17,14 +21,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class FeatureFlagService {
   private final FeatureFlagRepository repository;
   private final FeatureFlagEvaluator evaluator;
+  private final RolloutPolicyValidator rolloutPolicyValidator;
   private final AuditEventService auditEventService;
 
   public FeatureFlagService(
       FeatureFlagRepository repository,
       FeatureFlagEvaluator evaluator,
+      RolloutPolicyValidator rolloutPolicyValidator,
       AuditEventService auditEventService) {
     this.repository = repository;
     this.evaluator = evaluator;
+    this.rolloutPolicyValidator = rolloutPolicyValidator;
     this.auditEventService = auditEventService;
   }
 
@@ -97,6 +104,16 @@ public class FeatureFlagService {
             request.rolloutPercentage() == null
                 ? existing.rolloutPercentage()
                 : request.rolloutPercentage());
+
+    RolloutPolicyValidationResult policyResult =
+        rolloutPolicyValidator.validate(
+            toDomain(existing),
+            toDomain(updated),
+            new RolloutPolicyContext(
+                request.highRisk(), request.approvalGranted(), request.reason()));
+    if (!policyResult.allowed()) {
+      throw new RolloutPolicyViolationException(policyResult);
+    }
 
     FeatureFlagEntity saved = repository.save(updated);
     recordUpdateEvents(existing, saved);
