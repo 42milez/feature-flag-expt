@@ -21,6 +21,8 @@ data class RolloutPolicyValidationRequest(
         description =
             "Whether the required approval for a high-risk change was granted. Null is treated as false."
     )
+    // TODO: Replace this client-supplied flag with a server-verified approval reference, such as
+    // changeRequestId or approvalId, once an approval workflow exists.
     val approvalGranted: Boolean? = false,
     @field:Schema(
         description = "Business reason for enabling production access without an allowlist."
