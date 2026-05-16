@@ -19,8 +19,8 @@ public class RolloutPolicyValidator {
     String production = Environment.PRODUCTION.value();
     List<RolloutPolicyViolation> violations = new ArrayList<>();
 
-    // Phase 6 catches only direct 0 -> 100 production rollouts. Partial-to-full jumps should be
-    // handled by a future step-size policy if that behavior becomes required.
+    // The current implementation catches only direct 0 -> 100 production rollouts.
+    // Partial-to-full jumps should be handled by a future step-size policy if needed.
     if (current.rolloutPercentage() == 0
         && proposed.rolloutPercentage() == 100
         && proposed.targetEnvironments().contains(production)) {
