@@ -27,10 +27,6 @@ public class RolloutPolicyValidator {
       violations.add(fullProductionRollout());
     }
 
-    if (targetsProductionWithoutKillSwitch(proposed, production)) {
-      violations.add(productionWithoutKillSwitch());
-    }
-
     if (context.isHighRisk() && !context.isApprovalGranted()) {
       violations.add(highRiskRequiresApproval());
     }
@@ -40,10 +36,6 @@ public class RolloutPolicyValidator {
     }
 
     return RolloutPolicyValidationResult.from(current.flagKey(), violations);
-  }
-
-  private boolean targetsProductionWithoutKillSwitch(FeatureFlag flag, String production) {
-    return flag.targetEnvironments().contains(production) && !flag.killSwitchActive();
   }
 
   private boolean enablesProductionWithoutAllowlist(FeatureFlag flag, String production) {
@@ -57,13 +49,6 @@ public class RolloutPolicyValidator {
     return new RolloutPolicyViolation(
         "FULL_PRODUCTION_ROLLOUT",
         "Rolling out from 0% to 100% in production in a single step is not allowed.",
-        Severity.ERROR);
-  }
-
-  private RolloutPolicyViolation productionWithoutKillSwitch() {
-    return new RolloutPolicyViolation(
-        "PRODUCTION_WITHOUT_KILL_SWITCH",
-        "Production-targeted changes without an active kill switch are not allowed.",
         Severity.ERROR);
   }
 

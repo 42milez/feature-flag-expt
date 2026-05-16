@@ -415,7 +415,6 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
                 "$.violations[*].code",
                 containsInAnyOrder(
                     "FULL_PRODUCTION_ROLLOUT",
-                    "PRODUCTION_WITHOUT_KILL_SWITCH",
                     "HIGH_RISK_REQUIRES_APPROVAL",
                     "PRODUCTION_ENABLEMENT_REQUIRES_REASON")));
 
@@ -1053,13 +1052,10 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
                 "$.violations[*].code",
                 containsInAnyOrder(
                     "FULL_PRODUCTION_ROLLOUT",
-                    "PRODUCTION_WITHOUT_KILL_SWITCH",
                     "HIGH_RISK_REQUIRES_APPROVAL",
                     "PRODUCTION_ENABLEMENT_REQUIRES_REASON")))
         .andExpect(
-            jsonPath(
-                "$.violations[*].severity",
-                containsInAnyOrder("ERROR", "ERROR", "ERROR", "ERROR")));
+            jsonPath("$.violations[*].severity", containsInAnyOrder("ERROR", "ERROR", "ERROR")));
   }
 
   @Test
@@ -1226,10 +1222,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
     return "a".repeat(length);
   }
 
-  /**
-   * Creates a policy-non-compliant checkout flag with production targeting and the kill switch
-   * disabled. Use {@link #createPolicyCompliantCheckoutFlag()} for PATCH success-path tests.
-   */
+  /** Creates a checkout flag with production targeting and an inactive kill switch. */
   private void createCheckoutFlag() throws Exception {
     createFlag(
         "checkout-redesign",

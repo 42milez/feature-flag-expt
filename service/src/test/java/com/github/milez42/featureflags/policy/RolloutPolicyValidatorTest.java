@@ -49,28 +49,26 @@ class RolloutPolicyValidatorTest {
   }
 
   @Test
-  void productionRolloutWithoutKillSwitchIsRejected() {
+  void productionTargetingWithInactiveKillSwitchIsAllowed() {
     FeatureFlag current = flag(FeatureFlagStatus.DISABLED, Set.of("staging"), false);
     FeatureFlag proposed = flag(FeatureFlagStatus.DISABLED, Set.of("production"), false);
 
     RolloutPolicyValidationResult result = validate(current, proposed);
 
-    assertThat(result.violations())
-        .extracting(RolloutPolicyViolation::code)
-        .containsExactly("PRODUCTION_WITHOUT_KILL_SWITCH");
+    assertThat(result.allowed()).isTrue();
+    assertThat(result.violations()).isEmpty();
     assertInvariant(result);
   }
 
   @Test
-  void productionRolloutAtZeroPercentWithoutKillSwitchIsRejected() {
+  void zeroPercentProductionWithInactiveKillSwitchIsAllowed() {
     FeatureFlag current = flag(0, false);
     FeatureFlag proposed = flag(0, false);
 
     RolloutPolicyValidationResult result = validate(current, proposed);
 
-    assertThat(result.violations())
-        .extracting(RolloutPolicyViolation::code)
-        .containsExactly("PRODUCTION_WITHOUT_KILL_SWITCH");
+    assertThat(result.allowed()).isTrue();
+    assertThat(result.violations()).isEmpty();
     assertInvariant(result);
   }
 
@@ -100,7 +98,7 @@ class RolloutPolicyValidatorTest {
 
     assertThat(result.violations())
         .extracting(RolloutPolicyViolation::code)
-        .contains("PRODUCTION_WITHOUT_KILL_SWITCH", "PRODUCTION_ENABLEMENT_REQUIRES_REASON");
+        .containsExactly("PRODUCTION_ENABLEMENT_REQUIRES_REASON");
     assertInvariant(result);
   }
 
@@ -117,10 +115,8 @@ class RolloutPolicyValidatorTest {
             proposed,
             new RolloutPolicyContext(false, false, "valid business justification"));
 
-    assertThat(result.violations())
-        .extracting(RolloutPolicyViolation::code)
-        .contains("PRODUCTION_WITHOUT_KILL_SWITCH")
-        .doesNotContain("PRODUCTION_ENABLEMENT_REQUIRES_REASON");
+    assertThat(result.allowed()).isTrue();
+    assertThat(result.violations()).isEmpty();
     assertInvariant(result);
   }
 
@@ -137,7 +133,6 @@ class RolloutPolicyValidatorTest {
         .extracting(RolloutPolicyViolation::code)
         .containsExactlyInAnyOrder(
             "FULL_PRODUCTION_ROLLOUT",
-            "PRODUCTION_WITHOUT_KILL_SWITCH",
             "HIGH_RISK_REQUIRES_APPROVAL",
             "PRODUCTION_ENABLEMENT_REQUIRES_REASON");
     assertInvariant(result);
@@ -181,7 +176,7 @@ class RolloutPolicyValidatorTest {
   }
 
   @Test
-  void productionTargetEnvironmentWireStringWithoutKillSwitchIsRejected() {
+  void productionTargetEnvironmentWireStringWithInactiveKillSwitchIsAllowed() {
     FeatureFlag current = flag(FeatureFlagStatus.DISABLED, Set.of("staging"), false);
     FeatureFlag proposed =
         flag(FeatureFlagStatus.DISABLED, Set.of(Environment.PRODUCTION.value()), false);
@@ -190,9 +185,8 @@ class RolloutPolicyValidatorTest {
 
     RolloutPolicyValidationResult result = validate(current, proposed);
 
-    assertThat(result.violations())
-        .extracting(RolloutPolicyViolation::code)
-        .containsExactly("PRODUCTION_WITHOUT_KILL_SWITCH");
+    assertThat(result.allowed()).isTrue();
+    assertThat(result.violations()).isEmpty();
     assertInvariant(result);
   }
 
