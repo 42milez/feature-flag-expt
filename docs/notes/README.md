@@ -7,3 +7,4 @@ the project evolves.
 | Note | Description |
 |---|---|
 | [persistence-layer.md](persistence-layer.md) | Persistence stack philosophy and migration thinking (JDBC → jOOQ → JPA) |
+| [rollout-policy-risk-approval.md](rollout-policy-risk-approval.md) | Rollout risk classification and approval verification thinking |
