@@ -22,7 +22,7 @@ class ErrorHandlerTest {
   private final ErrorHandler handler = new ErrorHandler();
 
   @Test
-  void rolloutPolicyViolationReturnsKotlinResponseDto() {
+  void rolloutPolicyViolationReturnsJavaResponseDto() {
     RolloutPolicyViolation violation =
         new RolloutPolicyViolation("FULL_PRODUCTION_ROLLOUT", "Requires approval", Severity.ERROR);
     RolloutPolicyValidationResult result =
@@ -32,9 +32,9 @@ class ErrorHandlerTest {
         handler.handle(new RolloutPolicyViolationException(result)).getBody();
 
     assertThat(response).isNotNull();
-    assertThat(response.getFlagKey()).isEqualTo("checkout-redesign");
-    assertThat(response.getAllowed()).isFalse();
-    assertThat(response.getViolations()).containsExactly(violation);
+    assertThat(response.flagKey()).isEqualTo("checkout-redesign");
+    assertThat(response.allowed()).isFalse();
+    assertThat(response.violations()).containsExactly(violation);
   }
 
   @Test

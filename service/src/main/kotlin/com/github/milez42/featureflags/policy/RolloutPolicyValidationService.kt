@@ -22,9 +22,9 @@ class RolloutPolicyValidationService(
     val result = validator.validate(current, proposed, context)
 
     return RolloutPolicyValidationResponse(
-        flagKey = result.flagKey(),
-        allowed = result.allowed(),
-        violations = result.violations(),
+        result.flagKey(),
+        result.allowed(),
+        result.violations(),
     )
   }
 }

@@ -36,9 +36,9 @@ class RolloutPolicyValidationServiceTest {
         )
 
     assertThat(response).isInstanceOf(RolloutPolicyValidationResponse::class.java)
-    assertThat(response.flagKey).isEqualTo("checkout-redesign")
-    assertThat(response.allowed).isFalse()
-    assertThat(response.violations)
+    assertThat(response.flagKey()).isEqualTo("checkout-redesign")
+    assertThat(response.allowed()).isFalse()
+    assertThat(response.violations())
         .extracting<String> { it.code() }
         .containsExactly(
             "FULL_PRODUCTION_ROLLOUT",
