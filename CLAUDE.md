@@ -44,5 +44,8 @@ Format for each entry (add under the relevant category heading, creating the hea
   should document and enforce the bound at the API edge.
 - **[Security]** Enforce safety policies on the server-side write path, not only through preview
   or validation endpoints, so alternate clients cannot bypass rollout constraints.
+- **[API / Framework contract]** Convert Java-side domain models, validation result records, and
+  persistence entities into Kotlin `*Response` DTOs before generating API responses. OpenAPI
+  response schemas should reference the public response DTO, not the internal Java model.
 - **[Testability]** Build test request JSON with `ObjectMapper` when values are supplied through
   variables, so escaping stays correct and helpers do not become fragile string templates.

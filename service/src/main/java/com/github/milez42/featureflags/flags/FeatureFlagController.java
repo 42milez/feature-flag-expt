@@ -1,7 +1,7 @@
 package com.github.milez42.featureflags.flags;
 
 import com.github.milez42.featureflags.audit.AuditEventResponse;
-import com.github.milez42.featureflags.policy.RolloutPolicyValidationResult;
+import com.github.milez42.featureflags.policy.RolloutPolicyValidationResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -127,7 +127,8 @@ public class FeatureFlagController {
     @ApiResponse(
         responseCode = "422",
         description = "Rollout policy violation",
-        content = @Content(schema = @Schema(implementation = RolloutPolicyValidationResult.class)))
+        content =
+            @Content(schema = @Schema(implementation = RolloutPolicyValidationResponse.class)))
   })
   public FeatureFlagResponse update(
       @Parameter(

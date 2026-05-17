@@ -1,5 +1,6 @@
 package com.github.milez42.featureflags.error;
 
+import com.github.milez42.featureflags.policy.RolloutPolicyValidationResponse;
 import com.github.milez42.featureflags.policy.RolloutPolicyValidationResult;
 import com.github.milez42.featureflags.policy.RolloutPolicyViolationException;
 import jakarta.validation.ConstraintViolation;
@@ -15,8 +16,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class ErrorHandler {
   @ExceptionHandler(RolloutPolicyViolationException.class)
-  public ResponseEntity<RolloutPolicyValidationResult> handle(RolloutPolicyViolationException e) {
-    return ResponseEntity.unprocessableContent().body(e.result());
+  public ResponseEntity<RolloutPolicyValidationResponse> handle(RolloutPolicyViolationException e) {
+    return ResponseEntity.unprocessableContent().body(toResponse(e.result()));
   }
 
   @ExceptionHandler(HttpException.class)
@@ -48,5 +49,10 @@ public class ErrorHandler {
       return violation.getMessage();
     }
     return path + ": " + violation.getMessage();
+  }
+
+  private static RolloutPolicyValidationResponse toResponse(RolloutPolicyValidationResult result) {
+    return new RolloutPolicyValidationResponse(
+        result.flagKey(), result.allowed(), result.violations());
   }
 }

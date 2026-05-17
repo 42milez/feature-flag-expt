@@ -77,7 +77,7 @@ paths:
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/RolloutPolicyValidationResult"
+                $ref: "#/components/schemas/RolloutPolicyValidationResponse"
         "400":
           description: Invalid request
           content:
@@ -231,6 +231,12 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: Rollout policy violation
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RolloutPolicyValidationResponse"
   /api/flags/{flagKey}/audit-events:
     get:
       tags:
@@ -469,17 +475,20 @@ components:
           minLength: 0
       required:
       - proposedChange
-    RolloutPolicyValidationResult:
+    RolloutPolicyValidationResponse:
       type: object
-      description: Result of validating a proposed rollout policy change.
+      description: Response for validating a proposed rollout policy change.
       properties:
         flagKey:
           type: string
+          description: Feature flag key.
+          example: checkout-redesign
         allowed:
           type: boolean
           description: True only when no policy violations were found.
         violations:
           type: array
+          description: Policy violations found for the proposed change.
           items:
             $ref: "#/components/schemas/RolloutPolicyViolation"
     RolloutPolicyViolation:
@@ -756,6 +765,19 @@ components:
           example: 50
           maximum: 100
           minimum: 0
+        highRisk:
+          type: boolean
+          description: Whether this change is considered operationally high risk.
+            Null is treated as false.
+        approvalGranted:
+          type: boolean
+          description: Whether the required approval for a high-risk change was granted.
+            Null is treated as false.
+        reason:
+          type: string
+          description: Business reason for enabling production access without an allowlist.
+          maxLength: 1000
+          minLength: 0
     AuditEventResponse:
       type: object
       description: Audit event emitted when a feature flag changes.

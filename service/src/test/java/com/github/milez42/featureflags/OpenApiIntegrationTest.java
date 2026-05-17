@@ -100,9 +100,11 @@ class OpenApiIntegrationTest {
             "\"EvaluateFeatureFlagRequest\"",
             "\"EvaluateFeatureFlagResponse\"",
             "\"AuditEventResponse\"",
+            "\"RolloutPolicyValidationResponse\"",
             "\"ProblemDetail\"",
             "\"TARGET_ENVIRONMENTS_CHANGED\"")
-        .doesNotContain("Empty input preserves existing values");
+        .doesNotContain(
+            "Empty input preserves existing values", "\"RolloutPolicyValidationResult\"");
   }
 
   @Test
