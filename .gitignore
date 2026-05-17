@@ -46,3 +46,8 @@ out/
 
 # Others
 tmp/
+
+# Agent runtime state
+.agents/*
+!.agents/skills/
+!.agents/skills/**
