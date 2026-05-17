@@ -7,8 +7,3 @@ Follow the coding conventions, architecture guidelines, workflow rules, and any 
 If there is a conflict between this file and `CLAUDE.md`, follow the instructions in this `AGENTS.md` file.
 
 If `CLAUDE.md` is missing or unclear, proceed with reasonable assumptions and briefly note them before making changes.
-
-<!-- SPECKIT START -->
-For Spec Kit-driven work, also read `.specify/memory/constitution.md` before
-creating specs, plans, tasks, or implementation changes.
-<!-- SPECKIT END -->
