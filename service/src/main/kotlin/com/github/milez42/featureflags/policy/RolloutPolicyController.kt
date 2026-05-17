@@ -41,7 +41,8 @@ class RolloutPolicyController(private val service: RolloutPolicyValidationServic
                   content =
                       [
                           Content(
-                              schema = Schema(implementation = RolloutPolicyValidationResult::class)
+                              schema =
+                                  Schema(implementation = RolloutPolicyValidationResponse::class)
                           )
                       ],
               ),
@@ -68,5 +69,5 @@ class RolloutPolicyController(private val service: RolloutPolicyValidationServic
       @Size(max = 200)
       flagKey: String,
       @Valid @RequestBody request: RolloutPolicyValidationRequest,
-  ): RolloutPolicyValidationResult = service.validate(flagKey, request)
+  ): RolloutPolicyValidationResponse = service.validate(flagKey, request)
 }

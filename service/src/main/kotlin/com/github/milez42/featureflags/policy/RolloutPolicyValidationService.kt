@@ -15,11 +15,16 @@ class RolloutPolicyValidationService(
   fun validate(
       flagKey: String,
       request: RolloutPolicyValidationRequest,
-  ): RolloutPolicyValidationResult {
+  ): RolloutPolicyValidationResponse {
     val current = featureFlagService.get(flagKey).toDomainFlag()
     val proposed = current.withProposedChange(request.proposedChange)
     val context = RolloutPolicyContext(request.highRisk, request.approvalGranted, request.reason)
+    val result = validator.validate(current, proposed, context)
 
-    return validator.validate(current, proposed, context)
+    return RolloutPolicyValidationResponse(
+        flagKey = result.flagKey(),
+        allowed = result.allowed(),
+        violations = result.violations(),
+    )
   }
 }

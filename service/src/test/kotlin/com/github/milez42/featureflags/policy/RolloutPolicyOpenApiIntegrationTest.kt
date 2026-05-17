@@ -76,7 +76,7 @@ class RolloutPolicyOpenApiIntegrationTest {
     assertThat(result.response.contentAsString)
         .contains(
             "\"RolloutPolicyValidationRequest\"",
-            "\"RolloutPolicyValidationResult\"",
+            "\"RolloutPolicyValidationResponse\"",
             "\"RolloutPolicyViolation\"",
             "\"Severity\"",
         )
