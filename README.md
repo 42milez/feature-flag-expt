@@ -111,58 +111,78 @@ preserve its current value. Sending an empty `targetEnvironments` or
 
 ### Run on kind
 
-Build the Spring Boot jar before building the Docker image. The Dockerfile
-copies the fixed jar name `feature-flag-platform.jar` from the service build
-output.
+The kind workflow is available through Gradle tasks and matching shell scripts.
+Use Gradle when you want the standard project entry point, or run the scripts
+directly from `scripts/` when you want a smaller shell-only command.
+
+Create the local kind cluster:
 
 ```bash
-kind create cluster --config deploy/kind/cluster.yaml
+./gradlew kindCreate
+# or: scripts/kind-create.sh
+```
 
-./gradlew :service:bootJar
+Build the Spring Boot jar, build the Docker image, and load it into kind. The
+Dockerfile copies the fixed jar name `feature-flag-platform.jar` from the
+service build output.
 
-docker build -t feature-flag-platform:local ./service
-kind load docker-image feature-flag-platform:local --name feature-flag-platform
+```bash
+./gradlew kindLoadImage
+# or: scripts/kind-load-image.sh
 ```
 
 If an existing kind cluster was created before the node configuration changed,
 recreate it so the worker node and labels are applied:
 
 ```bash
-kind delete cluster --name feature-flag-platform
-kind create cluster --config deploy/kind/cluster.yaml
-kubectl get nodes --show-labels
+./gradlew kindRecreate
+# or: scripts/kind-recreate.sh
 ```
 
 The dev overlay generates local database credentials. Preview the rendered
 manifests when you want to inspect the generated Secret and resource set.
 
 ```bash
-kubectl kustomize deploy/k8s/overlays/dev
-kubectl apply -k deploy/k8s/overlays/dev
+./gradlew k8sRenderDev
+./gradlew k8sApplyDev
+# or: scripts/k8s-render-dev.sh
+# or: scripts/k8s-apply-dev.sh
 ```
 
 Wait for PostgreSQL and the application to become ready:
 
 ```bash
-kubectl -n feature-flag-platform rollout status statefulset/feature-flag-postgres
-kubectl -n feature-flag-platform rollout status deployment/feature-flag-platform
+./gradlew k8sWaitDev
+# or: scripts/k8s-wait-dev.sh
 ```
 
 Confirm that the application and PostgreSQL pods are scheduled on the worker
 node:
 
 ```bash
-kubectl -n feature-flag-platform get pods -o wide
+./gradlew k8sStatusDev
+# or: scripts/k8s-status-dev.sh
 ```
 
 Forward the app service and verify the health endpoints:
 
 ```bash
-kubectl -n feature-flag-platform port-forward service/feature-flag-platform 8080:8080
+./gradlew k8sPortForward
+# or: scripts/k8s-port-forward.sh
+```
 
-curl http://localhost:8080/actuator/health
-curl http://localhost:8080/actuator/health/liveness
-curl http://localhost:8080/actuator/health/readiness
+Run the health checks in a separate terminal while port forwarding is active:
+
+```bash
+./gradlew appHealth
+# or: scripts/app-health.sh
+```
+
+Build, load, apply, wait, and show pod status with one command:
+
+```bash
+./gradlew devDeploy
+# or: scripts/dev-deploy.sh
 ```
 
 ## Preview API
