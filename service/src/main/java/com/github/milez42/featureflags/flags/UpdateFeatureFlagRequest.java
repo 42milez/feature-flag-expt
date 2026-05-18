@@ -12,12 +12,17 @@ public record UpdateFeatureFlagRequest(
     @Schema(description = "Updated flag status.", example = "DISABLED") FeatureFlagStatus status,
     @Schema(
             description =
-                "Replacement target environments. Empty input clears target environments.",
+                "Replacement target environments. Omit or send null to preserve the current"
+                    + " value; send an empty array to clear target environments.",
+            nullable = true,
             example = "[\"production\"]")
         Set<Environment> targetEnvironments,
     @Schema(description = "Updated kill switch state.", example = "true") Boolean killSwitchActive,
     @Schema(
-            description = "Replacement tenant allowlist. Empty input clears the allowlist.",
+            description =
+                "Replacement tenant allowlist. Omit or send null to preserve the current value;"
+                    + " send an empty array to clear the allowlist.",
+            nullable = true,
             example = "[\"tenant-a\", \"tenant-b\"]")
         @Size(max = 1000)
         Set<@NotBlank @Size(max = 255) String> tenantAllowlist,

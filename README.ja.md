@@ -90,22 +90,6 @@ http://localhost:8080/swagger-ui.html
 
 仕様の静的スナップショットは [docs/openapi.yaml](docs/openapi.yaml) にコミットされています。
 
-フラグを部分更新する場合、コレクションフィールドを省略するか `null` として送信すると、現在の値が保持されます。空の `targetEnvironments` または `tenantAllowlist` 配列を送信すると、そのコレクションは意図的にクリアされます。
-
-```json
-{
-  "targetEnvironments": null,
-  "tenantAllowlist": null
-}
-```
-
-```json
-{
-  "targetEnvironments": [],
-  "tenantAllowlist": []
-}
-```
-
 ### kind で実行する
 
 kind ワークフローは Gradle タスクと対応するシェルスクリプトから利用できます。

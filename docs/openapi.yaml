@@ -729,9 +729,11 @@ components:
           - DISABLED
           example: DISABLED
         targetEnvironments:
-          type: array
-          description: Replacement target environments. Empty input clears target
-            environments.
+          type:
+          - array
+          - "null"
+          description: Replacement target environments. Omit or send null to preserve
+            the current value; send an empty array to clear target environments.
           example:
           - production
           items:
@@ -746,8 +748,11 @@ components:
           description: Updated kill switch state.
           example: true
         tenantAllowlist:
-          type: array
-          description: Replacement tenant allowlist. Empty input clears the allowlist.
+          type:
+          - array
+          - "null"
+          description: Replacement tenant allowlist. Omit or send null to preserve
+            the current value; send an empty array to clear the allowlist.
           example:
           - tenant-a
           - tenant-b

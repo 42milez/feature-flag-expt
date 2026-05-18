@@ -95,24 +95,6 @@ The raw OpenAPI spec is also available at:
 
 A static snapshot of the spec is committed at [docs/openapi.yaml](docs/openapi.yaml).
 
-For partial flag updates, omit a collection field, or send it as `null`, to
-preserve its current value. Sending an empty `targetEnvironments` or
-`tenantAllowlist` array intentionally clears that collection.
-
-```json
-{
-  "targetEnvironments": null,
-  "tenantAllowlist": null
-}
-```
-
-```json
-{
-  "targetEnvironments": [],
-  "tenantAllowlist": []
-}
-```
-
 ### Run on kind
 
 The kind workflow is available through Gradle tasks and matching shell scripts.
