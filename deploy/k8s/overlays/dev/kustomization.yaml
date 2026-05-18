@@ -1,0 +1,42 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+patches:
+  - target:
+      kind: Deployment
+      name: feature-flag-platform
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: feature-flag-platform
+      spec:
+        template:
+          spec:
+            nodeSelector:
+              node-pool: workloads
+  - target:
+      kind: StatefulSet
+      name: feature-flag-postgres
+    patch: |-
+      apiVersion: apps/v1
+      kind: StatefulSet
+      metadata:
+        name: feature-flag-postgres
+      spec:
+        template:
+          spec:
+            nodeSelector:
+              node-pool: workloads
+generatorOptions:
+  disableNameSuffixHash: true
+secretGenerator:
+  - name: feature-flag-platform-secret
+    namespace: feature-flag-platform
+    # Development-only placeholders. In production, source credentials from an external
+    # secret management service so real secrets are not committed to Git and can be
+    # rotated, audited, and access-controlled independently.
+    literals:
+      - FEATURE_FLAGS_DB_USERNAME=featureflags
+      - FEATURE_FLAGS_DB_PASSWORD=featureflags

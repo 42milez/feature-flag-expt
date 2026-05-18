@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feature-flag-platform
+  namespace: feature-flag-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: feature-flag-platform
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: feature-flag-platform
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h feature-flag-postgres -p 5432 -U "$FEATURE_FLAGS_DB_USERNAME" -d featureflags; do
+                sleep 2
+              done
+          env:
+            - name: FEATURE_FLAGS_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: feature-flag-platform-secret
+                  key: FEATURE_FLAGS_DB_USERNAME
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 70
+            runAsGroup: 70
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+      containers:
+        - name: app
+          image: feature-flag-platform:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: FEATURE_FLAGS_DB_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: feature-flag-platform-config
+                  key: FEATURE_FLAGS_DB_URL
+            - name: FEATURE_FLAGS_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: feature-flag-platform-secret
+                  key: FEATURE_FLAGS_DB_USERNAME
+            - name: FEATURE_FLAGS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: feature-flag-platform-secret
+                  key: FEATURE_FLAGS_DB_PASSWORD
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            failureThreshold: 30
+            periodSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 128Mi

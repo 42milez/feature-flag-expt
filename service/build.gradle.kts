@@ -7,6 +7,7 @@ plugins {
 }
 
 dependencies {
+  implementation(libs.spring.boot.starter.actuator)
   implementation(libs.spring.boot.starter.data.jdbc)
   implementation(libs.spring.boot.starter.validation)
   implementation(libs.spring.boot.starter.web)
@@ -42,4 +43,8 @@ tasks.named("forkedSpringBootStop") {
   notCompatibleWithConfigurationCache(
       "springdoc-openapi-gradle-plugin stop task captures task instances"
   )
+}
+
+tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
+  archiveFileName.set("feature-flag-platform.jar")
 }

@@ -9,3 +9,19 @@ spring:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
+      validate-group-membership: false
+  endpoints:
+    web:
+      exposure:
+        include: health

@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - platform/namespace.yaml
+  - app/configmap.yaml
+  - app/deployment.yaml
+  - app/service.yaml
+  - database/postgres-service.yaml
+  - database/postgres-statefulset.yaml

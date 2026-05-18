@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: feature-flag-platform
+  namespace: feature-flag-platform
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: feature-flag-platform

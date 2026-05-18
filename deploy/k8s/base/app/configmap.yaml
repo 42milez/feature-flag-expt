@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-flag-platform-config
+  namespace: feature-flag-platform
+data:
+  FEATURE_FLAGS_DB_URL: jdbc:postgresql://feature-flag-postgres:5432/featureflags

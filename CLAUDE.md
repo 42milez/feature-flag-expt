@@ -47,5 +47,9 @@ Format for each entry (add under the relevant category heading, creating the hea
 - **[API / Framework contract]** Convert Java-side domain models, validation result records, and
   persistence entities into Kotlin `*Response` DTOs before generating API responses. OpenAPI
   response schemas should reference the public response DTO, not the internal Java model.
+- **[API / Framework contract]** If an Actuator health group references a contributor that can be
+  absent in some application contexts, such as `db` when a test excludes `DataSource`
+  auto-configuration, disable group membership validation or move that group configuration behind a
+  profile so Spring Boot can start consistently.
 - **[Testability]** Build test request JSON with `ObjectMapper` when values are supplied through
   variables, so escaping stays correct and helpers do not become fragile string templates.

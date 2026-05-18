@@ -109,6 +109,62 @@ preserve its current value. Sending an empty `targetEnvironments` or
 }
 ```
 
+### Run on kind
+
+Build the Spring Boot jar before building the Docker image. The Dockerfile
+copies the fixed jar name `feature-flag-platform.jar` from the service build
+output.
+
+```bash
+kind create cluster --config deploy/kind/cluster.yaml
+
+./gradlew :service:bootJar
+
+docker build -t feature-flag-platform:local ./service
+kind load docker-image feature-flag-platform:local --name feature-flag-platform
+```
+
+If an existing kind cluster was created before the node configuration changed,
+recreate it so the worker node and labels are applied:
+
+```bash
+kind delete cluster --name feature-flag-platform
+kind create cluster --config deploy/kind/cluster.yaml
+kubectl get nodes --show-labels
+```
+
+The dev overlay generates local database credentials. Preview the rendered
+manifests when you want to inspect the generated Secret and resource set.
+
+```bash
+kubectl kustomize deploy/k8s/overlays/dev
+kubectl apply -k deploy/k8s/overlays/dev
+```
+
+Wait for PostgreSQL and the application to become ready:
+
+```bash
+kubectl -n feature-flag-platform rollout status statefulset/feature-flag-postgres
+kubectl -n feature-flag-platform rollout status deployment/feature-flag-platform
+```
+
+Confirm that the application and PostgreSQL pods are scheduled on the worker
+node:
+
+```bash
+kubectl -n feature-flag-platform get pods -o wide
+```
+
+Forward the app service and verify the health endpoints:
+
+```bash
+kubectl -n feature-flag-platform port-forward service/feature-flag-platform 8080:8080
+
+curl http://localhost:8080/actuator/health
+curl http://localhost:8080/actuator/health/liveness
+curl http://localhost:8080/actuator/health/readiness
+```
+
 ## Preview API
 
 The preview endpoint evaluates a proposed feature flag change without saving it
