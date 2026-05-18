@@ -143,6 +143,13 @@ recreate it so the worker node and labels are applied:
 # or: scripts/kind-recreate.sh
 ```
 
+Delete the local kind cluster when it is no longer needed:
+
+```bash
+./gradlew kindDelete
+# or: scripts/kind-delete.sh
+```
+
 The dev overlay generates local database credentials. Preview the rendered
 manifests when you want to inspect the generated Secret and resource set.
 

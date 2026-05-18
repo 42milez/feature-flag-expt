@@ -106,6 +106,89 @@ http://localhost:8080/swagger-ui.html
 }
 ```
 
+### kind で実行する
+
+kind ワークフローは Gradle タスクと対応するシェルスクリプトから利用できます。
+標準のプロジェクトエントリポイントを使いたい場合は Gradle を使い、より小さな
+シェルのみのコマンドを使いたい場合は `scripts/` 配下のスクリプトを直接実行します。
+
+ローカル kind クラスターを作成します。
+
+```bash
+./gradlew kindCreate
+# or: scripts/kind-create.sh
+```
+
+Spring Boot jar をビルドし、Docker イメージをビルドして kind にロードします。
+Dockerfile は、service のビルド出力から固定 jar 名
+`feature-flag-platform.jar` をコピーします。
+
+```bash
+./gradlew kindLoadImage
+# or: scripts/kind-load-image.sh
+```
+
+既存の kind クラスターがノード設定の変更前に作成されていた場合は、worker ノードと
+ラベルが適用されるように再作成します。
+
+```bash
+./gradlew kindRecreate
+# or: scripts/kind-recreate.sh
+```
+
+不要になったローカル kind クラスターを削除します。
+
+```bash
+./gradlew kindDelete
+# or: scripts/kind-delete.sh
+```
+
+dev overlay はローカルデータベース認証情報を生成します。生成された Secret と
+リソースセットを確認したい場合は、レンダリングされた manifest をプレビューします。
+
+```bash
+./gradlew k8sRenderDev
+./gradlew k8sApplyDev
+# or: scripts/k8s-render-dev.sh
+# or: scripts/k8s-apply-dev.sh
+```
+
+PostgreSQL とアプリケーションが ready になるまで待ちます。
+
+```bash
+./gradlew k8sWaitDev
+# or: scripts/k8s-wait-dev.sh
+```
+
+アプリケーションと PostgreSQL の Pod が worker ノードにスケジュールされていることを
+確認します。
+
+```bash
+./gradlew k8sStatusDev
+# or: scripts/k8s-status-dev.sh
+```
+
+アプリの Service をポートフォワードし、health endpoint を確認します。
+
+```bash
+./gradlew k8sPortForward
+# or: scripts/k8s-port-forward.sh
+```
+
+ポートフォワードが有効な間に、別のターミナルで health check を実行します。
+
+```bash
+./gradlew appHealth
+# or: scripts/app-health.sh
+```
+
+ビルド、ロード、適用、待機、Pod ステータスの表示を 1 つのコマンドで実行します。
+
+```bash
+./gradlew devDeploy
+# or: scripts/dev-deploy.sh
+```
+
 ## プレビュー API
 
 プレビューエンドポイントは、提案されたフィーチャーフラグの変更を保存せず、監査イベントも書き込まずに評価します。
