@@ -196,21 +196,6 @@ Build, load, apply, wait, and show pod status with one command:
 # or: scripts/dev-deploy.sh
 ```
 
-## Preview API
-
-The preview endpoint evaluates a proposed feature flag change without saving it
-or writing audit events:
-
-```http
-POST /api/flags/{flagKey}/preview
-```
-
-Preview is implemented in Kotlin because immutable data classes are a compact
-fit for nested request/response models, per-sample diffs, and summary
-aggregation. The persisted domain model, repository flow, audit behavior, and
-core `FeatureFlagEvaluator` remain in Java so the production evaluation path
-stays shared.
-
 ## Static Analysis
 
 ### Check formatting (Spotless)
