@@ -5,19 +5,23 @@ English | [日本語](README.ja.md)
 ## Overview
 
 feature-flag-expt is a Spring Boot service for managing and evaluating feature
-flags. It exposes REST APIs to create, read, update, evaluate, preview, and audit
-flags.
+flags. It exposes REST APIs to create, read, update, evaluate, preview, validate
+proposed rollout changes, and audit flags.
 
 Flags can be targeted by environment, controlled with an emergency kill switch,
 allowlisted by tenant, and rolled out deterministically by percentage using a
 stable bucket derived from the flag key and tenant or user identity. Updates are
 persisted to PostgreSQL through Spring Data JDBC, and state changes are recorded
-as audit events.
+as audit events. Rollout policy validation is enforced on updates and can also
+be run ahead of time to catch unsafe production rollout changes before saving
+them.
 
 Most of the production flag domain, persistence flow, audit behavior, and core
 evaluator are implemented in Java. The preview API is implemented in Kotlin to
 model proposed changes, per-sample diffs, and summary output without saving the
-change or writing audit events.
+change or writing audit events. The rollout policy API/service also uses Kotlin
+for the proposed-change request flow, while the reusable policy validator remains
+in Java and is shared with the production update path.
 
 ## Running the Service
 
