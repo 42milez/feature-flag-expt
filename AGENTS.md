@@ -1,7 +1,7 @@
 # Project Instructions
 
 - All written content — source code comments, documentation (README.md, etc.), and any other text artifacts — must be in English.
-- After completing any implementation task, run the following checks in order and confirm all pass before reporting the task as done. **Skip these checks if the only files changed are under `docs/` (e.g., ADRs in `docs/decisions/`).**
+- After completing any implementation task, run the following checks in order and confirm all pass before reporting the task as done. **Skip these checks if the only files changed are under `docs/` (e.g., ADRs in `docs/decisions/`), under `.agents/` (e.g., local agent skills), or `AGENTS.md` itself.**
   1. `./gradlew :service:spotlessCheck` — formatting
   2. `./gradlew :service:compileJava` — static analysis (Error Prone)
   3. `./gradlew :service:test` — full test suite
