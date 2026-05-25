@@ -23,6 +23,20 @@ change or writing audit events. The rollout policy API/service also uses Kotlin
 for the proposed-change request flow, while the reusable policy validator remains
 in Java and is shared with the production update path.
 
+## Continuous Integration
+
+GitHub Actions uses two workflows:
+
+| Workflow | Trigger | Coverage |
+|---|---|---|
+| `CI` | Pull requests and manual dispatches | Formatting, Error Prone compilation, unit tests, and Testcontainers-backed integration tests |
+| `Kind Smoke Test` | Daily at 18:00 UTC, which is 03:00 JST, and manual dispatches | Spring Boot jar packaging, service Docker image buildability, and Kubernetes manifest startup verification in a kind cluster |
+
+Docker Compose is intentionally not provided. kind is used to validate
+Kubernetes manifests in local and scheduled smoke-test environments. Integration
+tests requiring a database are executed with Testcontainers, which keeps
+external dependencies managed by the test code.
+
 ## Running the Service
 
 ### Prerequisites
