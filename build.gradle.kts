@@ -32,9 +32,13 @@ registerScriptTask(
     "k8sWaitDev",
     "k8s-wait-dev.sh",
     "Wait for the dev PostgreSQL StatefulSet and application Deployment.",
-)
+) {
+  mustRunAfter("k8sApplyDev")
+}
 
-registerScriptTask("k8sStatusDev", "k8s-status-dev.sh", "Show dev pod placement and status.")
+registerScriptTask("k8sStatusDev", "k8s-status-dev.sh", "Show dev pod placement and status.") {
+  mustRunAfter("k8sApplyDev", "k8sWaitDev")
+}
 
 registerScriptTask(
     "k8sPortForward",
