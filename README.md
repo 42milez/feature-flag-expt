@@ -37,6 +37,11 @@ Kubernetes manifests in local and scheduled smoke-test environments. Integration
 tests requiring a database are executed with Testcontainers, which keeps
 external dependencies managed by the test code.
 
+The Kubernetes `base` layer defines the application workload and service
+contract. The `dev` overlay adds the local kind dependencies: in-cluster
+PostgreSQL, local database configuration, placeholder credentials, and the local
+image tag used by `kind load`.
+
 ## Running the Service
 
 ### Prerequisites
@@ -146,8 +151,9 @@ Delete the local kind cluster when it is no longer needed:
 # or: scripts/kind-delete.sh
 ```
 
-The dev overlay generates local database credentials. Preview the rendered
-manifests when you want to inspect the generated Secret and resource set.
+The dev overlay provides local PostgreSQL, the local database URL, placeholder
+database credentials, and the local image tag. Preview the rendered manifests
+when you want to inspect the generated ConfigMap, Secret, and resource set.
 
 ```bash
 ./gradlew k8sRenderDev

@@ -13,34 +13,9 @@ spec:
       labels:
         app.kubernetes.io/name: feature-flag-platform
     spec:
-      initContainers:
-        - name: wait-for-postgres
-          image: postgres:16-alpine
-          imagePullPolicy: IfNotPresent
-          command:
-            - sh
-            - -c
-            - |
-              until pg_isready -h feature-flag-postgres -p 5432 -U "$FEATURE_FLAGS_DB_USERNAME" -d featureflags; do
-                sleep 2
-              done
-          env:
-            - name: FEATURE_FLAGS_DB_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: feature-flag-platform-secret
-                  key: FEATURE_FLAGS_DB_USERNAME
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 70
-            runAsGroup: 70
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            seccompProfile:
-              type: RuntimeDefault
       containers:
         - name: app
-          image: feature-flag-platform:local
+          image: feature-flag-platform:REPLACE_ME
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

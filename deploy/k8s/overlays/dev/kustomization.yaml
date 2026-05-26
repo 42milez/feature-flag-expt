@@ -2,7 +2,13 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../base
+  - database/postgres-service.yaml
+  - database/postgres-statefulset.yaml
+images:
+  - name: feature-flag-platform
+    newTag: local
 patches:
+  - path: patches/add-wait-for-postgres.yaml
   - target:
       kind: Deployment
       name: feature-flag-platform
@@ -31,6 +37,11 @@ patches:
               node-pool: workloads
 generatorOptions:
   disableNameSuffixHash: true
+configMapGenerator:
+  - name: feature-flag-platform-config
+    namespace: feature-flag-platform
+    literals:
+      - FEATURE_FLAGS_DB_URL=jdbc:postgresql://feature-flag-postgres:5432/featureflags
 secretGenerator:
   - name: feature-flag-platform-secret
     namespace: feature-flag-platform
