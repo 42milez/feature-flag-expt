@@ -4,35 +4,44 @@ import com.github.milez42.featureflags.audit.AuditEventDetails;
 import com.github.milez42.featureflags.audit.AuditEventResponse;
 import com.github.milez42.featureflags.audit.AuditEventService;
 import com.github.milez42.featureflags.audit.AuditEventType;
+import com.github.milez42.featureflags.observability.FeatureFlagMetrics;
 import com.github.milez42.featureflags.policy.RolloutPolicyContext;
 import com.github.milez42.featureflags.policy.RolloutPolicyValidationResult;
 import com.github.milez42.featureflags.policy.RolloutPolicyValidator;
 import com.github.milez42.featureflags.policy.RolloutPolicyViolationException;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class FeatureFlagService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(FeatureFlagService.class);
+
   private final FeatureFlagRepository repository;
   private final FeatureFlagEvaluator evaluator;
   private final RolloutPolicyValidator rolloutPolicyValidator;
   private final AuditEventService auditEventService;
+  private final FeatureFlagMetrics metrics;
 
   public FeatureFlagService(
       FeatureFlagRepository repository,
       FeatureFlagEvaluator evaluator,
       RolloutPolicyValidator rolloutPolicyValidator,
-      AuditEventService auditEventService) {
+      AuditEventService auditEventService,
+      FeatureFlagMetrics metrics) {
     this.repository = repository;
     this.evaluator = evaluator;
     this.rolloutPolicyValidator = rolloutPolicyValidator;
     this.auditEventService = auditEventService;
+    this.metrics = metrics;
   }
 
   @Transactional
@@ -117,6 +126,12 @@ public class FeatureFlagService {
 
     FeatureFlagEntity saved = repository.save(updated);
     recordUpdateEvents(existing, saved);
+    metrics.recordUpdate(saved.flagKey());
+    logUpdate(existing, saved);
+    if (!existing.killSwitchActive() && saved.killSwitchActive()) {
+      metrics.recordKillSwitchEnabled(saved.flagKey());
+      logKillSwitchEnabled(saved);
+    }
 
     return toResponse(saved);
   }
@@ -124,13 +139,14 @@ public class FeatureFlagService {
   @Transactional(readOnly = true)
   public EvaluateFeatureFlagResponse evaluate(EvaluateFeatureFlagRequest request) {
     FeatureFlagEntity entity = findEntity(request.flagKey());
+    String environment = normalizeRequired(request.environment(), "environment");
+    String tenantId = normalizeOptional(request.tenantId());
     EvaluationResult result =
         evaluator.evaluate(
             toDomain(entity),
-            new EvaluationContext(
-                normalizeRequired(request.environment(), "environment"),
-                normalizeOptional(request.tenantId()),
-                normalizeOptional(request.userId())));
+            new EvaluationContext(environment, tenantId, normalizeOptional(request.userId())));
+    metrics.recordEvaluation(entity.flagKey(), environment, result.enabled(), result.reason());
+    logEvaluation(entity.flagKey(), environment, tenantId, result);
 
     return new EvaluateFeatureFlagResponse(
         entity.flagKey(), result.enabled(), result.reason(), result.bucket());
@@ -231,6 +247,57 @@ public class FeatureFlagService {
                 "killSwitchActive", existing.killSwitchActive(), updated.killSwitchActive()));
       }
     }
+  }
+
+  private void logEvaluation(
+      String flagKey, String environment, String tenantId, EvaluationResult result) {
+    LOGGER
+        .atInfo()
+        .addKeyValue("event", "feature_flag_evaluated")
+        .addKeyValue("flagKey", flagKey)
+        .addKeyValue("environment", environment)
+        .addKeyValue("tenantId", tenantId)
+        .addKeyValue("enabled", result.enabled())
+        .addKeyValue("reason", result.reason())
+        .addKeyValue("bucket", result.bucket())
+        .log("feature flag evaluated");
+  }
+
+  private void logUpdate(FeatureFlagEntity existing, FeatureFlagEntity updated) {
+    LOGGER
+        .atInfo()
+        .addKeyValue("event", "feature_flag_updated")
+        .addKeyValue("flagKey", updated.flagKey())
+        .addKeyValue("changedFields", changedFields(existing, updated))
+        .log("feature flag updated");
+  }
+
+  private void logKillSwitchEnabled(FeatureFlagEntity updated) {
+    LOGGER
+        .atInfo()
+        .addKeyValue("event", "feature_flag_kill_switch_enabled")
+        .addKeyValue("flagKey", updated.flagKey())
+        .log("feature flag kill switch enabled");
+  }
+
+  private List<String> changedFields(FeatureFlagEntity existing, FeatureFlagEntity updated) {
+    List<String> changedFields = new ArrayList<>();
+    if (existing.status() != updated.status()) {
+      changedFields.add("status");
+    }
+    if (existing.rolloutPercentage() != updated.rolloutPercentage()) {
+      changedFields.add("rolloutPercentage");
+    }
+    if (!targetEnvironmentValues(existing).equals(targetEnvironmentValues(updated))) {
+      changedFields.add("targetEnvironments");
+    }
+    if (!tenantAllowlistValues(existing).equals(tenantAllowlistValues(updated))) {
+      changedFields.add("tenantAllowlist");
+    }
+    if (existing.killSwitchActive() != updated.killSwitchActive()) {
+      changedFields.add("killSwitchActive");
+    }
+    return List.copyOf(changedFields);
   }
 
   private Set<String> targetEnvironmentValues(FeatureFlagEntity entity) {

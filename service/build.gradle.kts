@@ -17,6 +17,7 @@ dependencies {
   implementation(libs.flyway.core)
   implementation(libs.flyway.database.postgresql)
   developmentOnly(libs.h2)
+  runtimeOnly(libs.micrometer.registry.prometheus)
   runtimeOnly(libs.postgresql)
   testImplementation(libs.mockk)
   testImplementation(libs.spring.boot.starter.test)

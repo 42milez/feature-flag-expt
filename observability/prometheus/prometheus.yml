@@ -1,0 +1,58 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Direct local scrape for a developer running:
+  #   ./gradlew :service:bootRun
+  #
+  # This job does not use Kubernetes annotations. If the app is running in kind,
+  # use kubectl port-forward or ./gradlew k8sPortForward and keep this target.
+  - job_name: feature-flag-platform-local
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - localhost:8080
+
+  # Kubernetes pod discovery example. This is documentation/sample
+  # configuration; it is not wired into the repository deployment flow.
+  #
+  # This job requires Prometheus to run with Kubernetes API access and suitable
+  # RBAC. The pod annotations in deploy/k8s/base/app/deployment.yaml are only
+  # discovery hints. They do not provide access control and they only work when
+  # Prometheus is configured with relabeling rules like the rules below.
+  - job_name: feature-flag-platform-pods
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - feature-flag-platform
+    relabel_configs:
+      - source_labels:
+          - __meta_kubernetes_pod_annotation_prometheus_io_scrape
+        action: keep
+        regex: "true"
+      - source_labels:
+          - __meta_kubernetes_pod_annotation_prometheus_io_path
+        action: replace
+        target_label: __metrics_path__
+        regex: "(.+)"
+      - source_labels:
+          - __address__
+          - __meta_kubernetes_pod_annotation_prometheus_io_port
+        action: replace
+        target_label: __address__
+        regex: "([^:]+)(?::\\d+)?;(\\d+)"
+        replacement: "$1:$2"
+      - source_labels:
+          - __meta_kubernetes_namespace
+        action: replace
+        target_label: namespace
+      - source_labels:
+          - __meta_kubernetes_pod_name
+        action: replace
+        target_label: pod
+      - source_labels:
+          - __meta_kubernetes_pod_label_app_kubernetes_io_name
+        action: replace
+        target_label: app

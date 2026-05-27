@@ -1,4 +1,6 @@
 spring:
+  application:
+    name: feature-flag-platform
   datasource:
     url: ${FEATURE_FLAGS_DB_URL:jdbc:postgresql://localhost:5432/featureflags}
     username: ${FEATURE_FLAGS_DB_USERNAME:featureflags}
@@ -24,4 +26,9 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,prometheus
+
+logging:
+  structured:
+    format:
+      console: ecs

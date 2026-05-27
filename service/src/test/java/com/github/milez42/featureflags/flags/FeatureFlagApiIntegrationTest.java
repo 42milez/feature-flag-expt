@@ -15,6 +15,7 @@ import com.github.milez42.featureflags.audit.AuditEventDetails;
 import com.github.milez42.featureflags.audit.AuditEventRepository;
 import com.github.milez42.featureflags.audit.AuditEventType;
 import com.github.milez42.featureflags.support.PostgreSqlIntegrationTest;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -589,6 +590,59 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
     assertThat(auditEventRepository.findByFlagKey("checkout-redesign"))
         .extracting(AuditEvent::eventType)
         .containsExactly(AuditEventType.FLAG_CREATED);
+  }
+
+  @Test
+  void prometheusEndpointExposesFeatureFlagMetrics() throws Exception {
+    createFlag("metrics-flag", "ENABLED", Set.of("staging"), false, Set.of("tenant-a"), 100);
+
+    mockMvc
+        .perform(
+            post("/api/evaluate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "flagKey": "metrics-flag",
+                                  "environment": "staging",
+                                  "tenantId": "tenant-a"
+                                }
+                                """))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(
+            patch("/api/flags/metrics-flag")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "killSwitchActive": true
+                                }
+                                """))
+        .andExpect(status().isOk());
+
+    MvcResult result =
+        mockMvc.perform(get("/actuator/prometheus")).andExpect(status().isOk()).andReturn();
+    String metrics = result.getResponse().getContentAsString();
+
+    assertPrometheusSample(
+        metrics,
+        "feature_flag_evaluation_total",
+        1.0,
+        "flag_key=\"metrics-flag\"",
+        "environment=\"staging\"",
+        "reason=\"TENANT_ALLOWLIST_MATCH\"");
+    assertPrometheusSample(
+        metrics,
+        "feature_flag_evaluation_enabled_total",
+        1.0,
+        "flag_key=\"metrics-flag\"",
+        "environment=\"staging\"",
+        "reason=\"TENANT_ALLOWLIST_MATCH\"");
+    assertPrometheusSample(metrics, "feature_flag_update_total", 1.0, "flag_key=\"metrics-flag\"");
+    assertPrometheusSample(
+        metrics, "feature_flag_kill_switch_enabled_total", 1.0, "flag_key=\"metrics-flag\"");
   }
 
   @Test
@@ -1220,6 +1274,23 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
 
   private static String longString(int length) {
     return "a".repeat(length);
+  }
+
+  private static void assertPrometheusSample(
+      String metrics, String metricName, double value, String... expectedLabels) {
+    List<String> samples =
+        metrics
+            .lines()
+            .filter(line -> !line.startsWith("#"))
+            .filter(line -> line.startsWith(metricName + "{") || line.startsWith(metricName + " "))
+            .toList();
+
+    assertThat(samples)
+        .anySatisfy(
+            sample -> {
+              assertThat(sample).contains(expectedLabels);
+              assertThat(sample).endsWith(" " + value);
+            });
   }
 
   /** Creates a checkout flag with production targeting and an inactive kill switch. */

@@ -37,4 +37,9 @@ class ActuatorHealthIntegrationTest extends PostgreSqlIntegrationTest {
   void readinessEndpointReturnsOk() throws Exception {
     mockMvc.perform(get("/actuator/health/readiness")).andExpect(status().isOk());
   }
+
+  @Test
+  void prometheusEndpointReturnsOk() throws Exception {
+    mockMvc.perform(get("/actuator/prometheus")).andExpect(status().isOk());
+  }
 }
