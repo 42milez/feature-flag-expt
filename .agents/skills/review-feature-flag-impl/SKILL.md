@@ -131,6 +131,7 @@ complete.
 
 ## Output Format
 
+- Write the response in Japanese.
 - Start with actionable findings, ordered by severity.
 - For each finding, include the file and line, the affected behavior, the risk, and the requested
   fix.
