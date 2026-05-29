@@ -1,5 +1,5 @@
 ---
-name: review-feature-flag-impl
+name: review-feature-flag-security
 description: Review Java and Kotlin files under a supplied file or directory path for Feature Flag attack-surface risks, with findings grounded in the implementation and surrounding context.
 ---
 
