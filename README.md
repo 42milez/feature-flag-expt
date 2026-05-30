@@ -128,8 +128,7 @@ A static snapshot of the spec is committed at [docs/openapi.yaml](docs/openapi.y
 Actuator health and Prometheus metrics are exposed for local and
 cluster-internal operations. See [docs/observability.md](docs/observability.md)
 for metric names, structured logging, Prometheus and Grafana artifacts, and
-Actuator access-control expectations. See [docs/runbook.md](docs/runbook.md)
-for incident-oriented metric interpretation.
+Actuator access-control expectations.
 
 ### Run on kind
 

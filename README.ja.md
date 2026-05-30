@@ -121,8 +121,7 @@ http://localhost:8080/swagger-ui.html
 Actuator health と Prometheus metrics は、local および cluster-internal operation 向けに
 公開されています。metric name、structured logging、Prometheus と Grafana の artifact、
 Actuator access-control の期待値については [docs/observability.md](docs/observability.md)
-を参照してください。incident-oriented な metric interpretation については
-[docs/runbook.md](docs/runbook.md) を参照してください。
+を参照してください。
 
 ### kind で実行する
 

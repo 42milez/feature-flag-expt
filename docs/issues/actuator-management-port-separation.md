@@ -159,4 +159,3 @@ needs to prove the business listener is reachable.
 - [`application.yaml`](../../service/src/main/resources/application.yaml)
 - [`deployment.yaml`](../../deploy/k8s/base/app/deployment.yaml)
 - [`observability.md`](../observability.md)
-- [`runbook.md`](../runbook.md)
