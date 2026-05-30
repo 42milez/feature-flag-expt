@@ -79,8 +79,9 @@ NetworkPolicy, ingress, TLS, IAM, or cloud-managed dependencies.
   server rather than only rendered or linted.
 * Good, because the repository can demonstrate Platform Engineering, CI/CD, and
   Kubernetes deployment practices without provisioning cloud infrastructure.
-* Good, because Docker Compose remains unnecessary for the main local runtime;
-  database-focused integration tests are handled by Testcontainers.
+* Good, because kind covers Kubernetes deployment validation without adding
+  Docker Compose as a second local runtime; database-dependent application tests
+  remain covered by Testcontainers.
 * Bad, because kind does not reproduce cloud-provider integrations, managed load
   balancers, persistent volume behavior, IAM integration, production network
   policies, or production secret-management controls.
