@@ -296,7 +296,7 @@ public class FeatureFlagService {
     if (existing.killSwitchActive() != updated.killSwitchActive()) {
       changedFields.add("killSwitchActive");
     }
-    return List.copyOf(changedFields);
+    return changedFields;
   }
 
   private Set<String> targetEnvironmentValues(FeatureFlagEntity entity) {
