@@ -2,6 +2,8 @@
 .gradle/
 .kotlin/
 build/
+build-logic/bin/
+service/bin/
 
 # Compiled class files
 *.class
