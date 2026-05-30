@@ -141,10 +141,9 @@ public class FeatureFlagService {
     FeatureFlagEntity entity = findEntity(request.flagKey());
     String environment = normalizeRequired(request.environment(), "environment");
     String tenantId = normalizeOptional(request.tenantId());
+    String userId = normalizeOptional(request.userId());
     EvaluationResult result =
-        evaluator.evaluate(
-            toDomain(entity),
-            new EvaluationContext(environment, tenantId, normalizeOptional(request.userId())));
+        evaluator.evaluate(toDomain(entity), new EvaluationContext(environment, tenantId, userId));
     metrics.recordEvaluation(entity.flagKey(), environment, result.enabled(), result.reason());
     logEvaluation(entity.flagKey(), environment, tenantId, result);
 
