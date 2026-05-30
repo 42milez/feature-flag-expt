@@ -35,7 +35,9 @@ GitHub Actions uses two workflows:
 Docker Compose is intentionally not provided. kind is used to validate
 Kubernetes manifests in local and scheduled smoke-test environments. Integration
 tests requiring a database are executed with Testcontainers, which keeps
-external dependencies managed by the test code.
+external dependencies managed by the test code. See
+[ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md)
+for the local Kubernetes decision.
 
 The Kubernetes `base` layer defines the application workload and service
 contract. The `dev` overlay adds the local kind dependencies: in-cluster

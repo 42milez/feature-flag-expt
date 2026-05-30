@@ -35,7 +35,9 @@ GitHub Actions は 2 つの workflow を使用します。
 Docker Compose は意図的に提供していません。kind は local および scheduled
 smoke-test 環境で Kubernetes manifest を検証するために使います。データベースを
 必要とする integration test は Testcontainers で実行し、外部依存関係を test code
-によって管理します。
+によって管理します。local Kubernetes の判断については
+[ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md)
+を参照してください。
 
 Kubernetes の `base` layer は application workload と service contract を定義します。
 `dev` overlay は local kind 用の依存関係として、cluster 内 PostgreSQL、local database
