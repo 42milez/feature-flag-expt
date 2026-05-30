@@ -40,7 +40,9 @@ environments, while database-dependent integration tests run with
 Testcontainers and keep external dependencies managed by the test code. The
 local Kubernetes stack favors a simple validation flow shared with CI and
 behavior close to standard Kubernetes over the smallest possible
-single-developer local Kubernetes experience. See
+single-developer local Kubernetes experience. This choice is intentional for a
+portfolio project: it keeps the local setup small while still demonstrating
+CI/CD and Kubernetes deployment practices. See
 [ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md)
 for the local Kubernetes decision.
 
