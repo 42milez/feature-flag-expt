@@ -32,10 +32,14 @@ GitHub Actions は 2 つの workflow を使用します。
 | `CI` | Pull request と手動実行 | フォーマット、Error Prone によるコンパイル、unit test、Testcontainers を使った integration test |
 | `Kind Smoke Test` | 毎日 18:00 UTC（03:00 JST）と手動実行 | Spring Boot jar の packaging、service Docker image の buildability、kind cluster での Kubernetes manifest 起動検証 |
 
-Docker Compose は意図的に提供していません。kind は local および scheduled
-smoke-test 環境で Kubernetes manifest を検証するために使います。データベースを
-必要とする integration test は Testcontainers で実行し、外部依存関係を test code
-によって管理します。local Kubernetes の判断については
+Docker Compose は main local runtime として意図的に提供していません。Docker Compose
+では Kubernetes manifest、service discovery、probe、deployment configuration、
+`kubectl apply` workflow を検証できないためです。代わりに kind を使って、local および
+scheduled smoke-test 環境で Kubernetes deployment path を検証します。データベースを
+必要とする integration test は Testcontainers で実行し、外部依存関係を test code によって
+管理します。local Kubernetes stack では、最小・最軽量の単一開発者向け local Kubernetes
+体験よりも、CI と共有できるシンプルな検証フローと標準的な Kubernetes に近い挙動の
+バランスを優先しています。local Kubernetes の判断については
 [ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md)
 を参照してください。
 

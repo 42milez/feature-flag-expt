@@ -32,10 +32,15 @@ GitHub Actions uses two workflows:
 | `CI` | Pull requests and manual dispatches | Formatting, Error Prone compilation, unit tests, and Testcontainers-backed integration tests |
 | `Kind Smoke Test` | Daily at 18:00 UTC, which is 03:00 JST, and manual dispatches | Spring Boot jar packaging, service Docker image buildability, and Kubernetes manifest startup verification in a kind cluster |
 
-Docker Compose is intentionally not provided. kind is used to validate
-Kubernetes manifests in local and scheduled smoke-test environments. Integration
-tests requiring a database are executed with Testcontainers, which keeps
-external dependencies managed by the test code. See
+Docker Compose is intentionally not provided as the main local runtime because
+it would not validate Kubernetes manifests, service discovery, probes,
+deployment configuration, or the `kubectl apply` workflow. Instead, kind is used
+to validate the Kubernetes deployment path in local and scheduled smoke-test
+environments, while database-dependent integration tests run with
+Testcontainers and keep external dependencies managed by the test code. The
+local Kubernetes stack favors a simple validation flow shared with CI and
+behavior close to standard Kubernetes over the smallest possible
+single-developer local Kubernetes experience. See
 [ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md)
 for the local Kubernetes decision.
 
