@@ -12,6 +12,18 @@ item should be judged as **Pass**, **Needs justification**, or **Fail**. A
 "Needs justification" result is acceptable when the implementation documents the
 trade-off and the risk is proportionate to the project stage.
 
+## Applying The Checklist By Flag Category
+
+Not every item has the same weight for every flag. Use the flag category to
+decide how much evidence is needed before accepting "Needs justification."
+
+| Category | Strongest review focus |
+|---|---|
+| Release | Short lifetime, simple decision points, safe defaults, cleanup, and limited rule complexity. |
+| Experiment | Stable cohort assignment, metrics integrity, mutually exclusive or intentionally overlapping experiments, and privacy-safe context. |
+| Ops | Fast dynamic control, kill-switch reliability, auditability, low-latency evaluation, and clear fail-open/fail-closed behavior. |
+| Permissioning/Entitlement | Server-side authorization, tenant isolation, fail-closed behavior, durable audit, and tests that call protected APIs directly. |
+
 ## References
 
 - [OpenFeature](https://openfeature.dev/) for vendor-neutral Feature Flag API
@@ -22,6 +34,10 @@ trade-off and the risk is proportionate to the project stage.
   for typed evaluation, defaults, error behavior, and result metadata.
 - [OpenFeature evaluation context](https://openfeature.dev/docs/reference/concepts/evaluation-context/)
   for targeting context and privacy considerations.
+- [OpenFeature SDK paradigms](https://openfeature.dev/docs/reference/concepts/sdk-paradigms/)
+  for dynamic server-side context and static client-side context differences.
+- [OpenFeature events](https://openfeature.dev/specification/sections/events/)
+  for provider readiness, configuration-change, error, and stale-state events.
 - [Feature Toggles](https://martinfowler.com/articles/feature-toggles.html) for
   toggle categories, lifetime, decision isolation, and operational trade-offs.
 
@@ -34,6 +50,8 @@ trade-off and the risk is proportionate to the project stage.
 | Flags are categorized by purpose. | Each flag is classified as Release, Experiment, Ops, or Permissioning/Entitlement. |
 | Category drives governance. | Lifetime, owner, default behavior, cleanup policy, and required approval differ by category. |
 | Release flags stay short-lived. | Release flags have expected removal dates and are not treated as permanent configuration. |
+| Experiment cohorts are stable. | A subject receives consistent treatment for the experiment duration unless explicitly re-bucketed. |
+| Experiment interactions are controlled. | Concurrent experiments are mutually exclusive or their overlap is intentionally modeled and measurable. |
 | Long-lived flags receive stronger controls. | Ops and Permissioning flags have explicit ownership, audit, fallback, and authorization requirements. |
 
 Review notes:
@@ -52,6 +70,7 @@ Review notes:
 | Provider failure is contained. | Missing flags, type mismatch, malformed config, timeout, and provider errors do not crash ordinary application paths. |
 | Results are diagnosable. | Evaluation output or telemetry includes flag key, value or variant, reason, and error state when applicable. |
 | Evaluation can be called on hot paths. | The design avoids blocking network calls, unbounded rule evaluation, or heavy parsing per request. |
+| SDK paradigm is explicit. | Server-side dynamic context is the default assumption; client-side static context is documented when in scope. |
 
 Review notes:
 
@@ -59,6 +78,10 @@ Review notes:
   closed; a non-critical UI release flag may safely fall back to disabled.
 - A boolean-only API is acceptable for an early service if variants and typed
   details are intentionally out of scope.
+- This checklist assumes server-side, dynamic-context evaluation unless a
+  client-side SDK or browser/mobile evaluation path is explicitly in scope. If
+  client-side static context is in scope, review context reconciliation,
+  provider status, and client-side event handling as part of the API design.
 
 ### 1.3 OpenFeature Alignment
 
@@ -67,7 +90,7 @@ Review notes:
 | Application code is separated from storage. | Business code evaluates through a service/provider-like boundary instead of reading persistence models directly. |
 | Evaluation context is first class. | Targeting inputs are passed as a bounded context object rather than ad hoc method parameters. |
 | Result metadata is compatible in spirit. | Reason, variant/value, and error information can be mapped to OpenFeature-style resolution details if needed. |
-| Extension points are intentional. | Hooks/events are considered for telemetry, validation, cache refresh, or provider state changes. |
+| Extension points are intentional. | Hooks/events are considered for telemetry, validation, cache refresh, `PROVIDER_READY`, `PROVIDER_CONFIGURATION_CHANGED`, `PROVIDER_ERROR`, and `PROVIDER_STALE`. |
 | Compatibility is pragmatic. | The service avoids incompatible vocabulary and data shapes, but does not implement a full OpenFeature SDK without a concrete consumer. |
 
 Review notes:
@@ -76,6 +99,8 @@ Review notes:
   complete flag platform.
 - Provider boundaries are valuable once there is a real second provider, SDK
   consumer, test double, or external integration.
+- If a provider can serve cached or remote configuration, stale-state events
+  should feed the failure-mode review in [2.6 Failure Modes](#26-failure-modes).
 
 ### 1.4 Decision Isolation
 
@@ -91,6 +116,10 @@ Review notes:
 - Short-lived release flags can be simpler than long-lived permissioning or ops
   flags.
 - A flag that affects many modules should have a named decision abstraction.
+- Flag key format is a project convention. Prefer stable feature or capability
+  names; do not encode environment, rollout percentage, or temporary
+  implementation details in the key unless the project has explicitly chosen
+  that convention.
 
 ### 1.5 Runtime Configuration
 
@@ -107,6 +136,10 @@ Review notes:
   The right answer depends on flag category and blast radius.
 - Runtime configuration requires stronger controls because it can change
   production behavior outside the deploy pipeline.
+- This section asks whether operators can understand what changed. Section
+  [2.5 Mutation Governance](#25-mutation-governance) asks whether those changes
+  are authorized, complete enough for incident review, and durable enough for
+  security governance.
 
 ### 1.6 Lifecycle And Cleanup
 
@@ -160,6 +193,7 @@ Review notes:
 | Criteria | Pass signal |
 |---|---|
 | Context fields are bounded. | Field count, key length, value length, collection size, and nesting depth have explicit limits. |
+| Context structures are serializable. | Structured context values are acyclic, JSON/YAML-like data rather than object graphs with circular references. |
 | Context schema is intentional. | Only supported targeting attributes are accepted or used. |
 | PII is minimized. | User identifiers, email addresses, IP addresses, and raw device identifiers are avoided, hashed, or redacted where possible. |
 | Context cannot select policy. | User-supplied context cannot choose unauthorized environments, tenants, variants, or override modes. |
@@ -169,6 +203,10 @@ Review notes:
 
 - Evaluation context is externally influenced data in many systems. Validate it
   like request input, not like trusted config.
+- OpenFeature defines an optional `targeting key` on evaluation context. If the
+  implementation has an equivalent field, treat it as the canonical subject key
+  for rollout and targeting rather than deriving identity from arbitrary custom
+  fields.
 
 ### 2.4 Overrides And Debug Paths
 
@@ -212,12 +250,15 @@ Review notes:
 
 - The safest fallback is not always "disabled." It depends on whether the flag
   protects access, reduces operational load, or gates an unfinished feature.
+- If the implementation uses an OpenFeature-style provider, `PROVIDER_STALE` is
+  a natural mechanism for surfacing stale state. See also
+  [1.3 OpenFeature Alignment](#13-openfeature-alignment).
 
 ### 2.7 Rollout And Targeting Abuse Resistance
 
 | Criteria | Pass signal |
 |---|---|
-| Rollout keys are stable. | Percentage rollout uses stable, non-secret identifiers rather than attacker-controlled request fields. |
+| Rollout keys are stable. | Percentage rollout uses OpenFeature `targeting key` or an equivalent stable, non-secret subject identifier rather than attacker-controlled request fields. |
 | Rollout is deterministic. | The same context receives the same result unless config changes. |
 | Rule complexity is bounded. | Rule count, nesting, collection sizes, and evaluation cost have limits. |
 | Rule language is safe. | Targeting does not execute arbitrary scripts or unsafe expressions. |
@@ -226,6 +267,8 @@ Review notes:
 
 - Deterministic rollout is both an operational feature and a security property:
   users should not be able to manipulate request attributes to hunt for variants.
+- If no stable subject key exists, percentage rollout should be rejected or
+  explicitly documented as approximate and unsuitable for experiments.
 
 ## 3. Over-Engineering Control
 
@@ -293,6 +336,7 @@ Review notes:
 | Decision logic has focused unit tests. | Status, kill switch, environment, allowlist, percentage rollout, defaults, and failure behavior are covered. |
 | Security boundaries have integration tests. | Tenant/environment isolation, mutation authorization, preview isolation, and audit persistence are tested. |
 | Risky policies have regression tests. | Production rollout increases, allowlist removal, and kill-switch changes are covered. |
+| Provider boundaries are testable. | Unit tests can use an in-memory provider, fake provider, or evaluator test double without requiring a real flag backend. |
 | Combinatorics are controlled. | Tests target known interactions instead of exhaustively testing every possible flag combination. |
 
 Review notes:
