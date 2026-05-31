@@ -4,7 +4,7 @@
 
 ## 概要
 
-[![CI](https://github.com/42milez/feature-flag-expt/actions/workflows/ci.yml/badge.svg)](https://github.com/42milez/feature-flag-expt/actions/workflows/ci.yml)
+[![CI](https://github.com/42milez/feature-flag-expt/actions/workflows/ci.yml/badge.svg)](https://github.com/42milez/feature-flag-expt/.github/workflows/ci.yml)
 
 feature-flag-expt は、フィーチャーフラグを管理・評価するための Spring Boot
 サービスです。フラグの作成、取得、更新、評価、プレビュー、提案されたロールアウト
