@@ -10,9 +10,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  docker-build:
+  kind-smoke-test:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 35
     permissions:
       contents: read
       actions: write
@@ -27,38 +27,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0, verified 2026-05-26
         with:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-      - run: ./gradlew :service:bootJar
-      - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0, verified 2026-05-25
-      - uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0, verified 2026-05-25
-        with:
-          context: ./service
-          tags: feature-flag-platform:local
-          push: false
-          load: false
-          cache-from: type=gha,scope=feature-flag-platform
-          cache-to: type=gha,mode=max,scope=feature-flag-platform
-
-  kind-smoke-test:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 35
-    permissions:
-      contents: read
-      actions: read
-    # Gate the smoke test on Docker image buildability and warm the Docker layer
-    # cache. Jobs run on separate runners, so this job rebuilds from that cache
-    # and loads the local image into kind.
-    needs: docker-build
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2, verified 2026-05-24
-        with:
-          persist-credentials: false
-      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0, verified 2026-05-24
-        with:
-          distribution: temurin
-          java-version: "25"
-      - uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0, verified 2026-05-26
-        with:
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-cleanup: never
       - uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0, verified 2026-05-24
         with:
           config: deploy/kind/cluster.yaml
@@ -70,9 +39,10 @@ jobs:
           context: ./service
           tags: feature-flag-platform:local
           push: false
-          load: true
+          outputs: type=docker,dest=/tmp/feature-flag-platform.tar
           cache-from: type=gha,scope=feature-flag-platform
-      - run: kind load docker-image feature-flag-platform:local --name feature-flag-platform
+          cache-to: type=gha,mode=max,scope=feature-flag-platform
+      - run: kind load image-archive /tmp/feature-flag-platform.tar --name feature-flag-platform
       - run: ./gradlew k8sApplyDev k8sWaitDev k8sStatusDev
       - name: Collect Kubernetes diagnostics
         if: failure()
