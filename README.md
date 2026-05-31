@@ -4,6 +4,8 @@ English | [日本語](README.ja.md)
 
 ## Overview
 
+[![CI](https://github.com/42milez/feature-flag-expt/actions/workflows/ci.yml/badge.svg)](https://github.com/42milez/feature-flag-expt/actions/workflows/ci.yml)
+
 feature-flag-expt is a Spring Boot service for managing and evaluating feature
 flags. It exposes REST APIs to create, read, update, evaluate, preview, validate
 proposed rollout changes, and audit flags.
@@ -129,6 +131,41 @@ Actuator health and Prometheus metrics are exposed for local and
 cluster-internal operations. See [docs/observability.md](docs/observability.md)
 for metric names, structured logging, Prometheus and Grafana artifacts, and
 Actuator access-control expectations.
+
+### Pack the codebase for implementation review
+
+Use [Repomix](https://repomix.com/guide) to generate a single AI-friendly
+implementation-review pack from the source, tests, API docs, deployment
+manifests, and selected operational configuration:
+
+```bash
+npx repomix@1.14.0 --config repomix.config.json
+```
+
+The generated file is written to
+`build/repomix/feature-flag-expt-review.xml`. Generated Repomix output is
+ignored by Git. Repomix runs a security check, but that does not replace human
+review. Before sharing the generated file with external AI services, review the
+output for secrets, personal data, internal URLs, credentials, and
+environment-specific configuration.
+
+To inspect the largest token contributors while generating the pack, run the
+same command with a token-count tree threshold. The value `1000` means "show
+files and directories with at least 1000 tokens"; it is not a token limit.
+
+```bash
+npx repomix@1.14.0 --config repomix.config.json --token-count-tree 1000
+```
+
+When reviewing local work-in-progress changes, include the working tree and
+staged diff explicitly:
+
+```bash
+npx repomix@1.14.0 --config repomix.config.json --include-diffs
+```
+
+The command uses the pinned Repomix package version. Use Node.js 22 or later to
+match the current Repomix documentation.
 
 ### Run on kind
 

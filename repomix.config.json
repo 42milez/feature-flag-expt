@@ -1,0 +1,85 @@
+{
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "output": {
+    "filePath": "build/repomix/feature-flag-expt-review.xml",
+    "style": "xml",
+    "parsableStyle": false,
+    "compress": false,
+    "headerText": "Implementation-review pack for feature-flag-expt.",
+    "instructionFilePath": "repomix-instruction.md",
+    "fileSummary": true,
+    "directoryStructure": true,
+    "files": true,
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "topFilesLength": 10,
+    "tokenCountTree": 1000,
+    "showLineNumbers": false,
+    "truncateBase64": true,
+    "git": {
+      "sortByChanges": true,
+      "includeDiffs": false,
+      "includeLogs": false
+    }
+  },
+  "include": [
+    "AGENTS.md",
+    "README.md",
+    "README.ja.md",
+    "repomix.config.json",
+    "repomix-instruction.md",
+    "settings.gradle.kts",
+    "build.gradle.kts",
+    "gradle.properties",
+    "gradlew",
+    "gradlew.bat",
+    "gradle/**/*.toml",
+    "gradle/**/*.properties",
+    "build-logic/**/*.kts",
+    ".github/workflows/*.yml",
+    ".github/workflows/*.yaml",
+    "service/Dockerfile",
+    "service/build.gradle.kts",
+    "service/src/main/**/*",
+    "service/src/test/**/*",
+    "docs/**/*.md",
+    "docs/openapi.yaml",
+    "docs/openapi.yml",
+    "deploy/**/*.yaml",
+    "observability/prometheus/**/*.yml",
+    "scripts/**/*.sh"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDotIgnore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      ".agents/**",
+      ".git/**",
+      ".gradle/**",
+      ".kotlin/**",
+      "**/build/**",
+      "**/bin/**",
+      "tmp/**",
+      "tmp",
+      "**/*.class",
+      "**/*.jar",
+      "**/*.war",
+      "**/*.nar",
+      "**/*.ear",
+      "**/*.zip",
+      "**/*.tar.gz",
+      "**/*.rar",
+      "**/*.log",
+      "repomix-output*",
+      "build/repomix/**",
+      "observability/grafana/dashboards/**"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  },
+  "tokenCount": {
+    "encoding": "o200k_base"
+  }
+}

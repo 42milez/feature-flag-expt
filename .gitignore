@@ -11,6 +11,10 @@ service/bin/
 # Log files
 *.log
 
+# Repomix generated packs
+repomix-output*
+build/repomix/
+
 # BlueJ files
 *.ctxt
 
