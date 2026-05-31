@@ -162,6 +162,8 @@ Review notes:
 | Criteria | Pass signal |
 |---|---|
 | Client-side flags are not access control. | UI flags may hide features, but server-side authorization still protects data and actions. |
+| Sensitive flags are classified. | Flags that gate billing, personal or regulated data, tenant isolation, privileged actions, kill switches, or other high-impact behavior receive stricter review by default. |
+| Sensitive defaults are restricted. | Sensitive flags start disabled or at zero rollout unless immediate broad exposure passes the same policy or approval checks as later expansion. |
 | Permissioning flags fail closed. | Missing, stale, or failed permissioning evaluations deny access by default. |
 | Entitlement sources are authoritative. | Billing, plan, role, tenant, and compliance decisions come from trusted server-side data. |
 | Privileged behavior is tested directly. | Tests call protected APIs directly instead of relying only on hidden UI assertions. |
@@ -171,6 +173,8 @@ Review notes:
 - A hidden button is a UX choice, not a security boundary.
 - Treat permissioning flags as part of the authorization model even when they
   share infrastructure with rollout flags.
+- When impact is unclear, treat the flag as sensitive until the design explains
+  why weaker controls are proportionate.
 
 ### 2.2 Tenant And Environment Boundaries
 
@@ -228,14 +232,22 @@ Review notes:
 | Criteria | Pass signal |
 |---|---|
 | Mutations require authorization. | Create, update, delete, rollout, kill switch, and approval operations have environment-aware permission checks. |
+| Write paths enforce policy. | Rollout and safety policies are enforced on create, update, rollout, and kill-switch write paths, not only in preview or validation flows. |
+| Caller claims are not the trust boundary. | Caller-supplied booleans, headers, and client-side checks cannot authorize privileged flag changes. |
 | Risky changes are policy-checked. | Broad production rollout, allowlist removal, kill-switch disablement, and permissioning changes require validation or approval. |
 | Audit records are complete. | Audit events include actor, timestamp, correlation ID, flag key, environment, old value, new value, and reason when available. |
+| Audit actor identity is trusted. | Audit actors are derived from authenticated server-side identity such as a session principal, JWT subject, OAuth client ID, or service account. |
+| Audit writes are atomic. | Audit records are persisted atomically with the flag mutation they describe. |
+| Audit-log reads are separately scoped. | Audit reads have role, tenant, environment, and ownership checks separate from flag write permissions. |
 | Audit records are durable. | Operational audit events are append-only or otherwise protected from accidental update-in-place behavior. |
 
 Review notes:
 
 - A Feature Flag admin API is a production behavior API. Review it with the same
   seriousness as deployment, access-control, or incident-response tooling.
+- Tamper-evident audit storage, direct-mutation restrictions, external rate
+  limits, and forwarding changes to SIEM systems can be important for exposed or
+  regulated systems, but should be evaluated as context-dependent controls.
 
 ### 2.6 Failure Modes
 
@@ -245,6 +257,8 @@ Review notes:
 | Stale config is visible. | The system can detect or report stale cache/provider state. |
 | Partial reads are handled. | Incomplete config, missing child collections, and inconsistent versions have deterministic behavior. |
 | Kill switches remain reliable. | Kill-switch evaluation is simple, fast, and harder to break than ordinary targeting rules. |
+| Kill-switch propagation is urgent. | Kill-switch changes propagate faster than ordinary rollout changes. |
+| Emergency invalidation exists. | Cache, CDN, SDK, or local evaluator layers have an emergency invalidation path such as short TTLs, active purge, event-driven invalidation, or bypassing cached enabled results. |
 
 Review notes:
 
@@ -259,6 +273,8 @@ Review notes:
 | Criteria | Pass signal |
 |---|---|
 | Rollout keys are stable. | Percentage rollout uses OpenFeature `targeting key` or an equivalent stable, non-secret subject identifier rather than attacker-controlled request fields. |
+| Sensitive membership is hard to predict. | Sensitive rollout membership cannot be predicted from caller-chosen identifiers. |
+| Bucket salt is protected. | A bucket salt used for high-impact deterministic rollout is stored in managed secret storage, not committed, baked into images, or kept in plaintext configuration. |
 | Rollout is deterministic. | The same context receives the same result unless config changes. |
 | Rule complexity is bounded. | Rule count, nesting, collection sizes, and evaluation cost have limits. |
 | Rule language is safe. | Targeting does not execute arbitrary scripts or unsafe expressions. |
@@ -269,6 +285,22 @@ Review notes:
   users should not be able to manipulate request attributes to hunt for variants.
 - If no stable subject key exists, percentage rollout should be rejected or
   explicitly documented as approximate and unsuitable for experiments.
+- Salt rotation should be treated as a planned migration because it can change
+  assignments for every evaluated subject.
+
+### 2.8 Response Detail And Enumeration
+
+| Criteria | Pass signal |
+|---|---|
+| Flag namespaces are not enumerable. | Management, get, list, evaluate, preview, validation, and audit endpoints prevent unauthorized flag key or metadata enumeration. |
+| Diagnostic detail is authorized. | Rollout buckets, rule-match reasons, allowlist matches, and targeting internals are returned only to callers authorized for diagnostic detail. |
+| Errors are non-disclosing. | Exposed APIs use authorization, rate limits where appropriate, and response shapes that do not let unauthorized callers map namespaces. |
+
+Review notes:
+
+- Diagnosability and security are in tension. Operators need enough detail to
+  debug incidents, but ordinary callers should not learn targeting rules,
+  tenant identifiers, rollout internals, or flag existence from responses.
 
 ## 3. Over-Engineering Control
 

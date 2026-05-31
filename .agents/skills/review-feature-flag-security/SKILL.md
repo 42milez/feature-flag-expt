@@ -34,7 +34,7 @@ for a valid path before reviewing.
 ```bash
 test -e <path>
 find <path> -type f \( -name '*.java' -o -name '*.kt' \)
-rg -n "feature|flag|rollout|tenant|environment|audit|authorize|permission|cache|salt" <path>
+rg -n "feature|flag|rollout|tenant|environment|audit|authorize|permission|cache|salt|override|debug|context|bucket|script|policy|preview|validation" <path>
 ```
 
 ## Attack-Surface Checklist
@@ -77,6 +77,13 @@ complete.
 - #evidence Keep context identifiers opaque and non-PII. Prefer stable internal IDs over emails,
   names, phone numbers, or raw personal data, and avoid logging or returning targeting identifiers
   unless the caller is authorized and the data is needed for diagnostics.
+- #must-check Evaluation context fields must have explicit bounds for field count, key length,
+  value length, collection size, and nesting depth.
+- #evidence Context values should be acyclic JSON/YAML-like structures, not arbitrary object graphs
+  that can trigger unsafe traversal, serialization, or reflection behavior.
+- #must-check Accept and use only supported targeting attributes; user-supplied context must not
+  choose unauthorized environments, tenants, variants, policies, or override modes.
+- #evidence Logs and metrics must not emit sensitive context or high-cardinality values as labels.
 
 ### Response Detail And Enumeration
 
@@ -88,12 +95,24 @@ complete.
 - #context-dependent For exposed APIs, require authorization, rate limits, and non-disclosing
   errors or response shapes that prevent unauthorized namespace mapping.
 
+### Overrides And Preview Paths
+
+- #must-check Cookies, headers, query parameters, and debug endpoints must be disabled unless they
+  are documented as privileged override mechanisms.
+- #must-check Overrides must be authenticated, scoped by environment, tenant, and user, temporary,
+  and audited.
+- #must-check Test, debug, or preview overrides must not silently affect public production traffic.
+- #must-check Preview and validation APIs must not mutate persisted production state or bypass the
+  policies enforced on production write paths.
+
 ### Kill Switches And Caching
 
 - #must-check Kill-switch changes should propagate faster than ordinary rollout changes.
 - #evidence Any cache, CDN, SDK, or local evaluation layer that retains flag state needs an
   emergency invalidation path, such as short TTLs, active purge, event-driven invalidation, or
   bypassing cached enabled results.
+- #must-check Cache keys must include the flag key, environment, tenant or project scope, and
+  provider version when those dimensions affect evaluation.
 
 ### Rollout Bucketing
 
@@ -105,6 +124,8 @@ complete.
   plaintext configuration or unprotected environment variables.
 - #context-dependent Treat salt rotation as a planned migration because it can change assignments
   for every evaluated subject.
+- #must-check Rule count, nesting, collection sizes, and evaluation cost must be bounded.
+- #must-check Targeting rules must not execute arbitrary scripts or unsafe expressions.
 
 ### Audit Surface
 

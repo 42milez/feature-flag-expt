@@ -53,6 +53,9 @@ provided, resolve it relative to the current working directory unless it is abso
 - Flags have an explicit category, owner, purpose, creation date, and review or removal date.
 - Category drives governance: lifetime, default behavior, cleanup policy, authorization, audit, and
   approval requirements differ by category.
+- Sensitive or high-impact flags that gate billing, regulated data, tenant isolation, privileged
+  actions, or kill switches receive stricter defaults and review even when their category is not
+  Permissioning.
 - Release flags are short-lived and have expected removal dates.
 - Experiment cohorts are stable for the experiment duration unless re-bucketing is intentional and
   documented.
@@ -97,6 +100,8 @@ provided, resolve it relative to the current working directory unless it is abso
 
 - Client-side flags are never treated as access control. Server-side authorization still protects
   data and actions.
+- Sensitive or high-impact flags start disabled or at zero rollout unless immediate exposure passes
+  the same server-side policy or approval checks as later rollout expansion.
 - Permissioning flags fail closed on missing, stale, or failed evaluations.
 - Billing, plan, role, tenant, and compliance decisions come from trusted server-side data.
 - Tests call protected APIs directly instead of relying only on hidden UI assertions.
@@ -114,22 +119,35 @@ provided, resolve it relative to the current working directory unless it is abso
 - User-supplied context cannot choose unauthorized environments, tenants, variants, policies, or
   override modes.
 - Logs and metrics do not emit sensitive context or high-cardinality values as labels.
+- Evaluation, preview, validation, audit, get, and list responses do not expose flag keys,
+  metadata, rollout buckets, rule-match reasons, allowlist matches, or targeting internals unless
+  the caller is authorized for diagnostic detail.
 - Cookies, headers, query parameters, and debug endpoints are disabled unless documented.
 - Overrides are authenticated, scoped by environment/tenant/user, temporary, and audited.
 - Test or preview overrides cannot silently affect public production traffic.
 - Create, update, delete, rollout, kill-switch, approval, and policy operations have
   environment-aware authorization checks.
+- Mutation write paths enforce rollout and safety policies server-side and do not trust
+  caller-supplied booleans, headers, or client-side checks as the privileged decision boundary.
 - Risky production rollout, allowlist removal, kill-switch disablement, and permissioning changes
   require validation or approval.
 - Audit events include actor, timestamp, correlation ID, flag key, environment, old value, new value,
   and reason when available.
+- Audit records are persisted atomically with the flag write, derive actor identity from
+  authenticated server-side identity, and scope audit-log reads separately from flag writes.
 - Audit records are durable, append-only when possible, and preserved after flag deletion.
 - Fail-open/fail-closed behavior is category-specific and documented for missing config, provider
   failure, stale cache, partial reads, malformed config, and inconsistent versions.
 - Stale provider or cache state is detectable and visible to operators.
 - Kill-switch evaluation is simple, fast, and harder to break than ordinary targeting rules.
+- Kill-switch changes propagate faster than ordinary rollout changes and have an emergency
+  invalidation path for cache, CDN, SDK, or local evaluator state.
 - Percentage rollout uses an OpenFeature targeting key or equivalent stable, non-secret subject
   identifier instead of attacker-controlled request fields.
+- Sensitive rollout membership is not predictable from caller-chosen identifiers; deterministic
+  high-impact rollout uses server-derived identifiers or a long-lived server-side bucket salt.
+- Bucket salts are stored in managed secret storage, not committed, baked into images, or kept in
+  plaintext configuration, and salt rotation is treated as an assignment-changing migration.
 - Rollout is deterministic for the same context unless configuration changes.
 - Rule count, nesting, collection sizes, and evaluation cost are bounded.
 - Targeting rules do not execute arbitrary scripts or unsafe expressions.
