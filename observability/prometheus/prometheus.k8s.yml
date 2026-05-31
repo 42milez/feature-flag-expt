@@ -3,17 +3,6 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  # Direct local scrape for a developer running:
-  #   ./gradlew :service:bootRun
-  #
-  # This job does not use Kubernetes annotations. If the app is running in kind,
-  # use kubectl port-forward or ./gradlew k8sPortForward and keep this target.
-  - job_name: feature-flag-platform-local
-    metrics_path: /actuator/prometheus
-    static_configs:
-      - targets:
-          - localhost:8080
-
   # Kubernetes pod discovery example. This is documentation/sample
   # configuration; it is not wired into the repository deployment flow.
   #

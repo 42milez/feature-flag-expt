@@ -84,11 +84,12 @@ tenant allowlists.
 
 ## Prometheus
 
-The sample configuration lives at
-`observability/prometheus/prometheus.yml`. It includes:
+The sample configurations live under `observability/prometheus/`:
 
-- a direct local scrape job for `localhost:8080`;
-- a Kubernetes pod-discovery scrape job that reads pod annotations.
+- `prometheus.local.yml` includes a direct local scrape job for
+  `localhost:8080`;
+- `prometheus.k8s.yml` includes a Kubernetes pod-discovery scrape job that reads
+  pod annotations.
 
 The deployment adds these pod annotations:
 
