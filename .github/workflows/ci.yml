@@ -25,5 +25,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "25"
-          cache: gradle
+      - uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0, verified 2026-05-26
+        with:
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
       - run: ./gradlew :service:spotlessCheck :service:compileJava :service:test --no-daemon
