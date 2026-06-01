@@ -6,7 +6,9 @@
 
 ## Feature Flag Review Criteria
 
-* [Feature Flag Review Criteria](./feature-flag-review-criteria.md) — A project-oriented checklist for reviewing Feature Flag systems against modern 2026 practices, security attack surface, and over-engineering risk.
+* [Feature Flag Review Criteria](./feature-flag-review-criteria.md) — An index for phase-specific Feature Flag review criteria.
+* [Feature Flag Design Review Criteria](./feature-flag-design-review-criteria.md) — Criteria for reviewing Feature Flag designs, ADRs, plans, requirements, governance, lifecycle, security boundaries, and over-engineering risk.
+* [Feature Flag Implementation Review Criteria](./feature-flag-implementation-review-criteria.md) — Criteria for reviewing Feature Flag implementation code, evaluator behavior, security checks, observability, tests, and complexity.
 
 ## Literature on Feature Flags
 
