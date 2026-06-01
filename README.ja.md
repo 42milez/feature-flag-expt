@@ -101,64 +101,6 @@ FEATURE_FLAGS_DB_PASSWORD=featureflags \
 ./gradlew :service:bootRun
 ```
 
-### Swagger UI
-
-サービスが起動したら、ブラウザで Swagger UI を開きます。
-
-```
-http://localhost:8080/swagger-ui.html
-```
-
-未加工の OpenAPI 仕様も以下で確認できます。
-
-| 形式 | URL |
-|---|---|
-| JSON | `http://localhost:8080/v3/api-docs` |
-| YAML | `http://localhost:8080/v3/api-docs.yaml` |
-
-仕様の静的スナップショットは [docs/openapi.yaml](docs/openapi.yaml) にコミットされています。
-
-### Observability
-
-Actuator health と Prometheus metrics は、local および cluster-internal operation 向けに
-公開されています。metric name、structured logging、Prometheus と Grafana の artifact、
-Actuator access-control の期待値については [docs/observability.md](docs/observability.md)
-を参照してください。
-
-### 実装レビュー用にコードベースを pack する
-
-[Repomix](https://repomix.com/ja/guide) を使って、source、test、API docs、
-deployment manifest、選択された operational configuration から、AI に渡しやすい
-単一の implementation-review pack を生成します。
-
-```bash
-npx repomix@1.14.0 --config repomix.config.json
-```
-
-生成されたファイルは `build/repomix/feature-flag-expt-review.xml` に出力されます。
-生成された Repomix output は Git から除外されます。Repomix は security check を実行しますが、
-人による確認の代わりにはなりません。生成ファイルを外部の AI service に共有する前に、
-secret、personal data、internal URL、credential、environment-specific configuration が
-含まれていないことを確認してください。
-
-pack の生成時に token 数が大きい項目を確認するには、token-count tree の閾値を指定して
-同じコマンドを実行します。値 `1000` は「1000 tokens 以上の file/directory を表示する」
-という意味であり、token 数の上限ではありません。
-
-```bash
-npx repomix@1.14.0 --config repomix.config.json --token-count-tree 1000
-```
-
-local の作業中変更をレビュー対象に含める場合は、working tree と staged diff を明示的に
-含めます。
-
-```bash
-npx repomix@1.14.0 --config repomix.config.json --include-diffs
-```
-
-このコマンドは Repomix package version を固定しています。現在の Repomix documentation に
-合わせるため、Node.js 22 以降を使用してください。
-
 ### kind で実行する
 
 kind ワークフローは Gradle タスクと対応するシェルスクリプトから利用できます。
@@ -241,6 +183,63 @@ PostgreSQL とアプリケーションが ready になるまで待ちます。
 ```bash
 ./gradlew devDeploy
 # or: scripts/dev-deploy.sh
+```
+
+## 関連情報
+
+### Swagger UI
+
+サービスが起動したら、ブラウザで Swagger UI を開きます。
+
+```
+http://localhost:8080/swagger-ui.html
+```
+
+未加工の OpenAPI 仕様も以下で確認できます。
+
+| 形式 | URL |
+|---|---|
+| JSON | `http://localhost:8080/v3/api-docs` |
+| YAML | `http://localhost:8080/v3/api-docs.yaml` |
+
+仕様の静的スナップショットは [docs/openapi.yaml](docs/openapi.yaml) にコミットされています。
+
+### Observability
+
+Actuator health と Prometheus metrics は、local および cluster-internal operation 向けに
+公開されています。metric name、structured logging、Prometheus と Grafana の artifact、
+Actuator access-control の期待値については [docs/observability.md](docs/observability.md)
+を参照してください。
+
+### 実装レビュー用にコードベースを pack する
+
+[Repomix](https://repomix.com/ja/guide) を使って、source、test、API docs、
+deployment manifest、選択された operational configuration から、AI に渡しやすい
+単一の implementation-review pack を生成します。
+
+```bash
+npx repomix@1.14.1 --config repomix.config.json
+```
+
+生成されたファイルは `build/repomix/feature-flag-expt-review.xml` に出力されます。
+生成された Repomix output は Git から除外されます。Repomix は security check を実行しますが、
+人による確認の代わりにはなりません。生成ファイルを外部の AI service に共有する前に、
+secret、personal data、internal URL、credential、environment-specific configuration が
+含まれていないことを確認してください。
+
+pack の生成時に token 数が大きい項目を確認するには、token-count tree の閾値を指定して
+同じコマンドを実行します。値 `1000` は「1000 tokens 以上の file/directory を表示する」
+という意味であり、token 数の上限ではありません。
+
+```bash
+npx repomix@1.14.1 --config repomix.config.json --token-count-tree 1000
+```
+
+local の作業中変更をレビュー対象に含める場合は、working tree と staged diff を明示的に
+含めます。
+
+```bash
+npx repomix@1.14.1 --config repomix.config.json --include-diffs
 ```
 
 ## 静的解析

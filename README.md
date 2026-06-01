@@ -108,65 +108,6 @@ FEATURE_FLAGS_DB_PASSWORD=featureflags \
 ./gradlew :service:bootRun
 ```
 
-### Swagger UI
-
-Once the service is running, open the Swagger UI in a browser:
-
-```
-http://localhost:8080/swagger-ui.html
-```
-
-The raw OpenAPI spec is also available at:
-
-| Format | URL |
-|---|---|
-| JSON | `http://localhost:8080/v3/api-docs` |
-| YAML | `http://localhost:8080/v3/api-docs.yaml` |
-
-A static snapshot of the spec is committed at [docs/openapi.yaml](docs/openapi.yaml).
-
-### Observability
-
-Actuator health and Prometheus metrics are exposed for local and
-cluster-internal operations. See [docs/observability.md](docs/observability.md)
-for metric names, structured logging, Prometheus and Grafana artifacts, and
-Actuator access-control expectations.
-
-### Pack the codebase for implementation review
-
-Use [Repomix](https://repomix.com/guide) to generate a single AI-friendly
-implementation-review pack from the source, tests, API docs, deployment
-manifests, and selected operational configuration:
-
-```bash
-npx repomix@1.14.0 --config repomix.config.json
-```
-
-The generated file is written to
-`build/repomix/feature-flag-expt-review.xml`. Generated Repomix output is
-ignored by Git. Repomix runs a security check, but that does not replace human
-review. Before sharing the generated file with external AI services, review the
-output for secrets, personal data, internal URLs, credentials, and
-environment-specific configuration.
-
-To inspect the largest token contributors while generating the pack, run the
-same command with a token-count tree threshold. The value `1000` means "show
-files and directories with at least 1000 tokens"; it is not a token limit.
-
-```bash
-npx repomix@1.14.0 --config repomix.config.json --token-count-tree 1000
-```
-
-When reviewing local work-in-progress changes, include the working tree and
-staged diff explicitly:
-
-```bash
-npx repomix@1.14.0 --config repomix.config.json --include-diffs
-```
-
-The command uses the pinned Repomix package version. Use Node.js 22 or later to
-match the current Repomix documentation.
-
 ### Run on kind
 
 The kind workflow is available through Gradle tasks and matching shell scripts.
@@ -249,6 +190,64 @@ Build, load, apply, wait, and show pod status with one command:
 ```bash
 ./gradlew devDeploy
 # or: scripts/dev-deploy.sh
+```
+
+## Related Information
+
+### Swagger UI
+
+Once the service is running, open the Swagger UI in a browser:
+
+```
+http://localhost:8080/swagger-ui.html
+```
+
+The raw OpenAPI spec is also available at:
+
+| Format | URL |
+|---|---|
+| JSON | `http://localhost:8080/v3/api-docs` |
+| YAML | `http://localhost:8080/v3/api-docs.yaml` |
+
+A static snapshot of the spec is committed at [docs/openapi.yaml](docs/openapi.yaml).
+
+### Observability
+
+Actuator health and Prometheus metrics are exposed for local and
+cluster-internal operations. See [docs/observability.md](docs/observability.md)
+for metric names, structured logging, Prometheus and Grafana artifacts, and
+Actuator access-control expectations.
+
+### Pack the codebase for implementation review
+
+Use [Repomix](https://repomix.com/guide) to generate a single AI-friendly
+implementation-review pack from the source, tests, API docs, deployment
+manifests, and selected operational configuration:
+
+```bash
+npx repomix@1.14.1 --config repomix.config.json
+```
+
+The generated file is written to
+`build/repomix/feature-flag-expt-review.xml`. Generated Repomix output is
+ignored by Git. Repomix runs a security check, but that does not replace human
+review. Before sharing the generated file with external AI services, review the
+output for secrets, personal data, internal URLs, credentials, and
+environment-specific configuration.
+
+To inspect the largest token contributors while generating the pack, run the
+same command with a token-count tree threshold. The value `1000` means "show
+files and directories with at least 1000 tokens"; it is not a token limit.
+
+```bash
+npx repomix@1.14.1 --config repomix.config.json --token-count-tree 1000
+```
+
+When reviewing local work-in-progress changes, include the working tree and
+staged diff explicitly:
+
+```bash
+npx repomix@1.14.1 --config repomix.config.json --include-diffs
 ```
 
 ## Static Analysis
