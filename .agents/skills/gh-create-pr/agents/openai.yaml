@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create GitHub PR"
+  short_description: "Publish local repo changes as a safe draft GitHub pull request."
+  default_prompt: "Use $gh-create-pr to create a draft GitHub PR for the current changes."
