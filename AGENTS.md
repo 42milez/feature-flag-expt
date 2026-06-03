@@ -47,6 +47,9 @@ Format for each entry (add under the relevant category heading, creating the hea
 - **[Security]** When adding Spring Security route rules, finish with an authenticated fallback
   such as `anyRequest().authenticated()` so newly added routes do not become public unless they are
   explicitly listed as public.
+- **[Security]** Explicitly configure the access level of exposed non-health Actuator endpoints,
+  such as `management.endpoint.prometheus.access=read-only`, so their permitted operations remain
+  intentional even if framework defaults change.
 - **[API / Framework contract]** Convert Java-side domain models, validation result records, and
   persistence entities into Kotlin `*Response` DTOs before generating API responses. OpenAPI
   response schemas should reference the public response DTO, not the internal Java model.
@@ -54,10 +57,5 @@ Format for each entry (add under the relevant category heading, creating the hea
   absent in some application contexts, such as `db` when a test excludes `DataSource`
   auto-configuration, disable group membership validation or move that group configuration behind a
   profile so Spring Boot can start consistently.
-- **[API / Framework contract]** In Spring Boot 4, expose non-health Actuator endpoints by setting
-  both web exposure and endpoint access, such as
-  `management.endpoints.web.exposure.include=health,prometheus` plus
-  `management.endpoint.prometheus.access=read-only`; exposure alone does not make an endpoint
-  available.
 - **[Testability]** Build test request JSON with `ObjectMapper` when values are supplied through
   variables, so escaping stays correct and helpers do not become fragile string templates.
