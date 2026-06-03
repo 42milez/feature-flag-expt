@@ -57,10 +57,10 @@ configuration、placeholder credentials、`kind load` で使う local image tag 
 
 PostgreSQL インスタンスが起動しており、接続できる必要があります。API と
 Prometheus へのアクセスには、Spring Security の HTTP Basic 認証情報も必要です。
-Swagger UI、OpenAPI docs、health probe は local portfolio usability と Kubernetes
-probe のために公開されたままです。
+Swagger UI と OpenAPI docs は、ポートフォリオをローカルで確認しやすいように認証なしで
+公開されています。
 
-| 変数 | local value |
+| 変数 | ローカルでの値 |
 |---|---|
 | `FEATURE_FLAGS_DB_URL` | `jdbc:postgresql://localhost:5432/featureflags` |
 | `FEATURE_FLAGS_DB_USERNAME` | `featureflags` |
@@ -68,8 +68,8 @@ probe のために公開されたままです。
 | `SPRING_SECURITY_USER_NAME` | `featureflags` |
 | `SPRING_SECURITY_USER_PASSWORD` | `featureflags` |
 
-HTTP Basic は、この phase における local portfolio baseline です。実際の deployment では
-OIDC または organization-managed identity provider に置き換えるべきです。
+HTTP Basic は、現段階のポートフォリオをローカルで動かすための最低限の認証方式です。実際の deployment では
+OIDC など、本番環境に適した認証方式に置き換えるべきです。
 
 ### Docker で PostgreSQL を起動する
 
@@ -100,37 +100,26 @@ Flyway CLI や `docker-entrypoint-initdb.d` などのツールを使って Postg
 ./gradlew :service:bootRun
 ```
 
-必要に応じてデータベース接続を上書きします。
-
-```bash
-FEATURE_FLAGS_DB_URL=jdbc:postgresql://localhost:5432/featureflags \
-FEATURE_FLAGS_DB_USERNAME=featureflags \
-FEATURE_FLAGS_DB_PASSWORD=featureflags \
-SPRING_SECURITY_USER_NAME=featureflags \
-SPRING_SECURITY_USER_PASSWORD=featureflags \
-./gradlew :service:bootRun
-```
-
-認証付きの API endpoint を呼び出します。
+フィーチャーフラグの価値は、設定を保存することだけではなく、アプリケーションが
+実行時のコンテキストに応じて機能を有効にするか判断できることにあります。まず、
+production 環境を対象とし、`tenant-a` を allowlist に含めたフラグを作成します。
 
 ```bash
 curl -u featureflags:featureflags \
   -H 'Content-Type: application/json' \
-  -d '{"flagKey":"checkout-redesign","environment":"production"}' \
+  -d '{"flagKey":"checkout-redesign","status":"ENABLED","targetEnvironments":["production"],"killSwitchActive":false,"tenantAllowlist":["tenant-a"],"rolloutPercentage":25}' \
+  http://localhost:8080/api/flags
+```
+
+次に、実行時コンテキストとして production 環境と `tenant-a` を渡してフラグを評価します。
+レスポンスの `enabled` と `reason` により、呼び出し側はフラグ設定の内部構造を知らずに
+機能を切り替えられます。
+
+```bash
+curl -u featureflags:featureflags \
+  -H 'Content-Type: application/json' \
+  -d '{"flagKey":"checkout-redesign","environment":"production","tenantId":"tenant-a"}' \
   http://localhost:8080/api/evaluate
-```
-
-Health probe は公開されたままです。
-
-```bash
-curl -s http://localhost:8080/actuator/health
-```
-
-Prometheus metrics には同じ HTTP Basic 認証情報が必要です。
-
-```bash
-curl -u featureflags:featureflags -s \
-  http://localhost:8080/actuator/prometheus | rg "feature_flag_"
 ```
 
 ### kind で実行する

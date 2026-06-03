@@ -58,9 +58,9 @@ image tag used by `kind load`.
 ### Prerequisites
 
 A PostgreSQL instance must be running and accessible. API and Prometheus access
-also require Spring Security's HTTP Basic credentials. Swagger UI, OpenAPI docs,
-and health probes remain public for local portfolio usability and Kubernetes
-probes.
+also require Spring Security's HTTP Basic credentials. Swagger UI and OpenAPI
+docs remain publicly accessible without authentication so the portfolio can be
+explored locally.
 
 | Variable | Local value |
 |---|---|
@@ -107,37 +107,26 @@ uses Spring Boot startup as the standard migration path.
 ./gradlew :service:bootRun
 ```
 
-Override the database connection if needed:
-
-```bash
-FEATURE_FLAGS_DB_URL=jdbc:postgresql://localhost:5432/featureflags \
-FEATURE_FLAGS_DB_USERNAME=featureflags \
-FEATURE_FLAGS_DB_PASSWORD=featureflags \
-SPRING_SECURITY_USER_NAME=featureflags \
-SPRING_SECURITY_USER_PASSWORD=featureflags \
-./gradlew :service:bootRun
-```
-
-Call an authenticated API endpoint:
+The value of a feature flag is not only in storing configuration, but in letting
+an application decide whether to enable a feature for a runtime context. First,
+create a flag that targets the production environment and allowlists `tenant-a`:
 
 ```bash
 curl -u featureflags:featureflags \
   -H 'Content-Type: application/json' \
-  -d '{"flagKey":"checkout-redesign","environment":"production"}' \
+  -d '{"flagKey":"checkout-redesign","status":"ENABLED","targetEnvironments":["production"],"killSwitchActive":false,"tenantAllowlist":["tenant-a"],"rolloutPercentage":25}' \
+  http://localhost:8080/api/flags
+```
+
+Next, evaluate the flag with the production environment and `tenant-a` as the
+runtime context. The `enabled` and `reason` fields let the caller switch behavior
+without knowing the internal structure of the flag configuration:
+
+```bash
+curl -u featureflags:featureflags \
+  -H 'Content-Type: application/json' \
+  -d '{"flagKey":"checkout-redesign","environment":"production","tenantId":"tenant-a"}' \
   http://localhost:8080/api/evaluate
-```
-
-Health probes stay public:
-
-```bash
-curl -s http://localhost:8080/actuator/health
-```
-
-Prometheus metrics require the same HTTP Basic credentials:
-
-```bash
-curl -u featureflags:featureflags -s \
-  http://localhost:8080/actuator/prometheus | rg "feature_flag_"
 ```
 
 ### Run on kind
