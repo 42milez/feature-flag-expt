@@ -1,3 +1,4 @@
+// Plugins add capabilities and conventions to the Gradle build itself.
 plugins {
   id("spring-boot-conventions")
   alias(libs.plugins.spring.boot)
@@ -6,6 +7,7 @@ plugins {
   alias(libs.plugins.kotlin.spring)
 }
 
+// Dependencies add libraries used by the application at compile time, runtime, or during tests.
 dependencies {
   implementation(libs.spring.boot.starter.actuator)
   implementation(libs.spring.boot.starter.data.jdbc)
@@ -28,6 +30,8 @@ dependencies {
   testImplementation(libs.testcontainers.postgresql)
 }
 
+// Starts the application with the OpenAPI generation profile and writes its API specification to
+// docs/openapi.yaml.
 openApi {
   apiDocsUrl.set("http://localhost:8080/v3/api-docs.yaml")
   outputDir.set(rootProject.layout.projectDirectory.dir("docs"))
@@ -36,6 +40,9 @@ openApi {
   waitTimeInSeconds.set(30)
 }
 
+// The springdoc plugin's forked tasks capture Gradle task instances, which cannot be serialized
+// for the configuration cache. Mark them incompatible so OpenAPI generation does not fail while
+// Gradle attempts to store the cache.
 tasks.named("forkedSpringBootRun") {
   notCompatibleWithConfigurationCache(
       "springdoc-openapi-gradle-plugin fork task captures task instances"
@@ -48,6 +55,7 @@ tasks.named("forkedSpringBootStop") {
   )
 }
 
+// Rename the bootJar output to a fixed file name.
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
   archiveFileName.set("feature-flag-platform.jar")
 }
