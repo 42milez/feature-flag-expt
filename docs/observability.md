@@ -22,7 +22,7 @@ Swagger UI and OpenAPI docs also remain public in this portfolio phase:
 authentication.
 
 HTTP Basic is a local portfolio baseline. Real deployments should replace it
-with OIDC or another organization-managed identity provider.
+with OIDC or another production-appropriate authentication method.
 
 ## Local Checks
 
@@ -134,7 +134,8 @@ APIs and Prometheus metrics require HTTP Basic authentication. Production
 environments should still add stronger controls before exposing the app outside
 the cluster. Acceptable controls include:
 
-- OIDC or another organization-managed identity provider for application APIs;
+- OIDC or another production-appropriate authentication method for application
+  APIs;
 - a separate management port with network rules that allow Prometheus and
   kubelet probes only;
 - Kubernetes `NetworkPolicy` or ingress rules that block external access;

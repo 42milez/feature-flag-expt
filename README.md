@@ -71,7 +71,8 @@ explored locally.
 | `SPRING_SECURITY_USER_PASSWORD` | `featureflags` |
 
 HTTP Basic is a local portfolio baseline for this phase. A real deployment
-should replace it with OIDC or another organization-managed identity provider.
+should replace it with OIDC or another production-appropriate authentication
+method.
 
 ### Start PostgreSQL with Docker
 
