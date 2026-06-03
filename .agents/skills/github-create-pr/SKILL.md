@@ -7,7 +7,7 @@ description: Create a GitHub pull request from local repository changes using th
 
 Use this skill to turn local changes in this repository into a safe draft GitHub pull request. The
 workflow uses local `git` for repository state, commits, and pushes, and uses the GitHub connector
-for repository metadata, PR creation, and reviewer requests.
+for repository metadata, PR creation, and assignee updates.
 
 ## Workflow
 
@@ -38,7 +38,7 @@ for repository metadata, PR creation, and reviewer requests.
      branch.
    - Use the GitHub connector to search for open PRs in `repository_full_name` with the same
      `head_branch`.
-   - If an open PR exists, do not create a PR, update the existing PR, or request a reviewer.
+   - If an open PR exists, do not create a PR, update the existing PR, or add an assignee.
      Report the existing PR URL and stop.
 7. Open a draft PR.
    - Use the GitHub connector after the branch is pushed and the duplicate check is complete.
@@ -48,13 +48,13 @@ for repository metadata, PR creation, and reviewer requests.
      to continue.
    - Stop if the connector cannot create the PR. Report the failed connector operation and the user
      action needed to continue.
-8. Request the repository owner as reviewer.
-   - Request `42milez` as an individual reviewer immediately after the draft PR is created.
-   - Use the GitHub connector reviewer request operation.
-   - If GitHub rejects the reviewer request, such as when the reviewer is also the PR author,
-     keep the PR and report the exact reviewer request failure.
+8. Assign the repository owner.
+   - Add `42milez` as an assignee immediately after the draft PR is created.
+   - Use the GitHub connector issue assignee operation, which also supports pull requests.
+   - If GitHub rejects the assignee update, keep the PR and report the exact assignee update
+     failure.
 9. Report the result.
-   - Include branch name, commit SHA, PR URL or number, base branch, requested reviewer, and any
+   - Include branch name, commit SHA, PR URL or number, base branch, assignee, and any
      unresolved user action.
 
 ## Safety Rules

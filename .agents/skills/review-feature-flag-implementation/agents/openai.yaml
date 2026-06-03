@@ -2,3 +2,6 @@ interface:
   display_name: "Review Feature Flag Implementation"
   short_description: "Review feature flag code and pull requests."
   default_prompt: "Use $review-feature-flag-implementation to review this feature flag implementation."
+
+policy:
+  allow_implicit_invocation: false

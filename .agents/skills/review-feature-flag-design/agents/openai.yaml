@@ -2,3 +2,6 @@ interface:
   display_name: "Review Feature Flag Design"
   short_description: "Review feature flag plans and design docs."
   default_prompt: "Use $review-feature-flag-design to review this feature flag design."
+
+policy:
+  allow_implicit_invocation: false
