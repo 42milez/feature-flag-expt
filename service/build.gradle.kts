@@ -9,6 +9,7 @@ plugins {
 dependencies {
   implementation(libs.spring.boot.starter.actuator)
   implementation(libs.spring.boot.starter.data.jdbc)
+  implementation(libs.spring.boot.starter.security)
   implementation(libs.spring.boot.starter.validation)
   implementation(libs.spring.boot.starter.web)
   implementation(libs.spring.boot.flyway)
@@ -21,6 +22,7 @@ dependencies {
   runtimeOnly(libs.postgresql)
   testImplementation(libs.mockk)
   testImplementation(libs.spring.boot.starter.test)
+  testImplementation(libs.spring.security.test)
   testImplementation(libs.spring.boot.testcontainers)
   testImplementation(libs.testcontainers.junit.jupiter)
   testImplementation(libs.testcontainers.postgresql)

@@ -3,6 +3,8 @@ package com.github.milez42.featureflags.flags;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,6 +34,9 @@ import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
+  private static final String TEST_USERNAME = "test-user";
+  private static final String TEST_PASSWORD = "test-password";
+
   @Autowired private WebApplicationContext webApplicationContext;
 
   @Autowired private FeatureFlagRepository repository;
@@ -48,7 +53,11 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
   void setUp() {
     jdbcClient.sql("delete from audit_events").update();
     repository.deleteAll();
-    mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+    mockMvc =
+        MockMvcBuilders.webAppContextSetup(webApplicationContext)
+            .defaultRequest(get("/").with(httpBasic(TEST_USERNAME, TEST_PASSWORD)))
+            .apply(springSecurity())
+            .build();
   }
 
   @Test

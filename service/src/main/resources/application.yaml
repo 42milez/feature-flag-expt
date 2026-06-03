@@ -23,6 +23,8 @@ management:
         readiness:
           include: readinessState,db
       validate-group-membership: false
+    prometheus:
+      access: read-only
   endpoints:
     web:
       exposure:

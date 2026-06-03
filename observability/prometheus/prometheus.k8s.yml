@@ -10,6 +10,10 @@ scrape_configs:
   # RBAC. The pod annotations in deploy/k8s/base/app/deployment.yaml are only
   # discovery hints. They do not provide access control and they only work when
   # Prometheus is configured with relabeling rules like the rules below.
+  #
+  # /actuator/prometheus requires HTTP Basic credentials. Provide those
+  # credentials to Prometheus through its secret-management mechanism; Kubernetes
+  # scrape annotations discover the target but do not supply authentication.
   - job_name: feature-flag-platform-pods
     kubernetes_sd_configs:
       - role: pod

@@ -1,6 +1,7 @@
 package com.github.milez42.featureflags.preview
 
 import com.github.milez42.featureflags.OpenApiConfig
+import com.github.milez42.featureflags.SecurityConfig
 import io.mockk.every
 import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
@@ -13,11 +14,14 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic
+import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.WebApplicationContext
 
@@ -41,7 +45,10 @@ class EvaluationPreviewWebIntegrationTest {
 
   @BeforeEach
   fun setUp() {
-    mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build()
+    mockMvc =
+        MockMvcBuilders.webAppContextSetup(webApplicationContext)
+            .apply<DefaultMockMvcBuilder>(springSecurity())
+            .build()
   }
 
   @Test
@@ -107,6 +114,7 @@ class EvaluationPreviewWebIntegrationTest {
     mockMvc
         .perform(
             post("/api/flags/checkout-redesign/preview")
+                .with(httpBasic("test-user", "test-password"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -133,7 +141,7 @@ class EvaluationPreviewWebIntegrationTest {
 
   @Configuration
   @EnableAutoConfiguration
-  @Import(EvaluationPreviewController::class, OpenApiConfig::class)
+  @Import(EvaluationPreviewController::class, OpenApiConfig::class, SecurityConfig::class)
   class TestApplication {
     @Bean fun evaluationPreviewService(): EvaluationPreviewService = mockk()
   }

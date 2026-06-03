@@ -57,13 +57,21 @@ image tag used by `kind load`.
 
 ### Prerequisites
 
-A PostgreSQL instance must be running and accessible. The defaults match the credentials below:
+A PostgreSQL instance must be running and accessible. API and Prometheus access
+also require Spring Security's HTTP Basic credentials. Swagger UI, OpenAPI docs,
+and health probes remain public for local portfolio usability and Kubernetes
+probes.
 
-| Variable | Default |
+| Variable | Local value |
 |---|---|
 | `FEATURE_FLAGS_DB_URL` | `jdbc:postgresql://localhost:5432/featureflags` |
 | `FEATURE_FLAGS_DB_USERNAME` | `featureflags` |
 | `FEATURE_FLAGS_DB_PASSWORD` | `featureflags` |
+| `SPRING_SECURITY_USER_NAME` | `featureflags` |
+| `SPRING_SECURITY_USER_PASSWORD` | `featureflags` |
+
+HTTP Basic is a local portfolio baseline for this phase. A real deployment
+should replace it with OIDC or another organization-managed identity provider.
 
 ### Start PostgreSQL with Docker
 
@@ -105,7 +113,31 @@ Override the database connection if needed:
 FEATURE_FLAGS_DB_URL=jdbc:postgresql://localhost:5432/featureflags \
 FEATURE_FLAGS_DB_USERNAME=featureflags \
 FEATURE_FLAGS_DB_PASSWORD=featureflags \
+SPRING_SECURITY_USER_NAME=featureflags \
+SPRING_SECURITY_USER_PASSWORD=featureflags \
 ./gradlew :service:bootRun
+```
+
+Call an authenticated API endpoint:
+
+```bash
+curl -u featureflags:featureflags \
+  -H 'Content-Type: application/json' \
+  -d '{"flagKey":"checkout-redesign","environment":"production"}' \
+  http://localhost:8080/api/evaluate
+```
+
+Health probes stay public:
+
+```bash
+curl -s http://localhost:8080/actuator/health
+```
+
+Prometheus metrics require the same HTTP Basic credentials:
+
+```bash
+curl -u featureflags:featureflags -s \
+  http://localhost:8080/actuator/prometheus | rg "feature_flag_"
 ```
 
 ### Run on kind
@@ -213,10 +245,10 @@ A static snapshot of the spec is committed at [docs/openapi.yaml](docs/openapi.y
 
 ### Observability
 
-Actuator health and Prometheus metrics are exposed for local and
-cluster-internal operations. See [docs/observability.md](docs/observability.md)
-for metric names, structured logging, Prometheus and Grafana artifacts, and
-Actuator access-control expectations.
+Actuator health endpoints are public for probes, while Prometheus metrics
+require HTTP Basic credentials. See
+[docs/observability.md](docs/observability.md) for metric names, structured
+logging, Prometheus and Grafana artifacts, and access-control expectations.
 
 ### Pack the codebase for implementation review
 

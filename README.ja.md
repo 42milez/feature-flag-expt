@@ -55,13 +55,21 @@ configuration、placeholder credentials、`kind load` で使う local image tag 
 
 ### 前提条件
 
-PostgreSQL インスタンスが起動しており、接続できる必要があります。既定値は以下の認証情報に対応しています。
+PostgreSQL インスタンスが起動しており、接続できる必要があります。API と
+Prometheus へのアクセスには、Spring Security の HTTP Basic 認証情報も必要です。
+Swagger UI、OpenAPI docs、health probe は local portfolio usability と Kubernetes
+probe のために公開されたままです。
 
-| 変数 | 既定値 |
+| 変数 | local value |
 |---|---|
 | `FEATURE_FLAGS_DB_URL` | `jdbc:postgresql://localhost:5432/featureflags` |
 | `FEATURE_FLAGS_DB_USERNAME` | `featureflags` |
 | `FEATURE_FLAGS_DB_PASSWORD` | `featureflags` |
+| `SPRING_SECURITY_USER_NAME` | `featureflags` |
+| `SPRING_SECURITY_USER_PASSWORD` | `featureflags` |
+
+HTTP Basic は、この phase における local portfolio baseline です。実際の deployment では
+OIDC または organization-managed identity provider に置き換えるべきです。
 
 ### Docker で PostgreSQL を起動する
 
@@ -98,7 +106,31 @@ Flyway CLI や `docker-entrypoint-initdb.d` などのツールを使って Postg
 FEATURE_FLAGS_DB_URL=jdbc:postgresql://localhost:5432/featureflags \
 FEATURE_FLAGS_DB_USERNAME=featureflags \
 FEATURE_FLAGS_DB_PASSWORD=featureflags \
+SPRING_SECURITY_USER_NAME=featureflags \
+SPRING_SECURITY_USER_PASSWORD=featureflags \
 ./gradlew :service:bootRun
+```
+
+認証付きの API endpoint を呼び出します。
+
+```bash
+curl -u featureflags:featureflags \
+  -H 'Content-Type: application/json' \
+  -d '{"flagKey":"checkout-redesign","environment":"production"}' \
+  http://localhost:8080/api/evaluate
+```
+
+Health probe は公開されたままです。
+
+```bash
+curl -s http://localhost:8080/actuator/health
+```
+
+Prometheus metrics には同じ HTTP Basic 認証情報が必要です。
+
+```bash
+curl -u featureflags:featureflags -s \
+  http://localhost:8080/actuator/prometheus | rg "feature_flag_"
 ```
 
 ### kind で実行する
@@ -206,10 +238,10 @@ http://localhost:8080/swagger-ui.html
 
 ### Observability
 
-Actuator health と Prometheus metrics は、local および cluster-internal operation 向けに
-公開されています。metric name、structured logging、Prometheus と Grafana の artifact、
-Actuator access-control の期待値については [docs/observability.md](docs/observability.md)
-を参照してください。
+Actuator health endpoints は probe 用に公開され、Prometheus metrics には HTTP Basic
+認証情報が必要です。metric name、structured logging、Prometheus と Grafana の artifact、
+access-control の期待値については [docs/observability.md](docs/observability.md) を
+参照してください。
 
 ### 実装レビュー用にコードベースを pack する
 

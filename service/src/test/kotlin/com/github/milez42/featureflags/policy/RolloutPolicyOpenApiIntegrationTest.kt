@@ -1,6 +1,7 @@
 package com.github.milez42.featureflags.policy
 
 import com.github.milez42.featureflags.OpenApiConfig
+import com.github.milez42.featureflags.SecurityConfig
 import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.contains
@@ -13,10 +14,12 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
+import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.WebApplicationContext
 
@@ -38,7 +41,10 @@ class RolloutPolicyOpenApiIntegrationTest {
 
   @BeforeEach
   fun setUp() {
-    mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build()
+    mockMvc =
+        MockMvcBuilders.webAppContextSetup(webApplicationContext)
+            .apply<DefaultMockMvcBuilder>(springSecurity())
+            .build()
   }
 
   @Test
@@ -92,7 +98,7 @@ class RolloutPolicyOpenApiIntegrationTest {
 
   @Configuration
   @EnableAutoConfiguration
-  @Import(RolloutPolicyController::class, OpenApiConfig::class)
+  @Import(RolloutPolicyController::class, OpenApiConfig::class, SecurityConfig::class)
   class TestApplication {
     @Bean fun rolloutPolicyValidationService(): RolloutPolicyValidationService = mockk()
   }

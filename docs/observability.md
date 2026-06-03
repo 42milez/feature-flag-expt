@@ -1,18 +1,28 @@
 # Observability
 
 The service exposes Spring Boot Actuator health endpoints and a Prometheus
-scrape endpoint on the main application port.
+scrape endpoint on the main application port. Health endpoints are public so
+Kubernetes probes can call them without credentials. Prometheus metrics require
+HTTP Basic authentication.
 
-| Endpoint | Purpose |
-|---|---|
-| `/actuator/health` | Overall health |
-| `/actuator/health/liveness` | Kubernetes liveness probe |
-| `/actuator/health/readiness` | Kubernetes readiness probe |
-| `/actuator/prometheus` | Prometheus metrics scrape endpoint |
+| Endpoint | Purpose | Access |
+|---|---|---|
+| `/actuator/health` | Overall health | Public |
+| `/actuator/health/liveness` | Kubernetes liveness probe | Public |
+| `/actuator/health/readiness` | Kubernetes readiness probe | Public |
+| `/actuator/prometheus` | Prometheus metrics scrape endpoint | HTTP Basic |
 
 Only `health` and `prometheus` are exposed over HTTP. The committed Kubernetes
 manifests do not define an Ingress, so Actuator endpoints are not externally
 routed by this repository.
+
+Swagger UI and OpenAPI docs also remain public in this portfolio phase:
+`/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs`, `/v3/api-docs/**`, and
+`/v3/api-docs.yaml`. Application APIs under `/api/**` require HTTP Basic
+authentication.
+
+HTTP Basic is a local portfolio baseline. Real deployments should replace it
+with OIDC or another organization-managed identity provider.
 
 ## Local Checks
 
@@ -25,7 +35,8 @@ Run the service:
 Inspect metrics:
 
 ```bash
-curl -s http://localhost:8080/actuator/prometheus | rg "feature_flag_"
+curl -u featureflags:featureflags -s \
+  http://localhost:8080/actuator/prometheus | rg "feature_flag_"
 ```
 
 When running in kind, `kubectl port-forward` or `./gradlew k8sPortForward` is
@@ -103,6 +114,10 @@ These annotations are discovery hints only. They work only when Prometheus is
 configured with Kubernetes service discovery, RBAC, network access, and
 relabeling rules that read them. They are not access control.
 
+Because `/actuator/prometheus` requires HTTP Basic authentication, Prometheus
+must receive scrape credentials through its own configuration or secret
+management path. The Kubernetes annotations do not provide those credentials.
+
 ## Grafana
 
 The dashboard JSON is committed at
@@ -113,13 +128,15 @@ switch events, and basic JVM/process health signals.
 
 ## Production Access Control
 
-This phase keeps Actuator on port `8080` and does not add Spring Security.
-Production environments must protect `/actuator/**` before exposing the app
-outside the cluster. Acceptable controls include:
+This phase keeps Actuator on port `8080` and adds a minimal Spring Security
+boundary: health endpoints and API documentation are public, while application
+APIs and Prometheus metrics require HTTP Basic authentication. Production
+environments should still add stronger controls before exposing the app outside
+the cluster. Acceptable controls include:
 
+- OIDC or another organization-managed identity provider for application APIs;
 - a separate management port with network rules that allow Prometheus and
   kubelet probes only;
-- Spring Security rules using Actuator endpoint matchers;
 - Kubernetes `NetworkPolicy` or ingress rules that block external access;
 - a service mesh or platform firewall with equivalent restrictions.
 
