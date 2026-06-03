@@ -25,13 +25,22 @@ public class SecurityConfig {
                         "/v3/api-docs/**",
                         "/v3/api-docs.yaml")
                     .permitAll()
+                    // Keep sensitive routes explicit even though the fallback also requires
+                    // authentication, so their intended security boundary remains visible.
                     .requestMatchers("/api/**", "/actuator/prometheus")
                     .authenticated()
                     .anyRequest()
                     .authenticated())
         .httpBasic(withDefaults())
+        // This is a stateless REST API, so unauthenticated requests should receive 401 responses
+        // instead of being redirected to a browser-oriented login form.
         .formLogin(formLogin -> formLogin.disable())
+        // Disable CSRF token handling for this local portfolio API so stateless JSON clients can
+        // call it directly. HTTP Basic is still CSRF-sensitive in browsers, so production browser
+        // access must re-enable CSRF protection or replace Basic authentication.
         .csrf(csrf -> csrf.disable())
+        // Do not store authentication in an HTTP session; each API request must present its own
+        // credentials so service instances remain stateless and interchangeable.
         .sessionManagement(
             sessionManagement ->
                 sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
