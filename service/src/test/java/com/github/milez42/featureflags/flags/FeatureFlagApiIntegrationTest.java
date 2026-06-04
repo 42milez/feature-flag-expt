@@ -37,6 +37,9 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
   private static final String TEST_USERNAME = "test-user";
   private static final String TEST_PASSWORD = "test-password";
 
+  // Spring Test injects these beans from the application context after JUnit creates the test
+  // instance. Field injection keeps integration tests concise when they need several framework
+  // beans while still exercising the real application wiring.
   @Autowired private WebApplicationContext webApplicationContext;
 
   @Autowired private FeatureFlagRepository repository;
