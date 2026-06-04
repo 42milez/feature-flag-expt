@@ -43,6 +43,8 @@ class RolloutPolicyOpenApiIntegrationTest {
   fun setUp() {
     mockMvc =
         MockMvcBuilders.webAppContextSetup(webApplicationContext)
+            // Kotlin cannot infer apply's self-type from springSecurity(), so keep the builder type
+            // explicit.
             .apply<DefaultMockMvcBuilder>(springSecurity())
             .build()
   }
