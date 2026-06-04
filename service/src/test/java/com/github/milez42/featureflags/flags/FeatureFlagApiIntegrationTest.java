@@ -55,7 +55,14 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
     repository.deleteAll();
     mockMvc =
         MockMvcBuilders.webAppContextSetup(webApplicationContext)
+            // defaultRequest supplies defaults to each perform(...) request, so the
+            // endpoint-specific method and path remain explicit while HTTP Basic credentials stay
+            // consistent.
             .defaultRequest(get("/").with(httpBasic(TEST_USERNAME, TEST_PASSWORD)))
+            // springSecurity registers the security filter chain, the ordered Spring Security
+            // filters applied to HTTP requests, with MockMvc. That includes filters such as CSRF,
+            // authentication, and authorization, so these integration tests exercise the same rules
+            // as HTTP requests.
             .apply(springSecurity())
             .build();
   }
