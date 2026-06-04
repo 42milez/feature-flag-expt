@@ -26,7 +26,11 @@ class ActuatorHealthIntegrationTest extends PostgreSqlIntegrationTest {
   @BeforeEach
   void setUp() {
     mockMvc =
-        MockMvcBuilders.webAppContextSetup(webApplicationContext).apply(springSecurity()).build();
+        MockMvcBuilders.webAppContextSetup(webApplicationContext)
+            // Register the Security filter chain so unauthenticated health checks prove they pass
+            // because SecurityConfig permits them, not because MockMvc bypassed Spring Security.
+            .apply(springSecurity())
+            .build();
   }
 
   @Test
