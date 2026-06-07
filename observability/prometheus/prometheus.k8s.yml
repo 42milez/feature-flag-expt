@@ -3,13 +3,15 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  # Kubernetes pod discovery example. This is documentation/sample
-  # configuration; it is not wired into the repository deployment flow.
+  # Kubernetes pod-discovery example. The Kubernetes manifests in this
+  # repository do not deploy Prometheus or load this configuration.
   #
-  # This job requires Prometheus to run with Kubernetes API access and suitable
-  # RBAC. The pod annotations in deploy/k8s/base/app/deployment.yaml are only
-  # discovery hints. They do not provide access control and they only work when
-  # Prometheus is configured with relabeling rules like the rules below.
+  # Prometheus needs Kubernetes API access, RBAC, and network access to the
+  # application pods. The relabeling rules below read the annotations from
+  # deploy/k8s/base/app/deployment.yaml.
+  #
+  # Before using this job, add basic_auth with credentials mounted from a
+  # Kubernetes Secret. /actuator/prometheus rejects unauthenticated scrapes.
   - job_name: feature-flag-platform-pods
     kubernetes_sd_configs:
       - role: pod

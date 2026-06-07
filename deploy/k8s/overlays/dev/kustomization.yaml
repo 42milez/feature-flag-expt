@@ -51,3 +51,5 @@ secretGenerator:
     literals:
       - FEATURE_FLAGS_DB_USERNAME=featureflags
       - FEATURE_FLAGS_DB_PASSWORD=featureflags
+      - SPRING_SECURITY_USER_NAME=featureflags
+      - SPRING_SECURITY_USER_PASSWORD=featureflags

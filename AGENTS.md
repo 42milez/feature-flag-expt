@@ -44,6 +44,15 @@ Format for each entry (add under the relevant category heading, creating the hea
 - **[Security]** Put explicit size limits on externally supplied collections before iterating over
   them in request handlers or services. Bean Validation constraints such as `@Size(max = ...)`
   should document and enforce the bound at the API edge.
+- **[Security]** When adding Spring Security route rules, finish with an authenticated fallback
+  such as `anyRequest().authenticated()` so newly added routes do not become public unless they are
+  explicitly listed as public.
+- **[Security]** Explicitly configure the access level of exposed non-health Actuator endpoints,
+  such as `management.endpoint.prometheus.access=read-only`, so their permitted operations remain
+  intentional even if framework defaults change.
+- **[Security]** Do not treat stateless HTTP Basic authentication as inherently CSRF-safe, because
+  browsers can automatically resend Basic credentials. Keep CSRF protection or replace Basic
+  authentication before supporting browser-authenticated API clients.
 - **[API / Framework contract]** Convert Java-side domain models, validation result records, and
   persistence entities into Kotlin `*Response` DTOs before generating API responses. OpenAPI
   response schemas should reference the public response DTO, not the internal Java model.

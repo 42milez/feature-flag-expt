@@ -8,8 +8,15 @@ scrape_configs:
   #
   # If the app is running in kind, use kubectl port-forward or
   # ./gradlew k8sPortForward and keep this target.
+  #
+  # /actuator/prometheus requires HTTP Basic credentials. Keep these sample
+  # values aligned with the local SPRING_SECURITY_USER_* values used to start
+  # the service.
   - job_name: feature-flag-platform-local
     metrics_path: /actuator/prometheus
+    basic_auth:
+      username: featureflags
+      password: featureflags
     static_configs:
       - targets:
           - localhost:8080

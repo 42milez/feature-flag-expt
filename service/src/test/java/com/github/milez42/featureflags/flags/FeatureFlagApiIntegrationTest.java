@@ -3,6 +3,8 @@ package com.github.milez42.featureflags.flags;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,6 +34,12 @@ import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
+  private static final String TEST_USERNAME = "test-user";
+  private static final String TEST_PASSWORD = "test-password";
+
+  // Spring Test injects these beans from the application context after JUnit creates the test
+  // instance. Field injection keeps integration tests concise when they need several framework
+  // beans while still exercising the real application wiring.
   @Autowired private WebApplicationContext webApplicationContext;
 
   @Autowired private FeatureFlagRepository repository;
@@ -48,7 +56,18 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
   void setUp() {
     jdbcClient.sql("delete from audit_events").update();
     repository.deleteAll();
-    mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+    mockMvc =
+        MockMvcBuilders.webAppContextSetup(webApplicationContext)
+            // defaultRequest supplies defaults to each perform(...) request, so the
+            // endpoint-specific method and path remain explicit while HTTP Basic credentials stay
+            // consistent.
+            .defaultRequest(get("/").with(httpBasic(TEST_USERNAME, TEST_PASSWORD)))
+            // springSecurity registers the security filter chain, the ordered Spring Security
+            // filters applied to HTTP requests, with MockMvc. That includes filters such as CSRF,
+            // authentication, and authorization, so these integration tests exercise the same rules
+            // as HTTP requests.
+            .apply(springSecurity())
+            .build();
   }
 
   @Test
