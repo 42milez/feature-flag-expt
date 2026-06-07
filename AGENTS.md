@@ -47,6 +47,8 @@ Format for each entry (add under the relevant category heading, creating the hea
 - **[Security]** When adding Spring Security route rules, finish with an authenticated fallback
   such as `anyRequest().authenticated()` so newly added routes do not become public unless they are
   explicitly listed as public.
+- **[Security]** Add an explicit deny-all rule for protected API namespaces before the final
+  authenticated fallback, so new API routes fail closed until they are deliberately classified.
 - **[Security]** Explicitly configure the access level of exposed non-health Actuator endpoints,
   such as `management.endpoint.prometheus.access=read-only`, so their permitted operations remain
   intentional even if framework defaults change.

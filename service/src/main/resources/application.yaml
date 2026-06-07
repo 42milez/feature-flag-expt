@@ -8,6 +8,13 @@ spring:
   flyway:
     enabled: true
 
+feature-flags:
+  security:
+    reader-username: ${FEATURE_FLAGS_SECURITY_READER_USERNAME:featureflags-reader}
+    reader-password: ${FEATURE_FLAGS_SECURITY_READER_PASSWORD:featureflags-reader}
+    operator-username: ${FEATURE_FLAGS_SECURITY_OPERATOR_USERNAME:featureflags-operator}
+    operator-password: ${FEATURE_FLAGS_SECURITY_OPERATOR_PASSWORD:featureflags-operator}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html

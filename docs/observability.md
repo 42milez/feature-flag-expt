@@ -3,7 +3,7 @@
 The service exposes Spring Boot Actuator health endpoints and a Prometheus
 scrape endpoint on the main application port. Health endpoints are public so
 Kubernetes probes can call them without credentials. Prometheus metrics require
-HTTP Basic authentication.
+HTTP Basic authentication from any configured local user.
 
 | Endpoint | Purpose | Access |
 |---|---|---|
@@ -19,10 +19,12 @@ routed by this repository.
 Swagger UI and OpenAPI docs also remain public in this portfolio phase:
 `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs`, `/v3/api-docs/**`, and
 `/v3/api-docs.yaml`. Application APIs under `/api/**` require HTTP Basic
-authentication.
+authentication with either `FLAG_READER` or `FLAG_OPERATOR` depending on the
+route. Unclassified API routes are denied before request dispatch.
 
 HTTP Basic is a local portfolio baseline. Real deployments should replace it
-with OIDC or another production-appropriate authentication method.
+with OIDC or another production-appropriate authentication method that maps
+token claims to the same `FLAG_READER` and `FLAG_OPERATOR` authorities.
 
 ## Local Checks
 
@@ -35,7 +37,7 @@ Run the service:
 Inspect metrics:
 
 ```bash
-curl -u featureflags:featureflags -s \
+curl -u featureflags-reader:featureflags-reader -s \
   http://localhost:8080/actuator/prometheus | rg "feature_flag_"
 ```
 
@@ -117,6 +119,9 @@ relabeling rules that read them. They are not access control.
 Because `/actuator/prometheus` requires HTTP Basic authentication, Prometheus
 must receive scrape credentials through its own configuration or secret
 management path. The Kubernetes annotations do not provide those credentials.
+Metrics authorization intentionally remains separate from the API
+reader/operator split so future management-port, service-account,
+network-policy, mTLS, or OIDC controls can replace it cleanly.
 
 ## Grafana
 
@@ -130,12 +135,13 @@ switch events, and basic JVM/process health signals.
 
 This phase keeps Actuator on port `8080` and adds a minimal Spring Security
 boundary: health endpoints and API documentation are public, while application
-APIs and Prometheus metrics require HTTP Basic authentication. Production
-environments should still add stronger controls before exposing the app outside
-the cluster. Acceptable controls include:
+APIs require local reader/operator roles and Prometheus metrics require any
+authenticated configured user. Production environments should still add stronger
+controls before exposing the app outside the cluster. Acceptable controls
+include:
 
 - OIDC or another production-appropriate authentication method for application
-  APIs;
+  APIs, mapped to the existing reader/operator authorities;
 - a separate management port with network rules that allow Prometheus and
   kubelet probes only;
 - Kubernetes `NetworkPolicy` or ingress rules that block external access;

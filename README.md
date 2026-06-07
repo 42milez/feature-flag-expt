@@ -57,22 +57,27 @@ image tag used by `kind load`.
 
 ### Prerequisites
 
-A PostgreSQL instance must be running and accessible. API and Prometheus access
-also require Spring Security's HTTP Basic credentials. Swagger UI and OpenAPI
-docs remain publicly accessible without authentication so the portfolio can be
-explored locally.
+A PostgreSQL instance must be running and accessible. API access uses two local
+HTTP Basic users: a reader for read-style operations and an operator for create
+and update operations. Prometheus metrics require any configured local user.
+Swagger UI and OpenAPI docs remain publicly accessible without authentication so
+the portfolio can be explored locally.
 
 | Variable | Local value |
 |---|---|
 | `FEATURE_FLAGS_DB_URL` | `jdbc:postgresql://localhost:5432/featureflags` |
 | `FEATURE_FLAGS_DB_USERNAME` | `featureflags` |
 | `FEATURE_FLAGS_DB_PASSWORD` | `featureflags` |
-| `SPRING_SECURITY_USER_NAME` | `featureflags` |
-| `SPRING_SECURITY_USER_PASSWORD` | `featureflags` |
+| `FEATURE_FLAGS_SECURITY_READER_USERNAME` | `featureflags-reader` |
+| `FEATURE_FLAGS_SECURITY_READER_PASSWORD` | `featureflags-reader` |
+| `FEATURE_FLAGS_SECURITY_OPERATOR_USERNAME` | `featureflags-operator` |
+| `FEATURE_FLAGS_SECURITY_OPERATOR_PASSWORD` | `featureflags-operator` |
 
 HTTP Basic is a local portfolio baseline for this phase. A real deployment
 should replace it with OIDC or another production-appropriate authentication
-method.
+method that maps token claims to the same `FLAG_READER` and `FLAG_OPERATOR`
+authorities. Startup password encoding is only for the in-memory user store; it
+does not protect environment variables or Kubernetes Secrets.
 
 ### Start PostgreSQL with Docker
 
@@ -113,7 +118,7 @@ an application decide whether to enable a feature for a runtime context. First,
 create a flag that targets the production environment and allowlists `tenant-a`:
 
 ```bash
-curl -u featureflags:featureflags \
+curl -u featureflags-operator:featureflags-operator \
   -H 'Content-Type: application/json' \
   -d '{"flagKey":"checkout-redesign","status":"ENABLED","targetEnvironments":["production"],"killSwitchActive":false,"tenantAllowlist":["tenant-a"],"rolloutPercentage":25}' \
   http://localhost:8080/api/flags
@@ -124,7 +129,7 @@ runtime context. The `enabled` and `reason` fields let the caller switch behavio
 without knowing the internal structure of the flag configuration:
 
 ```bash
-curl -u featureflags:featureflags \
+curl -u featureflags-reader:featureflags-reader \
   -H 'Content-Type: application/json' \
   -d '{"flagKey":"checkout-redesign","environment":"production","tenantId":"tenant-a"}' \
   http://localhost:8080/api/evaluate
@@ -236,7 +241,7 @@ A static snapshot of the spec is committed at [docs/openapi.yaml](docs/openapi.y
 ### Observability
 
 Actuator health endpoints are public for probes, while Prometheus metrics
-require HTTP Basic credentials. See
+require HTTP Basic credentials from any configured local user. See
 [docs/observability.md](docs/observability.md) for metric names, structured
 logging, Prometheus and Grafana artifacts, and access-control expectations.
 

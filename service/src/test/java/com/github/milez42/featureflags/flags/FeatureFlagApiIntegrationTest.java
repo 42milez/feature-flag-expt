@@ -34,8 +34,8 @@ import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
-  private static final String TEST_USERNAME = "test-user";
-  private static final String TEST_PASSWORD = "test-password";
+  private static final String OPERATOR_USERNAME = "test-operator";
+  private static final String OPERATOR_PASSWORD = "test-operator-password";
 
   // Spring Test injects these beans from the application context after JUnit creates the test
   // instance. Field injection keeps integration tests concise when they need several framework
@@ -61,7 +61,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
             // defaultRequest supplies defaults to each perform(...) request, so the
             // endpoint-specific method and path remain explicit while HTTP Basic credentials stay
             // consistent.
-            .defaultRequest(get("/").with(httpBasic(TEST_USERNAME, TEST_PASSWORD)))
+            .defaultRequest(get("/").with(httpBasic(OPERATOR_USERNAME, OPERATOR_PASSWORD)))
             // springSecurity registers the security filter chain, the ordered Spring Security
             // filters applied to HTTP requests, with MockMvc. That includes filters such as CSRF,
             // authentication, and authorization, so these integration tests exercise the same rules
