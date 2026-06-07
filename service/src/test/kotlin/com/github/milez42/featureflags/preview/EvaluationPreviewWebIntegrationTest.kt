@@ -114,7 +114,7 @@ class EvaluationPreviewWebIntegrationTest {
     mockMvc
         .perform(
             post("/api/flags/checkout-redesign/preview")
-                .with(httpBasic("test-user", "test-password"))
+                .with(httpBasic("test-reader", "test-reader-password"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """

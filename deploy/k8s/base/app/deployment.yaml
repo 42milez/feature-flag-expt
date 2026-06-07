@@ -40,16 +40,26 @@ spec:
                 secretKeyRef:
                   name: feature-flag-platform-secret
                   key: FEATURE_FLAGS_DB_PASSWORD
-            - name: SPRING_SECURITY_USER_NAME
+            - name: FEATURE_FLAGS_SECURITY_READER_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: feature-flag-platform-secret
-                  key: SPRING_SECURITY_USER_NAME
-            - name: SPRING_SECURITY_USER_PASSWORD
+                  key: FEATURE_FLAGS_SECURITY_READER_USERNAME
+            - name: FEATURE_FLAGS_SECURITY_READER_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: feature-flag-platform-secret
-                  key: SPRING_SECURITY_USER_PASSWORD
+                  key: FEATURE_FLAGS_SECURITY_READER_PASSWORD
+            - name: FEATURE_FLAGS_SECURITY_OPERATOR_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: feature-flag-platform-secret
+                  key: FEATURE_FLAGS_SECURITY_OPERATOR_USERNAME
+            - name: FEATURE_FLAGS_SECURITY_OPERATOR_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: feature-flag-platform-secret
+                  key: FEATURE_FLAGS_SECURITY_OPERATOR_PASSWORD
           startupProbe:
             httpGet:
               path: /actuator/health/liveness
