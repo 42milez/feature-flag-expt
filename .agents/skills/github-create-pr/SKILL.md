@@ -1,6 +1,6 @@
 ---
 name: github-create-pr
-description: Create a GitHub pull request from local repository changes using the GitHub connector. Use only when the user explicitly invokes $github-create-pr to create a pull request.
+description: Create a GitHub pull request from local repository changes and assign the repository owner using the GitHub connector. Use only when the user explicitly invokes $github-create-pr to create a pull request.
 ---
 
 # Create GitHub PR
