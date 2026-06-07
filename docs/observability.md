@@ -119,9 +119,9 @@ relabeling rules that read them. They are not access control.
 Because `/actuator/prometheus` requires HTTP Basic authentication, Prometheus
 must receive scrape credentials through its own configuration or secret
 management path. The Kubernetes annotations do not provide those credentials.
-Metrics authorization intentionally remains separate from the API
-reader/operator split so future management-port, service-account,
-network-policy, mTLS, or OIDC controls can replace it cleanly.
+Metrics access control intentionally remains separate from the API
+reader/operator split so future management-port isolation, network-policy,
+mTLS, or workload-identity-backed gateway controls can replace it cleanly.
 
 ## Grafana
 
@@ -137,15 +137,20 @@ This phase keeps Actuator on port `8080` and adds a minimal Spring Security
 boundary: health endpoints and API documentation are public, while application
 APIs require local reader/operator roles and Prometheus metrics require any
 authenticated configured user. Production environments should still add stronger
-controls before exposing the app outside the cluster. Acceptable controls
-include:
+controls before exposing the app outside the cluster.
+
+For application APIs, acceptable controls include:
 
 - OIDC or another production-appropriate authentication method for application
-  APIs, mapped to the existing reader/operator authorities;
+  APIs, mapped to the existing reader/operator authorities.
+
+For Actuator and Prometheus access, acceptable controls include:
+
 - a separate management port with network rules that allow Prometheus and
   kubelet probes only;
-- Kubernetes `NetworkPolicy` or ingress rules that block external access;
-- a service mesh or platform firewall with equivalent restrictions.
+- Kubernetes `NetworkPolicy` or service mesh policy that restricts in-cluster
+  access;
+- ingress rules or a platform firewall that block external access.
 
 If a future phase moves Actuator to a separate management port, revisit the
 probe design. Probes on a separate management context can miss main server
