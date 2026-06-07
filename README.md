@@ -79,6 +79,15 @@ method that maps token claims to the same `FLAG_READER` and `FLAG_OPERATOR`
 authorities. Startup password encoding is only for the in-memory user store; it
 does not protect environment variables or Kubernetes Secrets.
 
+Route-to-authority mappings are also intentionally kept in `SecurityConfig` for
+this small portfolio service. A production system should usually evolve this
+model with clearer endpoint grouping, operation-level authorities such as
+`flags:read`, `flags:write`, and `metrics:read`, method security for more
+complex checks, or an external authorization layer when policy decisions need to
+be managed outside the application. This project keeps the mapping hardcoded so
+the security boundary remains easy to inspect without extra configuration
+indirection.
+
 ### Start PostgreSQL with Docker
 
 For local Swagger UI checks, start a PostgreSQL container with the default

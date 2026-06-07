@@ -77,6 +77,14 @@ OIDC など、本番環境に適した認証方式に置き換え、token claim 
 in-memory user store 用であり、environment variable や Kubernetes Secret 自体を保護する
 ものではありません。
 
+route と authority の対応も、この小規模な portfolio service では意図的に
+`SecurityConfig` に直接記述しています。production system では通常、endpoint grouping
+の明確化、`flags:read`、`flags:write`、`metrics:read` のような operation-level authority、
+より複雑な check に対する method security、または policy decision を application 外で
+管理する必要がある場合の external authorization layer を検討します。この project では、
+余分な設定の間接化を増やさず security boundary を読み取りやすくするため、mapping を
+hardcoded にしています。
+
 ### Docker で PostgreSQL を起動する
 
 ローカルで Swagger UI を確認する場合は、既定のデータベース設定で PostgreSQL コンテナを起動します。
