@@ -13,6 +13,10 @@ public record AuditEventResponse(
     @Schema(description = "Type of audit event.", example = "ROLLOUT_PERCENTAGE_CHANGED")
         AuditEventType eventType,
     @Schema(
+            description = "Authenticated operator username that caused the event.",
+            example = "featureflags-operator")
+        String actor,
+    @Schema(
             description = "Event-specific details. Shape depends on eventType.",
             type = "object",
             implementation = Object.class)

@@ -809,6 +809,10 @@ components:
           - KILL_SWITCH_ENABLED
           - KILL_SWITCH_DISABLED
           example: ROLLOUT_PERCENTAGE_CHANGED
+        actor:
+          type: string
+          description: Authenticated operator username that caused the event.
+          example: featureflags-operator
         details:
           description: Event-specific details. Shape depends on eventType.
         occurredAt:

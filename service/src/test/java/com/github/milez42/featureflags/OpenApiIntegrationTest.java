@@ -91,6 +91,8 @@ class OpenApiIntegrationTest {
                 jsonPath(
                         "$.components.schemas.UpdateFeatureFlagRequest.properties.tenantAllowlist.items.minLength")
                     .value(1))
+            .andExpect(
+                jsonPath("$.components.schemas.AuditEventResponse.properties.actor").exists())
             .andReturn();
 
     String body = result.getResponse().getContentAsString();
