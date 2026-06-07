@@ -10,16 +10,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuditEventService {
   private final AuditEventRepository repository;
+  private final CurrentActorProvider currentActorProvider;
   private final Clock clock;
 
-  public AuditEventService(AuditEventRepository repository, Clock clock) {
+  public AuditEventService(
+      AuditEventRepository repository, CurrentActorProvider currentActorProvider, Clock clock) {
     this.repository = repository;
+    this.currentActorProvider = currentActorProvider;
     this.clock = clock;
   }
 
   @Transactional(propagation = Propagation.MANDATORY)
   public void record(String flagKey, AuditEventType eventType, AuditEventDetails details) {
-    repository.save(AuditEvent.newEvent(flagKey, eventType, details, Instant.now(clock)));
+    repository.save(
+        AuditEvent.newEvent(
+            flagKey, eventType, currentActorProvider.currentActor(), details, Instant.now(clock)));
   }
 
   @Transactional(readOnly = true)

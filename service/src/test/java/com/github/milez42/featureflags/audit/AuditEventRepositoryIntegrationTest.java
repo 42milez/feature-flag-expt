@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.github.milez42.featureflags.flags.FeatureFlagStatus;
 import com.github.milez42.featureflags.support.PostgreSqlIntegrationTest;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,7 @@ class AuditEventRepositoryIntegrationTest extends PostgreSqlIntegrationTest {
         AuditEvent.newEvent(
             "checkout-redesign",
             AuditEventType.FLAG_CREATED,
+            "test-operator",
             new AuditEventDetails.FlagCreatedDetails(
                 FeatureFlagStatus.ENABLED, 50, false, Set.of("production"), Set.of("tenant-a")),
             occurredAt));
@@ -57,6 +59,7 @@ class AuditEventRepositoryIntegrationTest extends PostgreSqlIntegrationTest {
             event -> {
               assertThat(event.id()).isNotNull();
               assertThat(event.eventType()).isEqualTo(AuditEventType.FLAG_CREATED);
+              assertThat(event.actor()).isEqualTo("test-operator");
               assertThat(event.occurredAt()).isEqualTo(occurredAt);
               assertThat(event.details())
                   .isEqualTo(
@@ -76,6 +79,7 @@ class AuditEventRepositoryIntegrationTest extends PostgreSqlIntegrationTest {
         AuditEvent.newEvent(
             "checkout-redesign",
             AuditEventType.TARGET_ENVIRONMENTS_CHANGED,
+            "test-operator",
             new AuditEventDetails.TargetEnvironmentsChangedDetails(
                 "targetEnvironments", Set.of("production", "staging"), Set.of("production")),
             occurredAt));
@@ -101,18 +105,21 @@ class AuditEventRepositoryIntegrationTest extends PostgreSqlIntegrationTest {
         AuditEvent.newEvent(
             "checkout-redesign",
             AuditEventType.ROLLOUT_PERCENTAGE_CHANGED,
+            "test-operator",
             new AuditEventDetails.RolloutPercentageChangedDetails("rolloutPercentage", 25, 50),
             occurredAt));
     repository.save(
         AuditEvent.newEvent(
             "profile-page",
             AuditEventType.KILL_SWITCH_ENABLED,
+            "test-operator",
             new AuditEventDetails.KillSwitchEnabledDetails("killSwitchActive", false, true),
             occurredAt));
     repository.save(
         AuditEvent.newEvent(
             "checkout-redesign",
             AuditEventType.TENANT_ALLOWLIST_CHANGED,
+            "test-operator",
             new AuditEventDetails.TenantAllowlistChangedDetails(
                 "tenantAllowlist", Set.of("tenant-a"), Set.of("tenant-b")),
             occurredAt));
@@ -121,5 +128,24 @@ class AuditEventRepositoryIntegrationTest extends PostgreSqlIntegrationTest {
         .extracting(AuditEvent::eventType)
         .containsExactly(
             AuditEventType.ROLLOUT_PERCENTAGE_CHANGED, AuditEventType.TENANT_ALLOWLIST_CHANGED);
+  }
+
+  @Test
+  void flywayCreatesNonNullActorColumnWithoutDefault() {
+    Map<String, Object> column =
+        jdbcClient
+            .sql(
+                """
+                select is_nullable, column_default
+                from information_schema.columns
+                where table_schema = 'public'
+                  and table_name = 'audit_events'
+                  and column_name = 'actor'
+                """)
+            .query()
+            .singleRow();
+
+    assertThat(column).containsEntry("is_nullable", "NO");
+    assertThat(column).containsEntry("column_default", null);
   }
 }

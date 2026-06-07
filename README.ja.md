@@ -60,6 +60,9 @@ local の HTTP Basic user を 2 つ使います。reader は read-style operatio
 create と update operation 用です。Prometheus metrics には、設定済み local user のいずれかが
 必要です。Swagger UI と OpenAPI docs は、ポートフォリオをローカルで確認しやすいように
 認証なしで公開されています。
+audit event は、create と update operation について、認証済み HTTP Basic principal を
+`actor` として記録します。actor は Spring Security から service が導出し、request payload
+からは受け取りません。
 
 | 変数 | ローカルでの値 |
 |---|---|

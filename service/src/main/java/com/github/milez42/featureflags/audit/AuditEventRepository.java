@@ -25,11 +25,12 @@ public class AuditEventRepository {
     jdbcClient
         .sql(
             """
-            insert into audit_events (flag_key, event_type, details, occurred_at)
-            values (:flagKey, :eventType, cast(:details as jsonb), :occurredAt)
+            insert into audit_events (flag_key, event_type, actor, details, occurred_at)
+            values (:flagKey, :eventType, :actor, cast(:details as jsonb), :occurredAt)
             """)
         .param("flagKey", event.flagKey())
         .param("eventType", event.eventType().name())
+        .param("actor", event.actor())
         .param("details", detailsJson)
         .param("occurredAt", event.occurredAt().atOffset(ZoneOffset.UTC))
         .update();
@@ -39,7 +40,7 @@ public class AuditEventRepository {
     return jdbcClient
         .sql(
             """
-            select id, flag_key, event_type, details::text as details, occurred_at
+            select id, flag_key, event_type, actor, details::text as details, occurred_at
             from audit_events
             where flag_key = :flagKey
             order by id
@@ -55,6 +56,7 @@ public class AuditEventRepository {
         rs.getLong("id"),
         rs.getString("flag_key"),
         eventType,
+        rs.getString("actor"),
         deserialize(eventType, rs.getString("details")),
         rs.getObject("occurred_at", OffsetDateTime.class).toInstant());
   }

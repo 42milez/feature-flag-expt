@@ -55,6 +55,8 @@ Format for each entry (add under the relevant category heading, creating the hea
 - **[Security]** Do not treat stateless HTTP Basic authentication as inherently CSRF-safe, because
   browsers can automatically resend Basic credentials. Keep CSRF protection or replace Basic
   authentication before supporting browser-authenticated API clients.
+- **[Security]** Derive audit actor identity from trusted server-side authentication context, not
+  request payloads, so callers cannot forge who performed a state-changing operation.
 - **[API / Framework contract]** Convert Java-side domain models, validation result records, and
   persistence entities into Kotlin `*Response` DTOs before generating API responses. OpenAPI
   response schemas should reference the public response DTO, not the internal Java model.

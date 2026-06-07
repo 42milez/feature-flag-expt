@@ -62,6 +62,9 @@ HTTP Basic users: a reader for read-style operations and an operator for create
 and update operations. Prometheus metrics require any configured local user.
 Swagger UI and OpenAPI docs remain publicly accessible without authentication so
 the portfolio can be explored locally.
+Audit events record the authenticated HTTP Basic principal as `actor` for create
+and update operations. The actor is derived by the service from Spring Security
+and is never accepted from request payloads.
 
 | Variable | Local value |
 |---|---|

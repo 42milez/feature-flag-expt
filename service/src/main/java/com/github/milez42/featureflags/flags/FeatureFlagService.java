@@ -89,6 +89,7 @@ public class FeatureFlagService {
                     event.id(),
                     event.flagKey(),
                     event.eventType(),
+                    event.actor(),
                     event.details(),
                     event.occurredAt()))
         .toList();

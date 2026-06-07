@@ -100,6 +100,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
         .satisfies(
             event -> {
               assertThat(event.eventType()).isEqualTo(AuditEventType.FLAG_CREATED);
+              assertThat(event.actor()).isEqualTo(OPERATOR_USERNAME);
               assertThat(event.details())
                   .isEqualTo(
                       new AuditEventDetails.FlagCreatedDetails(
@@ -181,9 +182,11 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
         .andExpect(jsonPath("$[0].id", notNullValue()))
         .andExpect(jsonPath("$[0].flagKey").value("checkout-redesign"))
         .andExpect(jsonPath("$[0].eventType").value("FLAG_CREATED"))
+        .andExpect(jsonPath("$[0].actor").value(OPERATOR_USERNAME))
         .andExpect(jsonPath("$[0].details.status").value("ENABLED"))
         .andExpect(jsonPath("$[0].occurredAt", notNullValue()))
         .andExpect(jsonPath("$[1].eventType").value("ROLLOUT_PERCENTAGE_CHANGED"))
+        .andExpect(jsonPath("$[1].actor").value(OPERATOR_USERNAME))
         .andExpect(jsonPath("$[1].details.field").value("rolloutPercentage"))
         .andExpect(jsonPath("$[1].details.oldValue").value(100))
         .andExpect(jsonPath("$[1].details.newValue").value(50));
@@ -236,6 +239,9 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
             AuditEventType.FLAG_CREATED,
             AuditEventType.ROLLOUT_PERCENTAGE_CHANGED,
             AuditEventType.KILL_SWITCH_ENABLED);
+    assertThat(auditEventRepository.findByFlagKey("checkout-redesign"))
+        .extracting(AuditEvent::actor)
+        .containsOnly(OPERATOR_USERNAME);
   }
 
   @Test
