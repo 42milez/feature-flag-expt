@@ -71,19 +71,23 @@ create と update operation 用です。Prometheus metrics には、設定済み
 | `FEATURE_FLAGS_SECURITY_OPERATOR_USERNAME` | `featureflags-operator` |
 | `FEATURE_FLAGS_SECURITY_OPERATOR_PASSWORD` | `featureflags-operator` |
 
-HTTP Basic は、現段階のポートフォリオをローカルで動かすための最低限の認証方式です。実際の deployment では
-OIDC など、本番環境に適した認証方式に置き換え、token claim を同じ `FLAG_READER` と
-`FLAG_OPERATOR` authority に map するべきです。startup 時の password encoding は
+HTTP Basic は、現段階のポートフォリオをローカルで動かすための最低限の認証方式です。
+この repository には feature flag の永続化用に PostgreSQL が含まれていますが、
+user credential は意図的に application database の外に置いています。この portfolio の
+scope では、local authentication は deployment boundary にとどめ、PostgreSQL は
+flag state、rollout configuration、validation behavior、audit event のために使います。
+production deployment では、authentication boundary を operational context と
+compliance context に照らして検討する必要があります。startup 時の password encoding は
 in-memory user store 用であり、environment variable や Kubernetes Secret 自体を保護する
 ものではありません。
 
 route と authority の対応も、この小規模な portfolio service では意図的に
-`SecurityConfig` に直接記述しています。production system では通常、endpoint grouping
+`SecurityConfig` に直接記述しています。production system では、endpoint grouping
 の明確化、`flags:read`、`flags:write`、`metrics:read` のような operation-level authority、
 より複雑な check に対する method security、または policy decision を application 外で
-管理する必要がある場合の external authorization layer を検討します。この project では、
-余分な設定の間接化を増やさず security boundary を読み取りやすくするため、mapping を
-hardcoded にしています。
+管理する必要がある場合の external authorization layer へ発展させる選択肢があります。
+この project では、余分な設定の間接化を増やさず security boundary を読み取りやすくするため、
+mapping を hardcoded にしています。
 
 ### Docker で PostgreSQL を起動する
 
