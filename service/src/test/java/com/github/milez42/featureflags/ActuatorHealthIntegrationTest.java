@@ -16,8 +16,8 @@ import org.springframework.web.context.WebApplicationContext;
 
 @SpringBootTest
 class ActuatorHealthIntegrationTest extends PostgreSqlIntegrationTest {
-  private static final String TEST_USERNAME = "test-user";
-  private static final String TEST_PASSWORD = "test-password";
+  private static final String READER_USERNAME = "test-reader";
+  private static final String READER_PASSWORD = "test-reader-password";
 
   @Autowired private WebApplicationContext webApplicationContext;
 
@@ -51,7 +51,7 @@ class ActuatorHealthIntegrationTest extends PostgreSqlIntegrationTest {
   @Test
   void prometheusEndpointReturnsOk() throws Exception {
     mockMvc
-        .perform(get("/actuator/prometheus").with(httpBasic(TEST_USERNAME, TEST_PASSWORD)))
+        .perform(get("/actuator/prometheus").with(httpBasic(READER_USERNAME, READER_PASSWORD)))
         .andExpect(status().isOk());
   }
 }

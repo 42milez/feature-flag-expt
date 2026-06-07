@@ -8,14 +8,29 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.github.milez42.featureflags.flags.CreateFeatureFlagRequest;
+import com.github.milez42.featureflags.flags.EvaluateFeatureFlagRequest;
+import com.github.milez42.featureflags.flags.EvaluateFeatureFlagResponse;
+import com.github.milez42.featureflags.flags.EvaluationReason;
 import com.github.milez42.featureflags.flags.FeatureFlagController;
 import com.github.milez42.featureflags.flags.FeatureFlagResponse;
 import com.github.milez42.featureflags.flags.FeatureFlagService;
 import com.github.milez42.featureflags.flags.FeatureFlagStatus;
+import com.github.milez42.featureflags.flags.UpdateFeatureFlagRequest;
+import com.github.milez42.featureflags.policy.RolloutPolicyController;
+import com.github.milez42.featureflags.policy.RolloutPolicyValidationRequest;
+import com.github.milez42.featureflags.policy.RolloutPolicyValidationResponse;
+import com.github.milez42.featureflags.policy.RolloutPolicyValidationService;
+import com.github.milez42.featureflags.preview.EvaluationPreviewController;
+import com.github.milez42.featureflags.preview.EvaluationPreviewRequest;
+import com.github.milez42.featureflags.preview.EvaluationPreviewResponse;
+import com.github.milez42.featureflags.preview.EvaluationPreviewService;
+import com.github.milez42.featureflags.preview.EvaluationPreviewSummary;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +43,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -40,18 +56,26 @@ import org.springframework.web.context.WebApplicationContext;
             + "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration,"
             + "org.springframework.boot.jdbc.autoconfigure.JdbcClientAutoConfiguration")
 class SecurityBoundaryIntegrationTest {
-  private static final String TEST_USERNAME = "test-user";
-  private static final String TEST_PASSWORD = "test-password";
+  private static final String READER_USERNAME = "test-reader";
+  private static final String READER_PASSWORD = "test-reader-password";
+  private static final String OPERATOR_USERNAME = "test-operator";
+  private static final String OPERATOR_PASSWORD = "test-operator-password";
 
   @Autowired private WebApplicationContext webApplicationContext;
 
   @Autowired private FeatureFlagService featureFlagService;
+
+  @Autowired private EvaluationPreviewService evaluationPreviewService;
+
+  @Autowired private RolloutPolicyValidationService rolloutPolicyValidationService;
 
   private MockMvc mockMvc;
 
   @BeforeEach
   void setUp() {
     reset(featureFlagService);
+    reset(evaluationPreviewService);
+    reset(rolloutPolicyValidationService);
     mockMvc =
         MockMvcBuilders.webAppContextSetup(webApplicationContext).apply(springSecurity()).build();
   }
@@ -62,21 +86,106 @@ class SecurityBoundaryIntegrationTest {
   }
 
   @Test
-  void authenticatedApiRequestSucceeds() throws Exception {
-    when(featureFlagService.create(any(CreateFeatureFlagRequest.class)))
-        .thenReturn(
-            new FeatureFlagResponse(
-                "checkout-redesign",
-                FeatureFlagStatus.ENABLED,
-                Set.of("production"),
-                false,
-                Set.of(),
-                25));
+  void readerCanUseReadStyleApiRoutes() throws Exception {
+    stubReadResponses();
+
+    mockMvc
+        .perform(get("/api/flags/checkout-redesign").with(readerCredentials()))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(get("/api/flags/checkout-redesign/audit-events").with(readerCredentials()))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(
+            post("/api/evaluate")
+                .with(readerCredentials())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "flagKey": "checkout-redesign",
+                      "environment": "production"
+                    }
+                    """))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/preview")
+                .with(readerCredentials())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "proposedChange": {
+                        "rolloutPercentage": 50
+                      },
+                      "sampleContexts": [
+                        {
+                          "environment": "production"
+                        }
+                      ]
+                    }
+                    """))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/validate-change")
+                .with(readerCredentials())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "proposedChange": {
+                        "rolloutPercentage": 50
+                      }
+                    }
+                    """))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void readerCannotUseWriteApiRoutes() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/flags")
+                .with(readerCredentials())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "flagKey": "checkout-redesign",
+                      "status": "ENABLED",
+                      "targetEnvironments": ["production"],
+                      "killSwitchActive": false,
+                      "rolloutPercentage": 25
+                    }
+                    """))
+        .andExpect(status().isForbidden());
+
+    mockMvc
+        .perform(
+            patch("/api/flags/checkout-redesign")
+                .with(readerCredentials())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "rolloutPercentage": 50
+                    }
+                    """))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void operatorCanUseWriteApiRoutes() throws Exception {
+    when(featureFlagService.create(any(CreateFeatureFlagRequest.class))).thenReturn(flagResponse());
+    when(featureFlagService.update(any(String.class), any(UpdateFeatureFlagRequest.class)))
+        .thenReturn(flagResponse());
 
     mockMvc
         .perform(
             post("/api/flags")
-                .with(httpBasic(TEST_USERNAME, TEST_PASSWORD))
+                .with(operatorCredentials())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -89,6 +198,26 @@ class SecurityBoundaryIntegrationTest {
                     }
                     """))
         .andExpect(status().isCreated());
+
+    mockMvc
+        .perform(
+            patch("/api/flags/checkout-redesign")
+                .with(operatorCredentials())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "rolloutPercentage": 50
+                    }
+                    """))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void unclassifiedApiRoutesAreDeniedBeforeRequestDispatch() throws Exception {
+    mockMvc
+        .perform(get("/api/unclassified").with(operatorCredentials()))
+        .andExpect(status().isForbidden());
   }
 
   @Test
@@ -102,7 +231,10 @@ class SecurityBoundaryIntegrationTest {
   void prometheusRequiresAuthentication() throws Exception {
     mockMvc.perform(get("/actuator/prometheus")).andExpect(status().isUnauthorized());
     mockMvc
-        .perform(get("/actuator/prometheus").with(httpBasic(TEST_USERNAME, TEST_PASSWORD)))
+        .perform(get("/actuator/prometheus").with(readerCredentials()))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(get("/actuator/prometheus").with(operatorCredentials()))
         .andExpect(status().isOk());
   }
 
@@ -121,13 +253,58 @@ class SecurityBoundaryIntegrationTest {
     mockMvc.perform(get("/unlisted")).andExpect(status().isUnauthorized());
   }
 
+  private void stubReadResponses() {
+    when(featureFlagService.get("checkout-redesign")).thenReturn(flagResponse());
+    when(featureFlagService.auditEvents("checkout-redesign")).thenReturn(List.of());
+    when(featureFlagService.evaluate(any(EvaluateFeatureFlagRequest.class)))
+        .thenReturn(
+            new EvaluateFeatureFlagResponse(
+                "checkout-redesign", true, EvaluationReason.ROLLOUT_MATCH, 42));
+    when(evaluationPreviewService.preview(any(String.class), any(EvaluationPreviewRequest.class)))
+        .thenReturn(
+            new EvaluationPreviewResponse(
+                "checkout-redesign", List.of(), new EvaluationPreviewSummary(0, 0, 0, 0, 0, 0)));
+    when(rolloutPolicyValidationService.validate(
+            any(String.class), any(RolloutPolicyValidationRequest.class)))
+        .thenReturn(new RolloutPolicyValidationResponse("checkout-redesign", true, List.of()));
+  }
+
+  private FeatureFlagResponse flagResponse() {
+    return new FeatureFlagResponse(
+        "checkout-redesign", FeatureFlagStatus.ENABLED, Set.of("production"), false, Set.of(), 25);
+  }
+
+  private static RequestPostProcessor readerCredentials() {
+    return httpBasic(READER_USERNAME, READER_PASSWORD);
+  }
+
+  private static RequestPostProcessor operatorCredentials() {
+    return httpBasic(OPERATOR_USERNAME, OPERATOR_PASSWORD);
+  }
+
   @Configuration
   @EnableAutoConfiguration
-  @Import({FeatureFlagController.class, OpenApiConfig.class, SecurityConfig.class})
+  @Import({
+    FeatureFlagController.class,
+    EvaluationPreviewController.class,
+    RolloutPolicyController.class,
+    OpenApiConfig.class,
+    SecurityConfig.class
+  })
   static class TestApplication {
     @Bean
     FeatureFlagService featureFlagService() {
       return mock(FeatureFlagService.class);
+    }
+
+    @Bean
+    EvaluationPreviewService evaluationPreviewService() {
+      return mock(EvaluationPreviewService.class);
+    }
+
+    @Bean
+    RolloutPolicyValidationService rolloutPolicyValidationService() {
+      return mock(RolloutPolicyValidationService.class);
     }
   }
 }

@@ -1,13 +1,19 @@
 ---
 name: github-create-pr
-description: Create a GitHub pull request from local repository changes using the GitHub connector. Use only when the user explicitly invokes $github-create-pr to create a pull request.
+description: Create a GitHub pull request from local repository changes and assign the repository owner using the GitHub connector. Use only when the user explicitly invokes $github-create-pr to create a pull request.
 ---
 
 # Create GitHub PR
 
 Use this skill to turn local changes in this repository into a safe draft GitHub pull request. The
 workflow uses local `git` for repository state, commits, and pushes, and uses the GitHub connector
+<<<<<<< Updated upstream
 for repository metadata, PR creation, and reviewer requests.
+||||||| Stash base
+for repository metadata, PR creation, and assignee updates.
+=======
+for repository metadata, PR creation, and PR assignee updates.
+>>>>>>> Stashed changes
 
 ## Workflow
 

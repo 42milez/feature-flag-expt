@@ -55,21 +55,27 @@ configuration、placeholder credentials、`kind load` で使う local image tag 
 
 ### 前提条件
 
-PostgreSQL インスタンスが起動しており、接続できる必要があります。API と
-Prometheus へのアクセスには、Spring Security の HTTP Basic 認証情報も必要です。
-Swagger UI と OpenAPI docs は、ポートフォリオをローカルで確認しやすいように認証なしで
-公開されています。
+PostgreSQL インスタンスが起動しており、接続できる必要があります。API access では
+local の HTTP Basic user を 2 つ使います。reader は read-style operation 用、operator は
+create と update operation 用です。Prometheus metrics には、設定済み local user のいずれかが
+必要です。Swagger UI と OpenAPI docs は、ポートフォリオをローカルで確認しやすいように
+認証なしで公開されています。
 
 | 変数 | ローカルでの値 |
 |---|---|
 | `FEATURE_FLAGS_DB_URL` | `jdbc:postgresql://localhost:5432/featureflags` |
 | `FEATURE_FLAGS_DB_USERNAME` | `featureflags` |
 | `FEATURE_FLAGS_DB_PASSWORD` | `featureflags` |
-| `SPRING_SECURITY_USER_NAME` | `featureflags` |
-| `SPRING_SECURITY_USER_PASSWORD` | `featureflags` |
+| `FEATURE_FLAGS_SECURITY_READER_USERNAME` | `featureflags-reader` |
+| `FEATURE_FLAGS_SECURITY_READER_PASSWORD` | `featureflags-reader` |
+| `FEATURE_FLAGS_SECURITY_OPERATOR_USERNAME` | `featureflags-operator` |
+| `FEATURE_FLAGS_SECURITY_OPERATOR_PASSWORD` | `featureflags-operator` |
 
 HTTP Basic は、現段階のポートフォリオをローカルで動かすための最低限の認証方式です。実際の deployment では
-OIDC など、本番環境に適した認証方式に置き換えるべきです。
+OIDC など、本番環境に適した認証方式に置き換え、token claim を同じ `FLAG_READER` と
+`FLAG_OPERATOR` authority に map するべきです。startup 時の password encoding は
+in-memory user store 用であり、environment variable や Kubernetes Secret 自体を保護する
+ものではありません。
 
 ### Docker で PostgreSQL を起動する
 
@@ -105,7 +111,7 @@ Flyway CLI や `docker-entrypoint-initdb.d` などのツールを使って Postg
 production 環境を対象とし、`tenant-a` を allowlist に含めたフラグを作成します。
 
 ```bash
-curl -u featureflags:featureflags \
+curl -u featureflags-operator:featureflags-operator \
   -H 'Content-Type: application/json' \
   -d '{"flagKey":"checkout-redesign","status":"ENABLED","targetEnvironments":["production"],"killSwitchActive":false,"tenantAllowlist":["tenant-a"],"rolloutPercentage":25}' \
   http://localhost:8080/api/flags
@@ -116,7 +122,7 @@ curl -u featureflags:featureflags \
 機能を切り替えられます。
 
 ```bash
-curl -u featureflags:featureflags \
+curl -u featureflags-reader:featureflags-reader \
   -H 'Content-Type: application/json' \
   -d '{"flagKey":"checkout-redesign","environment":"production","tenantId":"tenant-a"}' \
   http://localhost:8080/api/evaluate
@@ -227,10 +233,10 @@ http://localhost:8080/swagger-ui.html
 
 ### Observability
 
-Actuator health endpoints は probe 用に公開され、Prometheus metrics には HTTP Basic
-認証情報が必要です。metric name、structured logging、Prometheus と Grafana の artifact、
-access-control の期待値については [docs/observability.md](docs/observability.md) を
-参照してください。
+Actuator health endpoints は probe 用に公開され、Prometheus metrics には設定済み local user
+いずれかの HTTP Basic 認証情報が必要です。metric name、structured logging、Prometheus と
+Grafana の artifact、access-control の期待値については
+[docs/observability.md](docs/observability.md) を参照してください。
 
 ### 実装レビュー用にコードベースを pack する
 
