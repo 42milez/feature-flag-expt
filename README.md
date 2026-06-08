@@ -53,6 +53,17 @@ contract. The `dev` overlay adds the local kind dependencies: in-cluster
 PostgreSQL, local database configuration, placeholder credentials, and the local
 image tag used by `kind load`.
 
+The application workload uses a minimal runtime hardening posture aligned with
+the Kubernetes Pod Security Standards restricted profile: non-root user and
+group, dropped Linux capabilities, no service account token mount, a read-only
+root filesystem with a bounded `/tmp` volume, RuntimeDefault seccomp, resource
+bounds, health probes, and graceful termination. The kind and Kustomize workflow
+validates the declarative deployment path and smoke-tests startup behavior; it
+is not a complete production cluster security model. In real production
+traffic, Kubernetes endpoint removal can still race with SIGTERM delivery, so a
+rollout could add a short `preStop` delay if the platform needs extra endpoint
+propagation time.
+
 ## Running the Service
 
 ### Prerequisites

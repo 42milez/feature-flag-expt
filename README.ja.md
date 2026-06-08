@@ -51,6 +51,16 @@ Kubernetes の `base` layer は application workload と service contract を定
 `dev` overlay は local kind 用の依存関係として、cluster 内 PostgreSQL、local database
 configuration、placeholder credentials、`kind load` で使う local image tag を追加します。
 
+application workload は、Kubernetes Pod Security Standards の restricted profile に沿った
+最小限の runtime hardening を使用します。non-root user/group、Linux capabilities の全削除、
+service account token mount の無効化、制限付き `/tmp` volume を伴う read-only root filesystem、
+RuntimeDefault seccomp、resource bounds、health probes、graceful termination を設定しています。
+kind と Kustomize の workflow は、宣言的な deployment path と startup behavior の smoke test
+を検証するためのものであり、完全な production cluster security model ではありません。実際の
+production traffic では、Kubernetes endpoint removal が SIGTERM delivery と競合する可能性が
+残るため、platform が endpoint propagation のための追加時間を必要とする場合は、rollout で短い
+`preStop` delay を追加できます。
+
 ## サービスの実行
 
 ### 前提条件
