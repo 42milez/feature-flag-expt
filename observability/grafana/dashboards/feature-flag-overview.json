@@ -226,6 +226,60 @@
       ],
       "title": "Process Memory",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 9,
+      "targets": [
+        {
+          "expr": "max(up{job=~\"feature-flag-platform-.*\"})",
+          "legendFormat": "scrape availability"
+        }
+      ],
+      "title": "Scrape Availability",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "id": 10,
+      "targets": [
+        {
+          "expr": "sum(increase(feature_flag_evaluation_total[15m])) or on() vector(0)",
+          "legendFormat": "evaluations"
+        }
+      ],
+      "title": "Evaluation Traffic 15m",
+      "type": "stat"
     }
   ],
   "refresh": "30s",
@@ -262,6 +316,6 @@
   "timezone": "browser",
   "title": "Feature Flag Overview",
   "uid": "feature-flag-overview",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
