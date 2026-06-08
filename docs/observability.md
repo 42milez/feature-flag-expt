@@ -63,8 +63,11 @@ and matches the public operational metric names.
 
 Metric tags must stay low-cardinality. `tenantId`, `userId`, request IDs, raw
 exception messages, and other unbounded values are intentionally excluded from
-metrics. `flag.key` is acceptable for this portfolio service; if flag keys later
-become unbounded at high scale, revisit that tag.
+metrics. `flag.key` is intentionally accepted as a bounded operational
+dimension for this portfolio service because operators need to identify the flag
+behind evaluation, update, and kill-switch activity. Revisit that tag if flag
+keys become unbounded, user-generated at high volume, or expensive for the
+monitoring backend.
 
 ## Structured Logs
 
@@ -123,13 +126,55 @@ Metrics access control intentionally remains separate from the API
 reader/operator split so future management-port isolation, network-policy,
 mTLS, or workload-identity-backed gateway controls can replace it cleanly.
 
+## Alerting
+
+Prometheus alert rules are committed at
+`observability/prometheus/feature-flag.rules.yml`. They are alerting-ready
+artifacts for a portfolio environment: notification routing is represented only
+by rules that could be routed by Alertmanager, not by a real receiver, routing
+tree, or notification integration in this repository.
+
+`FeatureFlagKillSwitchActivated` fires when
+`feature_flag_kill_switch_enabled_total` increases over 15 minutes. Kill-switch
+activation is intentionally treated as a warning-level operational event because
+it usually means a risky feature was disabled or an incident mitigation path was
+used.
+
+`FeatureFlagEvaluationTrafficMissing` fires when Prometheus can scrape a
+feature-flag job but no `feature_flag_evaluation_total` counter increments are
+observed. The expression uses `or on() vector(0)` so a completely absent
+evaluation metric is treated the same as a present but flat counter. The alert
+also requires `up{job=~"feature-flag-platform-.*"}` to be `1`, so scrape outages
+do not masquerade as missing application traffic.
+
+The missing-traffic alert is an example to enable only where evaluation traffic
+is expected. The 15-minute range plus `for: 10m` hold window intentionally delays
+notification so service startup, quiet local development, and short traffic
+pauses do not page immediately.
+
+Scrape availability should be watched through Prometheus `up` for the local or
+Kubernetes job. JVM and process health should be watched with the Grafana JVM
+heap, CPU, and resident memory panels, and expanded into environment-specific
+alerts only after production baselines are known.
+
+Every alert rule includes `severity`, `service`, `summary`, `description`, and
+`runbook_url` metadata so downstream routing and incident views have enough
+context. The rule test artifact at
+`observability/prometheus/feature-flag.rules.test.yml` documents the expected
+alert behavior and can be run with:
+
+```bash
+promtool test rules observability/prometheus/feature-flag.rules.test.yml
+```
+
 ## Grafana
 
 The dashboard JSON is committed at
 `observability/grafana/dashboards/feature-flag-overview.json`. Import it into
 Grafana and select the Prometheus datasource. Panels cover evaluation rate,
 enabled vs disabled evaluation rate, evaluations by reason, update rate, kill
-switch events, and basic JVM/process health signals.
+switch events, scrape availability, recent evaluation traffic, and basic
+JVM/process health signals.
 
 ## Production Access Control
 

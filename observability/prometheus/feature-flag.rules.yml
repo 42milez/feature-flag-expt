@@ -1,0 +1,23 @@
+groups:
+  - name: feature-flag-platform
+    rules:
+      - alert: FeatureFlagKillSwitchActivated
+        expr: sum(increase(feature_flag_kill_switch_enabled_total[15m])) > 0
+        labels:
+          severity: warning
+          service: feature-flag-platform
+        annotations:
+          summary: Feature flag kill switch was activated
+          description: At least one feature flag kill switch was enabled in the last 15 minutes.
+          runbook_url: https://github.com/42milez/feature-flag-expt/blob/main/docs/observability.md#alerting
+
+      - alert: FeatureFlagEvaluationTrafficMissing
+        expr: ((sum(increase(feature_flag_evaluation_total[15m])) or on() vector(0)) == 0) and on() (max(up{job=~"feature-flag-platform-.*"}) == 1)
+        for: 10m
+        labels:
+          severity: warning
+          service: feature-flag-platform
+        annotations:
+          summary: Feature flag evaluation traffic is missing
+          description: Prometheus can scrape the feature flag service, but no evaluation counter increments have been observed for at least 15 minutes plus the alert hold window.
+          runbook_url: https://github.com/42milez/feature-flag-expt/blob/main/docs/observability.md#alerting
