@@ -1,6 +1,8 @@
 spring:
   application:
     name: feature-flag-platform
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
   datasource:
     url: ${FEATURE_FLAGS_DB_URL:jdbc:postgresql://localhost:5432/featureflags}
     username: ${FEATURE_FLAGS_DB_USERNAME:featureflags}

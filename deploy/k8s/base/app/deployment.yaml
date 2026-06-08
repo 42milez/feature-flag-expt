@@ -17,6 +17,8 @@ spec:
       labels:
         app.kubernetes.io/name: feature-flag-platform
     spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
       containers:
         - name: app
           image: feature-flag-platform:REPLACE_ME
@@ -86,8 +88,12 @@ spec:
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001
+            runAsGroup: 10001
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
             seccompProfile:
               type: RuntimeDefault
           volumeMounts:
