@@ -43,8 +43,8 @@ spec:
                   key: GF_SECURITY_ADMIN_PASSWORD
             - name: GF_PATHS_DATA
               value: /var/lib/grafana
-            - name: GF_PATHS_LOGS
-              value: /tmp/grafana/logs
+            - name: GF_LOG_MODE
+              value: console
             - name: GF_PATHS_PLUGINS
               value: /var/lib/grafana/plugins
           resources:

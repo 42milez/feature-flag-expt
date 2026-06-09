@@ -257,6 +257,12 @@ Prometheus は `http://localhost:9090`、Grafana は `http://localhost:3000`
 local verification workflow、sample traffic command、rule や dashboard 変更後の manual
 refresh step については [docs/observability.md](docs/observability.md) を参照してください。
 
+local observability overlay は、この repository を portfolio project として扱う scope のため、
+stdout/stderr logs と小さな Prometheus/Grafana stack までを意図的な範囲にしています。
+cluster-level log collection middleware はインストールしません。production deployment では、
+target platform と operational requirements に基づいて、log collection、routing、retention、
+access-control のための middleware を選定する必要があります。
+
 ## 関連情報
 
 ### Swagger UI
