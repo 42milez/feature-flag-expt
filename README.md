@@ -268,6 +268,13 @@ Prometheus is available at `http://localhost:9090`, and Grafana is available at
 local verification workflow, sample traffic commands, and manual refresh steps
 after changing rules or dashboards.
 
+The local observability overlay intentionally stops at stdout/stderr logs and a
+small Prometheus/Grafana stack because this repository is scoped as a portfolio
+project. It does not install cluster-level log collection middleware. A
+production deployment should select log collection, routing, retention, and
+access-control middleware based on the target platform and operational
+requirements.
+
 ## Related Information
 
 ### Swagger UI
