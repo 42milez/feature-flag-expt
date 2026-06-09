@@ -25,6 +25,10 @@ configMapGenerator:
     namespace: feature-flag-platform
     files:
       - dashboards.yml=grafana/dashboards.yml
+  - name: feature-flag-grafana-dashboard
+    namespace: feature-flag-platform
+    files:
+      - feature-flag-overview.json=grafana/dashboards/feature-flag-overview.json
 secretGenerator:
   - name: grafana-admin-secret
     namespace: feature-flag-platform
