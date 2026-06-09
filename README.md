@@ -246,6 +246,61 @@ Build, load, apply, wait, and show pod status with one command:
 # or: scripts/dev-deploy.sh
 ```
 
+<<<<<<< HEAD
+||||||| parent of d1de0c5 (refactor(observability): route logs to stdout and document scope)
+Apply the opt-in local Prometheus and Grafana stack after the app dev overlay is
+running:
+
+```bash
+./gradlew k8sApplyObservabilityDev
+./gradlew k8sWaitObservabilityDev
+./gradlew k8sStatusObservabilityDev
+```
+
+Port-forward the local observability services when you want to inspect them:
+
+```bash
+./gradlew k8sPortForwardPrometheus
+./gradlew k8sPortForwardGrafana
+```
+
+Prometheus is available at `http://localhost:9090`, and Grafana is available at
+`http://localhost:3000` with the dev-only placeholder credentials
+`admin` / `admin`. See [docs/observability.md](docs/observability.md) for the
+local verification workflow, sample traffic commands, and manual refresh steps
+after changing rules or dashboards.
+
+=======
+Apply the opt-in local Prometheus and Grafana stack after the app dev overlay is
+running:
+
+```bash
+./gradlew k8sApplyObservabilityDev
+./gradlew k8sWaitObservabilityDev
+./gradlew k8sStatusObservabilityDev
+```
+
+Port-forward the local observability services when you want to inspect them:
+
+```bash
+./gradlew k8sPortForwardPrometheus
+./gradlew k8sPortForwardGrafana
+```
+
+Prometheus is available at `http://localhost:9090`, and Grafana is available at
+`http://localhost:3000` with the dev-only placeholder credentials
+`admin` / `admin`. See [docs/observability.md](docs/observability.md) for the
+local verification workflow, sample traffic commands, and manual refresh steps
+after changing rules or dashboards.
+
+The local observability overlay intentionally stops at stdout/stderr logs and a
+small Prometheus/Grafana stack because this repository is scoped as a portfolio
+project. It does not install cluster-level log collection middleware. A
+production deployment should select log collection, routing, retention, and
+access-control middleware based on the target platform and operational
+requirements.
+
+>>>>>>> d1de0c5 (refactor(observability): route logs to stdout and document scope)
 ## Related Information
 
 ### Swagger UI

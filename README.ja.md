@@ -237,6 +237,56 @@ PostgreSQL とアプリケーションが ready になるまで待ちます。
 # or: scripts/dev-deploy.sh
 ```
 
+<<<<<<< HEAD
+||||||| parent of d1de0c5 (refactor(observability): route logs to stdout and document scope)
+app dev overlay が起動した後、opt-in の local Prometheus/Grafana stack を適用できます。
+
+```bash
+./gradlew k8sApplyObservabilityDev
+./gradlew k8sWaitObservabilityDev
+./gradlew k8sStatusObservabilityDev
+```
+
+確認したい場合は local observability service を port-forward します。
+
+```bash
+./gradlew k8sPortForwardPrometheus
+./gradlew k8sPortForwardGrafana
+```
+
+Prometheus は `http://localhost:9090`、Grafana は `http://localhost:3000`
+で利用できます。Grafana の dev-only placeholder credentials は `admin` / `admin` です。
+local verification workflow、sample traffic command、rule や dashboard 変更後の manual
+refresh step については [docs/observability.md](docs/observability.md) を参照してください。
+
+=======
+app dev overlay が起動した後、opt-in の local Prometheus/Grafana stack を適用できます。
+
+```bash
+./gradlew k8sApplyObservabilityDev
+./gradlew k8sWaitObservabilityDev
+./gradlew k8sStatusObservabilityDev
+```
+
+確認したい場合は local observability service を port-forward します。
+
+```bash
+./gradlew k8sPortForwardPrometheus
+./gradlew k8sPortForwardGrafana
+```
+
+Prometheus は `http://localhost:9090`、Grafana は `http://localhost:3000`
+で利用できます。Grafana の dev-only placeholder credentials は `admin` / `admin` です。
+local verification workflow、sample traffic command、rule や dashboard 変更後の manual
+refresh step については [docs/observability.md](docs/observability.md) を参照してください。
+
+local observability overlay は、この repository を portfolio project として扱う scope のため、
+stdout/stderr logs と小さな Prometheus/Grafana stack までを意図的な範囲にしています。
+cluster-level log collection middleware はインストールしません。production deployment では、
+target platform と operational requirements に基づいて、log collection、routing、retention、
+access-control のための middleware を選定する必要があります。
+
+>>>>>>> d1de0c5 (refactor(observability): route logs to stdout and document scope)
 ## 関連情報
 
 ### Swagger UI
