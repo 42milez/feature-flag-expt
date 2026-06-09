@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: Feature Flag Dashboards
+    orgId: 1
+    folder: Feature Flags
+    type: file
+    disableDeletion: false
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/dashboards

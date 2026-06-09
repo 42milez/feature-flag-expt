@@ -41,9 +41,43 @@ registerScriptTask("k8sStatusDev", "k8s-status-dev.sh", "Show dev pod placement 
 }
 
 registerScriptTask(
+    "k8sApplyObservabilityDev",
+    "k8s-apply-observability-dev.sh",
+    "Apply the local kind Prometheus and Grafana manifests.",
+)
+
+registerScriptTask(
+    "k8sWaitObservabilityDev",
+    "k8s-wait-observability-dev.sh",
+    "Wait for the local kind Prometheus and Grafana Deployments.",
+) {
+  mustRunAfter("k8sApplyObservabilityDev")
+}
+
+registerScriptTask(
+    "k8sStatusObservabilityDev",
+    "k8s-status-observability-dev.sh",
+    "Show local kind observability pod, service, and warning event status.",
+) {
+  mustRunAfter("k8sApplyObservabilityDev", "k8sWaitObservabilityDev")
+}
+
+registerScriptTask(
     "k8sPortForward",
     "k8s-port-forward.sh",
     "Forward the local application service port.",
+)
+
+registerScriptTask(
+    "k8sPortForwardPrometheus",
+    "k8s-port-forward-prometheus.sh",
+    "Forward the local Prometheus service port.",
+)
+
+registerScriptTask(
+    "k8sPortForwardGrafana",
+    "k8s-port-forward-grafana.sh",
+    "Forward the local Grafana service port.",
 )
 
 registerScriptTask("appHealth", "app-health.sh", "Check the local application health endpoints.")

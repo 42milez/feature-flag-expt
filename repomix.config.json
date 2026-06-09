@@ -73,7 +73,7 @@
       "**/*.log",
       "repomix-output*",
       "build/repomix/**",
-      "observability/grafana/dashboards/**"
+      "deploy/k8s/overlays/dev-observability/grafana/dashboards/**"
     ]
   },
   "security": {

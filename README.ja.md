@@ -237,6 +237,26 @@ PostgreSQL とアプリケーションが ready になるまで待ちます。
 # or: scripts/dev-deploy.sh
 ```
 
+app dev overlay が起動した後、opt-in の local Prometheus/Grafana stack を適用できます。
+
+```bash
+./gradlew k8sApplyObservabilityDev
+./gradlew k8sWaitObservabilityDev
+./gradlew k8sStatusObservabilityDev
+```
+
+確認したい場合は local observability service を port-forward します。
+
+```bash
+./gradlew k8sPortForwardPrometheus
+./gradlew k8sPortForwardGrafana
+```
+
+Prometheus は `http://localhost:9090`、Grafana は `http://localhost:3000`
+で利用できます。Grafana の dev-only placeholder credentials は `admin` / `admin` です。
+local verification workflow、sample traffic command、rule や dashboard 変更後の manual
+refresh step については [docs/observability.md](docs/observability.md) を参照してください。
+
 ## 関連情報
 
 ### Swagger UI
