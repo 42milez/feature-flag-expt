@@ -3,6 +3,8 @@
 - All written content — source code comments, documentation (README.md, etc.), and any other text artifacts — must be in English.
 - When updating `README.md`, update `README.ja.md` in the same change so the English and
   Japanese documentation stay in sync.
+- When updating `README.ja.md`, use natural Japanese phrasing rather than a literal translation
+  of the English text.
 - After completing any implementation task, run the following checks in order and confirm all pass before reporting the task as done **only when code under `service/` has changed**. Skip these checks when no files under `service/` were changed, such as documentation-only updates under `docs/`, local agent skill changes under `.agents/`, or edits to `AGENTS.md` itself.
   1. `./gradlew :service:spotlessCheck` — formatting
   2. `./gradlew :service:compileJava` — static analysis (Error Prone)
