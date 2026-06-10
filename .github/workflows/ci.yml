@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+env:
+  PROMETHEUS_VERSION: 3.12.0
+  PROMETHEUS_LINUX_AMD64_SHA256: 20da47f8e5303f74aecb78edd7f7e39041dac08ac4939dba75efd7a900ae8867
+  SERVICE_IMAGE: feature-flag-platform:ci-${{ github.sha }}
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -28,4 +33,49 @@ jobs:
       - uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0, verified 2026-05-26
         with:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-      - run: ./gradlew :service:spotlessCheck :service:compileJava :service:test --no-daemon
+      - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0, verified 2026-05-25
+        if: github.event_name == 'pull_request'
+      - name: Run service checks
+        run: ./gradlew :service:spotlessCheck :service:compileJava :service:test --no-daemon
+      - name: Render Kubernetes manifests
+        run: ./gradlew k8sRenderDev --no-daemon
+      - name: Check OpenAPI snapshot drift
+        run: |
+          ./gradlew :service:generateOpenApiDocs --no-daemon
+          git diff --exit-code -- docs/openapi.yaml
+      - name: Install promtool
+        run: |
+          curl -fsSLo "$RUNNER_TEMP/prometheus.tar.gz" "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.linux-amd64.tar.gz"
+          echo "${PROMETHEUS_LINUX_AMD64_SHA256}  $RUNNER_TEMP/prometheus.tar.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/prometheus"
+          tar -xzf "$RUNNER_TEMP/prometheus.tar.gz" -C "$RUNNER_TEMP/prometheus" --strip-components=1 "prometheus-${PROMETHEUS_VERSION}.linux-amd64/promtool"
+          echo "$RUNNER_TEMP/prometheus" >> "$GITHUB_PATH"
+      - name: Validate Prometheus alert rules
+        run: promtool check rules deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.yml
+      - name: Test Prometheus alert rules
+        run: promtool test rules feature-flag.rules.test.yml
+        working-directory: deploy/k8s/overlays/dev-observability/prometheus
+      - name: Package service image jar
+        if: github.event_name == 'pull_request'
+        run: ./gradlew :service:bootJar --no-daemon
+      - name: Build service image
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0, verified 2026-05-25
+        with:
+          context: ./service
+          tags: ${{ env.SERVICE_IMAGE }}
+          push: false
+          load: true
+          cache-from: type=gha,scope=feature-flag-platform
+          cache-to: type=gha,mode=max,scope=feature-flag-platform
+      - name: Scan service image with Trivy
+        if: github.event_name == 'pull_request'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0, verified 2026-06-10
+        with:
+          image-ref: ${{ env.SERVICE_IMAGE }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: "true"
+          scanners: vuln
+          vuln-type: os,library
+          severity: HIGH,CRITICAL

@@ -52,3 +52,13 @@ jobs:
           kubectl describe pods -n feature-flag-platform || true
           kubectl logs -n feature-flag-platform -l app.kubernetes.io/name=feature-flag-platform --all-containers --tail=200 || true
           kubectl logs -n feature-flag-platform -l app.kubernetes.io/name=feature-flag-postgres --all-containers --tail=200 || true
+      - name: Scan service image archive with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0, verified 2026-06-10
+        with:
+          input: /tmp/feature-flag-platform.tar
+          format: table
+          exit-code: "1"
+          ignore-unfixed: "true"
+          scanners: vuln
+          vuln-type: os,library
+          severity: HIGH,CRITICAL

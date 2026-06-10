@@ -31,8 +31,16 @@ GitHub Actions uses two workflows:
 
 | Workflow | Trigger | Coverage |
 |---|---|---|
-| `CI` | Pull requests and manual dispatches | Formatting, Error Prone compilation, unit tests, and Testcontainers-backed integration tests |
-| `Kind Smoke Test` | Daily at 18:00 UTC, which is 03:00 JST, and manual dispatches | Spring Boot jar packaging, service Docker image buildability, and Kubernetes manifest startup verification in a kind cluster |
+| `CI` | Pull requests and manual dispatches | Service formatting, Error Prone compilation, unit tests, Testcontainers-backed integration tests, Kubernetes render validation, OpenAPI snapshot drift detection, Prometheus alert rule validation, pull request Docker image buildability, and pull request Trivy image scanning |
+| `Kind Smoke Test` | Daily at 18:00 UTC, which is 03:00 JST, and manual dispatches | Scheduled and manual cluster startup verification in kind, plus a Trivy scan of the built image archive after the deployment smoke check and any Kubernetes failure diagnostics |
+
+Pull request CI validates Prometheus alert rules with `promtool` without
+running a Prometheus server. It also builds the service image locally and scans
+that exact image with Trivy, failing on fixed high or critical OS and library
+vulnerabilities while ignoring unfixed findings. The scheduled Trivy gate can
+become red when new CVEs are published even if no application code changed;
+that is expected for a vulnerability gate, and ignoring unfixed findings only
+reduces that risk.
 
 Docker Compose is intentionally not provided as the main local runtime because
 it would not validate Kubernetes manifests, service discovery, probes,

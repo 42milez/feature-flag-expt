@@ -59,6 +59,9 @@ Format for each entry (add under the relevant category heading, creating the hea
   authentication before supporting browser-authenticated API clients.
 - **[Security]** Derive audit actor identity from trusted server-side authentication context, not
   request payloads, so callers cannot forge who performed a state-changing operation.
+- **[Security]** When a vulnerability gate reports fixed high/critical findings in runtime
+  dependencies or image packages, update the dependency or base image before adding ignore entries,
+  so the gate remains a real protection rather than a noise filter.
 - **[API / Framework contract]** Convert Java-side domain models, validation result records, and
   persistence entities into Kotlin `*Response` DTOs before generating API responses. OpenAPI
   response schemas should reference the public response DTO, not the internal Java model.
