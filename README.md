@@ -61,6 +61,21 @@ contract. The `dev` overlay adds the local kind dependencies: in-cluster
 PostgreSQL, local database configuration, placeholder credentials, and the local
 image tag used by `kind load`.
 
+The application source code, Kubernetes manifests, observability stack, and CI
+all live in a single repository. In a production system, the deployment
+configuration would typically live in a separate config repository reconciled by
+a GitOps controller such as Argo CD or Flux, which allows an independent deploy
+cadence, tighter access control over cluster-affecting changes, and
+least-privilege credentials that keep cluster write access out of application
+CI.
+
+This repository keeps those pieces together so the validation path stays
+reviewable end to end. A change can show how the application code, image build,
+manifests, observability, and CI checks fit together without depending on a
+second repository. For this project scope, the trade-off favors a compact
+portfolio example that is easy to review as a whole over the release-boundary
+separation that would matter more in an operated production platform.
+
 The application workload uses a minimal runtime hardening posture aligned with
 the Kubernetes Pod Security Standards restricted profile: non-root user and
 group, dropped Linux capabilities, no service account token mount, a read-only
