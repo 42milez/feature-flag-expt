@@ -7,6 +7,9 @@ plugins {
   alias(libs.plugins.kotlin.spring)
 }
 
+// Spring Boot 4.0.6 manages Tomcat 11.0.21, which Trivy reports with fixed
+// high/critical vulnerabilities. Override Boot's Tomcat version property until
+// a Spring Boot patch release manages 11.0.22 or newer.
 extra["tomcat.version"] = libs.versions.tomcat.get()
 
 // Dependencies add libraries used by the application at compile time, runtime, or during tests.
@@ -30,6 +33,7 @@ dependencies {
   testImplementation(libs.spring.boot.testcontainers)
   testImplementation(libs.testcontainers.junit.jupiter)
   testImplementation(libs.testcontainers.postgresql)
+  // Keep embedded Tomcat modules aligned with the temporary version override above.
   constraints {
     implementation(libs.tomcat.embed.core)
     implementation(libs.tomcat.embed.el)
