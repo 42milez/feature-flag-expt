@@ -37,10 +37,12 @@ GitHub Actions uses two workflows:
 Pull request CI validates Prometheus alert rules with `promtool` without
 running a Prometheus server. It also builds the service image locally and scans
 that exact image with Trivy, failing on fixed high or critical OS and library
-vulnerabilities while ignoring unfixed findings. The scheduled Trivy gate can
-become red when new CVEs are published even if no application code changed;
-that is expected for a vulnerability gate, and ignoring unfixed findings only
-reduces that risk.
+vulnerabilities while excluding unfixed findings from the CI failure condition.
+Pull request checks also publish a non-blocking Trivy job summary that includes
+unfixed high and critical findings, so reviewers can see risks that do not fail
+the gate. The scheduled Trivy gate can become red when new CVEs are published
+even if no application code changed; that is expected for a vulnerability gate,
+and excluding unfixed findings only reduces that risk.
 
 Docker Compose is intentionally not provided as the main local runtime because
 it would not validate Kubernetes manifests, service discovery, probes,

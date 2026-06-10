@@ -62,6 +62,9 @@ Format for each entry (add under the relevant category heading, creating the hea
 - **[Security]** When a vulnerability gate reports fixed high/critical findings in runtime
   dependencies or image packages, update the dependency or base image before adding ignore entries,
   so the gate remains a real protection rather than a noise filter.
+- **[Security]** When excluding unfixed vulnerability findings from a blocking CI gate, publish a
+  non-blocking report that still includes them, so reviewers can see relevant risk without stopping
+  unrelated changes.
 - **[API / Framework contract]** Convert Java-side domain models, validation result records, and
   persistence entities into Kotlin `*Response` DTOs before generating API responses. OpenAPI
   response schemas should reference the public response DTO, not the internal Java model.

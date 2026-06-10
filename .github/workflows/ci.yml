@@ -68,14 +68,60 @@ jobs:
           load: true
           cache-from: type=gha,scope=feature-flag-platform
           cache-to: type=gha,mode=max,scope=feature-flag-platform
-      - name: Scan service image with Trivy
+      - name: Scan service image vulnerabilities with Trivy
         if: github.event_name == 'pull_request'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0, verified 2026-06-10
         with:
           image-ref: ${{ env.SERVICE_IMAGE }}
-          format: table
-          exit-code: "1"
-          ignore-unfixed: "true"
+          format: json
+          output: trivy-high-critical-report.json
+          exit-code: "0"
+          ignore-unfixed: "false"
           scanners: vuln
           vuln-type: os,library
           severity: HIGH,CRITICAL
+      - name: Publish Trivy vulnerability summary and enforce gate
+        if: github.event_name == 'pull_request' && always()
+        run: |
+          set -euo pipefail
+
+          if [ ! -s trivy-high-critical-report.json ]; then
+            exit 0
+          fi
+
+          fixed_count="$(jq '[.Results[]?.Vulnerabilities[]? | select((.FixedVersion // "") != "")] | length' trivy-high-critical-report.json)"
+          unfixed_count="$(jq '[.Results[]?.Vulnerabilities[]? | select((.FixedVersion // "") == "")] | length' trivy-high-critical-report.json)"
+          total_count="$((fixed_count + unfixed_count))"
+
+          {
+            echo "## Trivy high/critical vulnerability report"
+            echo
+            echo "This report includes OS and library findings even when no fix is currently available."
+            echo
+            echo "- Fixed version available: ${fixed_count}"
+            echo "- No fixed version currently available: ${unfixed_count}"
+
+            if [ "$total_count" -gt 0 ]; then
+              echo
+              echo '```'
+              jq -r '
+                .Results[]? as $result
+                | $result.Vulnerabilities[]?
+                | [
+                    ($result.Target // "-"),
+                    (.VulnerabilityID // "-"),
+                    (.PkgName // "-"),
+                    ("installed=" + (.InstalledVersion // "-")),
+                    ("fixed=" + (if ((.FixedVersion // "") == "") then "not available" else .FixedVersion end)),
+                    ("severity=" + (.Severity // "-"))
+                  ]
+                | join(" | ")
+              ' trivy-high-critical-report.json
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$fixed_count" -gt 0 ]; then
+            echo "::error title=Trivy vulnerability gate::Found ${fixed_count} high/critical vulnerabilities with fixed versions."
+            exit 1
+          fi
