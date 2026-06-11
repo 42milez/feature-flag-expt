@@ -45,6 +45,8 @@
     "docs/openapi.yaml",
     "docs/openapi.yml",
     "deploy/**/*.yaml",
+    "deploy/**/*.yml",
+    "deploy/**/*.json",
     "observability/prometheus/**/*.yml",
     "scripts/**/*.sh"
   ],
@@ -71,8 +73,7 @@
       "**/*.rar",
       "**/*.log",
       "repomix-output*",
-      "build/repomix/**",
-      "deploy/k8s/overlays/dev-observability/grafana/dashboards/**"
+      "build/repomix/**"
     ]
   },
   "security": {
