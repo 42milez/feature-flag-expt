@@ -65,6 +65,8 @@ Format for each entry (add under the relevant category heading, creating the hea
 - **[Security]** When excluding unfixed vulnerability findings from a blocking CI gate, publish a
   non-blocking report that still includes them, so reviewers can see relevant risk without stopping
   unrelated changes.
+- **[Security]** Do not apply vulnerability severity filters to secret scanning jobs, because a
+  leaked credential remains actionable even when the scanner assigns it a lower severity.
 - **[API / Framework contract]** Convert Java-side domain models, validation result records, and
   persistence entities into Kotlin `*Response` DTOs before generating API responses. OpenAPI
   response schemas should reference the public response DTO, not the internal Java model.
