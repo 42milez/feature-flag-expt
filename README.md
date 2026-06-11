@@ -42,8 +42,7 @@ in Java and is shared with the production update path.
 - **Observability evidence**: Actuator metrics, structured ECS JSON logs,
   Prometheus alert rules and rule tests, and a Grafana dashboard are committed
   with a local kind overlay. The canonical alert rules live at
-  `deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.yaml`;
-  `observability/prometheus/` contains standalone scrape examples.
+  `deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.yaml`.
 - **CI gates**: GitHub Actions run formatting, Error Prone compilation, the full
   service test suite, Testcontainers-backed integration tests, Kubernetes render
   validation, OpenAPI snapshot drift detection, `promtool check rules`,

@@ -200,15 +200,11 @@ tenant allowlists.
 
 ## Prometheus
 
-The sample standalone configurations live under `observability/prometheus/`:
-
-- `prometheus.local.yaml` includes a direct local scrape job for
-  `localhost:8080`;
-- `prometheus.k8s.yaml` includes a Kubernetes pod-discovery scrape job that reads
-  pod annotations.
-
-The dev observability overlay stores its Prometheus server configuration and
-alert rule artifacts under `deploy/k8s/overlays/dev-observability/prometheus/`.
+The dev observability overlay stores the repository's Prometheus server
+configuration and alert rule artifacts under
+`deploy/k8s/overlays/dev-observability/prometheus/`. Keeping the runnable local
+Prometheus configuration with the overlay makes the local kind stack the single
+source of truth for scrape configuration.
 
 The deployment adds these pod annotations:
 

@@ -44,7 +44,6 @@
     "docs/openapi.yaml",
     "deploy/**/*.yaml",
     "deploy/**/*.json",
-    "observability/prometheus/**/*.yaml",
     "scripts/**/*.sh"
   ],
   "ignore": {
