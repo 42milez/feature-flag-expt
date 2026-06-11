@@ -7,9 +7,8 @@ plugins {
   alias(libs.plugins.kotlin.spring)
 }
 
-// Spring Boot 4.0.6 manages Tomcat 11.0.21, which Trivy reports with fixed
-// high/critical vulnerabilities. Override Boot's Tomcat version property until
-// a Spring Boot patch release manages 11.0.22 or newer.
+// Keep this Spring Boot property override paired with the temporary Trivy gate
+// pins documented in gradle/libs.versions.toml.
 extra["tomcat.version"] = libs.versions.tomcat.get()
 
 // Dependencies add libraries used by the application at compile time, runtime, or during tests.
