@@ -21,6 +21,9 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
+server:
+  shutdown: graceful
+
 management:
   endpoint:
     health:
