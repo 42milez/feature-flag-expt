@@ -35,7 +35,6 @@
     "gradle/**/*.toml",
     "gradle/**/*.properties",
     "build-logic/**/*.kts",
-    ".github/workflows/*.yml",
     ".github/workflows/*.yaml",
     "service/Dockerfile",
     "service/build.gradle.kts",
@@ -43,11 +42,9 @@
     "service/src/test/**/*",
     "docs/**/*.md",
     "docs/openapi.yaml",
-    "docs/openapi.yml",
     "deploy/**/*.yaml",
-    "deploy/**/*.yml",
     "deploy/**/*.json",
-    "observability/prometheus/**/*.yml",
+    "observability/prometheus/**/*.yaml",
     "scripts/**/*.sh"
   ],
   "ignore": {

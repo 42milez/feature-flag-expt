@@ -12,19 +12,19 @@ configMapGenerator:
   - name: prometheus-config
     namespace: feature-flag-platform
     files:
-      - prometheus/prometheus.yml
+      - prometheus/prometheus.yaml
   - name: feature-flag-prometheus-rules
     namespace: feature-flag-platform
     files:
-      - feature-flag.rules.yml=prometheus/feature-flag.rules.yml
+      - feature-flag.rules.yaml=prometheus/feature-flag.rules.yaml
   - name: grafana-datasource
     namespace: feature-flag-platform
     files:
-      - datasource.yml=grafana/datasource.yml
+      - datasource.yaml=grafana/datasource.yaml
   - name: grafana-dashboard-provider
     namespace: feature-flag-platform
     files:
-      - dashboards.yml=grafana/dashboards.yml
+      - dashboards.yaml=grafana/dashboards.yaml
   - name: feature-flag-grafana-dashboard
     namespace: feature-flag-platform
     files:

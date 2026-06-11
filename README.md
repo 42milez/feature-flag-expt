@@ -4,7 +4,7 @@ English | [日本語](README.ja.md)
 
 ## Overview
 
-[![CI](https://github.com/42milez/feature-flag-expt/actions/workflows/ci.yml/badge.svg)](https://github.com/42milez/feature-flag-expt/.github/workflows/ci.yml)
+[![CI](https://github.com/42milez/feature-flag-expt/actions/workflows/ci.yaml/badge.svg)](https://github.com/42milez/feature-flag-expt/.github/workflows/ci.yaml)
 
 feature-flag-expt is a Spring Boot service for managing and evaluating feature
 flags. It exposes REST APIs to create, read, update, evaluate, preview, validate

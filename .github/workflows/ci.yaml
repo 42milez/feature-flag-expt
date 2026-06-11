@@ -51,9 +51,9 @@ jobs:
           tar -xzf "$RUNNER_TEMP/prometheus.tar.gz" -C "$RUNNER_TEMP/prometheus" --strip-components=1 "prometheus-${PROMETHEUS_VERSION}.linux-amd64/promtool"
           echo "$RUNNER_TEMP/prometheus" >> "$GITHUB_PATH"
       - name: Validate Prometheus alert rules
-        run: promtool check rules deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.yml
+        run: promtool check rules deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.yaml
       - name: Test Prometheus alert rules
-        run: promtool test rules feature-flag.rules.test.yml
+        run: promtool test rules feature-flag.rules.test.yaml
         working-directory: deploy/k8s/overlays/dev-observability/prometheus
       - name: Package service image jar
         if: github.event_name == 'pull_request'
