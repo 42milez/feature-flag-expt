@@ -32,11 +32,9 @@
     "build.gradle.kts",
     "gradle.properties",
     "gradlew",
-    "gradlew.bat",
     "gradle/**/*.toml",
     "gradle/**/*.properties",
     "build-logic/**/*.kts",
-    ".github/workflows/*.yml",
     ".github/workflows/*.yaml",
     "service/Dockerfile",
     "service/build.gradle.kts",
@@ -44,9 +42,9 @@
     "service/src/test/**/*",
     "docs/**/*.md",
     "docs/openapi.yaml",
-    "docs/openapi.yml",
     "deploy/**/*.yaml",
-    "observability/prometheus/**/*.yml",
+    "deploy/**/*.json",
+    "observability/prometheus/**/*.yaml",
     "scripts/**/*.sh"
   ],
   "ignore": {
@@ -72,8 +70,7 @@
       "**/*.rar",
       "**/*.log",
       "repomix-output*",
-      "build/repomix/**",
-      "deploy/k8s/overlays/dev-observability/grafana/dashboards/**"
+      "build/repomix/**"
     ]
   },
   "security": {

@@ -76,7 +76,7 @@ ConfigMaps from overlay-local files so Kustomize's default load restrictions
 stay enabled:
 
 - `feature-flag-prometheus-rules` from
-  `deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.yml`
+  `deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.yaml`
 - `feature-flag-grafana-dashboard` from
   `deploy/k8s/overlays/dev-observability/grafana/dashboards/feature-flag-overview.json`
 
@@ -202,9 +202,9 @@ tenant allowlists.
 
 The sample standalone configurations live under `observability/prometheus/`:
 
-- `prometheus.local.yml` includes a direct local scrape job for
+- `prometheus.local.yaml` includes a direct local scrape job for
   `localhost:8080`;
-- `prometheus.k8s.yml` includes a Kubernetes pod-discovery scrape job that reads
+- `prometheus.k8s.yaml` includes a Kubernetes pod-discovery scrape job that reads
   pod annotations.
 
 The dev observability overlay stores its Prometheus server configuration and
@@ -232,7 +232,7 @@ mTLS, or workload-identity-backed gateway controls can replace it cleanly.
 ## Alerting
 
 Prometheus alert rules are committed at
-`deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.yml`.
+`deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.yaml`.
 They are alerting-ready artifacts for a portfolio environment: notification
 routing is represented only by rules that could be routed by Alertmanager, not
 by a real receiver, routing tree, or notification integration in this
@@ -264,11 +264,11 @@ alerts only after production baselines are known.
 Every alert rule includes `severity`, `service`, `summary`, `description`, and
 `runbook_url` metadata so downstream routing and incident views have enough
 context. The rule test artifact at
-`deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.test.yml`
+`deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.test.yaml`
 documents the expected alert behavior and can be run with:
 
 ```bash
-promtool test rules deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.test.yml
+promtool test rules deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.test.yaml
 ```
 
 ## Grafana

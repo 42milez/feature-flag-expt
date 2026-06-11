@@ -28,7 +28,7 @@ spec:
           image: prom/prometheus:v3.12.0
           imagePullPolicy: IfNotPresent
           args:
-            - --config.file=/etc/prometheus/prometheus.yml
+            - --config.file=/etc/prometheus/prometheus.yaml
             - --storage.tsdb.path=/prometheus
             - --web.console.libraries=/etc/prometheus/console_libraries
             - --web.console.templates=/etc/prometheus/consoles
@@ -51,12 +51,12 @@ spec:
                 - ALL
           volumeMounts:
             - name: prometheus-config
-              mountPath: /etc/prometheus/prometheus.yml
-              subPath: prometheus.yml
+              mountPath: /etc/prometheus/prometheus.yaml
+              subPath: prometheus.yaml
               readOnly: true
             - name: prometheus-rules
-              mountPath: /etc/prometheus/rules/feature-flag.rules.yml
-              subPath: feature-flag.rules.yml
+              mountPath: /etc/prometheus/rules/feature-flag.rules.yaml
+              subPath: feature-flag.rules.yaml
               readOnly: true
             - name: feature-flag-platform-secret
               mountPath: /etc/prometheus/secrets

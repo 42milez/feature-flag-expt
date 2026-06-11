@@ -4,7 +4,7 @@ English | [日本語](README.ja.md)
 
 ## Overview
 
-[![CI](https://github.com/42milez/feature-flag-expt/actions/workflows/ci.yml/badge.svg)](https://github.com/42milez/feature-flag-expt/.github/workflows/ci.yml)
+[![CI](https://github.com/42milez/feature-flag-expt/actions/workflows/ci.yaml/badge.svg)](https://github.com/42milez/feature-flag-expt/.github/workflows/ci.yaml)
 
 feature-flag-expt is a Spring Boot service for managing and evaluating feature
 flags. It exposes REST APIs to create, read, update, evaluate, preview, validate
@@ -27,12 +27,24 @@ in Java and is shared with the production update path.
 
 ## Continuous Integration
 
-GitHub Actions uses two workflows:
+GitHub Actions uses three workflows:
 
 | Workflow | Trigger | Coverage |
 |---|---|---|
-| `CI` | Pull requests and manual dispatches | Formatting, Error Prone compilation, unit tests, and Testcontainers-backed integration tests |
-| `Kind Smoke Test` | Daily at 18:00 UTC, which is 03:00 JST, and manual dispatches | Spring Boot jar packaging, service Docker image buildability, and Kubernetes manifest startup verification in a kind cluster |
+| `CI` | Pushes to `main`, pull requests, and manual dispatches | Service formatting, Error Prone compilation, unit tests, Testcontainers-backed integration tests, Kubernetes render validation, OpenAPI snapshot drift detection, and Prometheus alert rule validation |
+| `Image Vulnerability Scan` | Pushes to `main`, pull requests, daily at 18:00 UTC, which is 03:00 JST, and manual dispatches | Service image buildability and Trivy image scanning, separated from test and deployment smoke-test signals |
+| `Kind Smoke Test` | Daily at 18:00 UTC, which is 03:00 JST, and manual dispatches | Scheduled and manual cluster startup verification in kind, including Kubernetes failure diagnostics when deployment fails |
+
+Pull request CI validates Prometheus alert rules with `promtool` without
+running a Prometheus server. The image vulnerability workflow builds the service
+image locally and scans that exact image with Trivy on pushes to `main`, pull
+requests, nightly schedules, and manual dispatches. It fails on fixed high or
+critical OS and library vulnerabilities while excluding unfixed findings from
+the failure condition. The workflow also publishes a non-blocking Trivy job
+summary that includes unfixed high and critical findings, so reviewers can see
+risks that do not fail the gate. The scheduled Trivy gate can become red when
+new CVEs are published even if no application code changed; that is expected
+for a vulnerability gate, and excluding unfixed findings only reduces that risk.
 
 Docker Compose is intentionally not provided as the main local runtime because
 it would not validate Kubernetes manifests, service discovery, probes,
@@ -52,6 +64,21 @@ The Kubernetes `base` layer defines the application workload and service
 contract. The `dev` overlay adds the local kind dependencies: in-cluster
 PostgreSQL, local database configuration, placeholder credentials, and the local
 image tag used by `kind load`.
+
+The application source code, Kubernetes manifests, observability stack, and CI
+all live in a single repository. In a production system, the deployment
+configuration would typically live in a separate config repository reconciled by
+a GitOps controller such as Argo CD or Flux, which allows an independent deploy
+cadence, tighter access control over cluster-affecting changes, and
+least-privilege credentials that keep cluster write access out of application
+CI.
+
+This repository keeps those pieces together so the validation path stays
+reviewable end to end. A change can show how the application code, image build,
+manifests, observability, and CI checks fit together without depending on a
+second repository. For this project scope, the trade-off favors a compact
+portfolio example that is easy to review as a whole over the release-boundary
+separation that would matter more in an operated production platform.
 
 The application workload uses a minimal runtime hardening posture aligned with
 the Kubernetes Pod Security Standards restricted profile: non-root user and

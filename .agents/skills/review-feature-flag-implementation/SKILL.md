@@ -67,7 +67,7 @@ questions separately.
 
 ```bash
 test -e <path>
-find <path> -type f \( -name '*.java' -o -name '*.kt' -o -name '*.yaml' -o -name '*.yml' \)
+find <path> -type f \( -name '*.java' -o -name '*.kt' -o -name '*.yaml' \)
 rg -n "feature|flag|rollout|tenant|environment|audit|authorize|permission|cache|salt|override|debug|context|bucket|script|policy|preview|validation|OpenFeature|provider" <path>
 ```
 

@@ -7,6 +7,10 @@ plugins {
   alias(libs.plugins.kotlin.spring)
 }
 
+// Keep this Spring Boot property override paired with the temporary Trivy gate
+// pins documented in gradle/libs.versions.toml.
+extra["tomcat.version"] = libs.versions.tomcat.get()
+
 // Dependencies add libraries used by the application at compile time, runtime, or during tests.
 dependencies {
   implementation(libs.spring.boot.starter.actuator)
@@ -28,6 +32,12 @@ dependencies {
   testImplementation(libs.spring.boot.testcontainers)
   testImplementation(libs.testcontainers.junit.jupiter)
   testImplementation(libs.testcontainers.postgresql)
+  // Keep embedded Tomcat modules aligned with the temporary version override above.
+  constraints {
+    implementation(libs.tomcat.embed.core)
+    implementation(libs.tomcat.embed.el)
+    implementation(libs.tomcat.embed.websocket)
+  }
 }
 
 // Starts the application with the OpenAPI generation profile and writes its API specification to

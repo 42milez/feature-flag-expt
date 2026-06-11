@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PROMETHEUS_VERSION: 3.12.0
+  PROMETHEUS_LINUX_AMD64_SHA256: 20da47f8e5303f74aecb78edd7f7e39041dac08ac4939dba75efd7a900ae8867
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secret-scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2, verified 2026-05-24
+        with:
+          persist-credentials: false
+      - name: Scan repository secrets with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0, verified 2026-06-10
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: secret
+          exit-code: "1"
+
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2, verified 2026-05-24
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0, verified 2026-05-24
+        with:
+          distribution: temurin
+          java-version: "25"
+      - uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0, verified 2026-05-26
+        with:
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+      - name: Run service checks
+        run: ./gradlew :service:spotlessCheck :service:compileJava :service:test --no-daemon
+      - name: Render Kubernetes manifests
+        run: ./gradlew k8sRenderDev --no-daemon
+      - name: Check OpenAPI snapshot drift
+        run: |
+          ./gradlew :service:generateOpenApiDocs --no-daemon
+          git diff --exit-code -- docs/openapi.yaml
+      - name: Install promtool
+        run: |
+          curl -fsSLo "$RUNNER_TEMP/prometheus.tar.gz" "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.linux-amd64.tar.gz"
+          echo "${PROMETHEUS_LINUX_AMD64_SHA256}  $RUNNER_TEMP/prometheus.tar.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/prometheus"
+          tar -xzf "$RUNNER_TEMP/prometheus.tar.gz" -C "$RUNNER_TEMP/prometheus" --strip-components=1 "prometheus-${PROMETHEUS_VERSION}.linux-amd64/promtool"
+          echo "$RUNNER_TEMP/prometheus" >> "$GITHUB_PATH"
+      - name: Validate Prometheus alert rules
+        run: promtool check rules deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.yaml
+      - name: Test Prometheus alert rules
+        run: promtool test rules feature-flag.rules.test.yaml
+        working-directory: deploy/k8s/overlays/dev-observability/prometheus

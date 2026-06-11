@@ -183,7 +183,7 @@ NetworkPolicy, ingress, TLS, IAM, or cloud-managed dependencies.
 
 ## More Information
 
-* [Kind Smoke Test workflow](../../.github/workflows/kind-smoke-test.yml)
+* [Kind Smoke Test workflow](../../.github/workflows/kind-smoke-test.yaml)
 * [`deploy/kind/cluster.yaml`](../../deploy/kind/cluster.yaml)
 * [`deploy/k8s/base`](../../deploy/k8s/base)
 * [`deploy/k8s/overlays/dev`](../../deploy/k8s/overlays/dev)

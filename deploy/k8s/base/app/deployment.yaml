@@ -87,8 +87,8 @@ spec:
               memory: 512Mi
           securityContext:
             runAsNonRoot: true
-            runAsUser: 10001
-            runAsGroup: 10001
+            runAsUser: 65532
+            runAsGroup: 65532
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:

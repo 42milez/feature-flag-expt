@@ -62,12 +62,12 @@ spec:
                 - ALL
           volumeMounts:
             - name: grafana-datasource
-              mountPath: /etc/grafana/provisioning/datasources/prometheus.yml
-              subPath: datasource.yml
+              mountPath: /etc/grafana/provisioning/datasources/prometheus.yaml
+              subPath: datasource.yaml
               readOnly: true
             - name: grafana-dashboard-provider
-              mountPath: /etc/grafana/provisioning/dashboards/dashboards.yml
-              subPath: dashboards.yml
+              mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
+              subPath: dashboards.yaml
               readOnly: true
             - name: grafana-dashboard
               mountPath: /etc/grafana/dashboards

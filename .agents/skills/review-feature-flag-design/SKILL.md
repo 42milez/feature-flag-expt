@@ -63,7 +63,7 @@ that implementation code can be reviewed separately with `review-feature-flag-im
 
 ```bash
 test -e <path>
-find <path> -type f \( -name '*.md' -o -name '*.yaml' -o -name '*.yml' \)
+find <path> -type f \( -name '*.md' -o -name '*.yaml' \)
 rg -n "feature|flag|rollout|experiment|entitlement|permission|tenant|environment|audit|override|kill|cache|OpenFeature|provider|context|targeting|lifecycle|cleanup" <path>
 ```
 
