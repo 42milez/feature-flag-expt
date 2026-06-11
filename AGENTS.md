@@ -74,5 +74,8 @@ Format for each entry (add under the relevant category heading, creating the hea
   absent in some application contexts, such as `db` when a test excludes `DataSource`
   auto-configuration, disable group membership validation or move that group configuration behind a
   profile so Spring Boot can start consistently.
+- **[API / Framework contract]** When enabling Spring Boot graceful shutdown, set
+  `server.shutdown=graceful` in addition to the shutdown phase timeout, and keep that timeout below
+  the platform termination grace period so the server actually drains requests before the pod exits.
 - **[Testability]** Build test request JSON with `ObjectMapper` when values are supplied through
   variables, so escaping stays correct and helpers do not become fragile string templates.
