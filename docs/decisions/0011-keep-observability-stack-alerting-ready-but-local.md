@@ -14,8 +14,6 @@ The service exposes Actuator health, Prometheus metrics, structured logs, and
 feature-flag-specific Micrometer counters. The repository also includes a local
 kind deployment path and an opt-in Prometheus/Grafana overlay.
 
-The top-level `observability/prometheus` directory contains standalone scrape
-configuration examples for direct local checks and Kubernetes pod discovery.
 The `deploy/k8s/overlays/dev-observability` overlay contains the runnable local
 Prometheus/Grafana stack, including its local Prometheus configuration, alert
 rules, rule tests, dashboard provisioning, and dashboard JSON.
@@ -54,10 +52,8 @@ can be validated without pretending to operate a production monitoring system.
 The repository commits:
 
 * service metrics and structured ECS JSON logging configuration;
-* a local Prometheus scrape configuration for direct service checks under
-  `observability/prometheus`;
-* a Kubernetes-discovery scrape example for annotated pods under
-  `observability/prometheus`;
+* a local Prometheus scrape configuration under the local dev-observability
+  overlay;
 * canonical Prometheus alert rules and rule tests under the local
   dev-observability overlay;
 * a Grafana dashboard provisioned by the local overlay;
@@ -96,10 +92,8 @@ model.
   logging.
 * `deploy/k8s/base/app/deployment.yaml` adds Prometheus scrape annotations to
   the app pod template.
-* `observability/prometheus/prometheus.local.yaml` defines a direct local scrape
-  configuration for `/actuator/prometheus`.
-* `observability/prometheus/prometheus.k8s.yaml` defines a Kubernetes pod
-  discovery scrape example for annotated app pods.
+* `deploy/k8s/overlays/dev-observability/prometheus/prometheus.yaml` defines the
+  local Prometheus scrape configuration for `/actuator/prometheus`.
 * The canonical alert rules are committed at
   `deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.yaml`.
 * The alert rule test artifact is committed at
@@ -161,9 +155,7 @@ model.
 * [`feature-flag.rules.yaml`](../../deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.yaml)
 * [`feature-flag.rules.test.yaml`](../../deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.test.yaml)
 * [`feature-flag-overview.json`](../../deploy/k8s/overlays/dev-observability/grafana/dashboards/feature-flag-overview.json)
-* [`prometheus.local.yaml`](../../observability/prometheus/prometheus.local.yaml)
-* [`prometheus.k8s.yaml`](../../observability/prometheus/prometheus.k8s.yaml)
+* [`prometheus.yaml`](../../deploy/k8s/overlays/dev-observability/prometheus/prometheus.yaml)
 * [`deploy/k8s/overlays/dev-observability`](../../deploy/k8s/overlays/dev-observability)
-* [`observability/prometheus`](../../observability/prometheus)
 * [CI workflow](../../.github/workflows/ci.yaml)
 * [`README.md`](../../README.md)
