@@ -32,7 +32,6 @@
     "build.gradle.kts",
     "gradle.properties",
     "gradlew",
-    "gradlew.bat",
     "gradle/**/*.toml",
     "gradle/**/*.properties",
     "build-logic/**/*.kts",
