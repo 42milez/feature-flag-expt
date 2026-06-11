@@ -15,3 +15,5 @@ This directory contains Architecture Decision Records (ADRs) for this project, f
 | [0007](0007-generate-committed-openapi-snapshot-with-springdoc-gradle-plugin.md) | Generate the committed OpenAPI snapshot with the springdoc Gradle plugin | Accepted |
 | [0008](0008-use-kotlin-for-evaluation-preview-api.md) | Use Kotlin for the evaluation preview API                     | Accepted |
 | [0009](0009-use-kind-for-local-kubernetes-development-and-ci-validation.md) | Use kind for local Kubernetes development and CI validation   | Accepted |
+| [0010](0010-use-http-basic-for-local-portfolio-security-boundary.md) | Use HTTP Basic for local portfolio security boundary          | Accepted |
+| [0011](0011-keep-observability-stack-alerting-ready-but-local.md) | Keep observability stack alerting-ready but local             | Accepted |

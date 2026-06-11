@@ -25,6 +25,31 @@ change or writing audit events. The rollout policy API/service also uses Kotlin
 for the proposed-change request flow, while the reusable policy validator remains
 in Java and is shared with the production update path.
 
+## Portfolio Highlights
+
+- **JVM service design**: Java owns the persisted feature flag domain,
+  evaluator, Spring Data JDBC transaction flow, audit event recording,
+  Micrometer instrumentation, and Spring Security boundary. Kotlin owns the
+  request/response-heavy preview and rollout policy surfaces.
+- **Security boundary**: local HTTP Basic users are injected through
+  configuration, public routes are limited to probes and API docs, protected API
+  routes require reader/operator authorities, Prometheus metrics require
+  authentication, and unclassified `/api/**` routes fail closed.
+- **Kubernetes evidence**: Kustomize `base` and `dev` overlays exercise a real
+  kind deployment path with probes, resource bounds, non-root execution,
+  read-only root filesystem, dropped capabilities, bounded `/tmp`, no service
+  account token mount, RuntimeDefault seccomp, and graceful shutdown.
+- **Observability evidence**: Actuator metrics, structured ECS JSON logs,
+  Prometheus alert rules and rule tests, and a Grafana dashboard are committed
+  with a local kind overlay. The canonical alert rules live at
+  `deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.yaml`;
+  `observability/prometheus/` contains standalone scrape examples.
+- **CI gates**: GitHub Actions run formatting, Error Prone compilation, the full
+  service test suite, Testcontainers-backed integration tests, Kubernetes render
+  validation, OpenAPI snapshot drift detection, `promtool check rules`,
+  `promtool test rules`, Trivy secret scanning, image vulnerability scanning,
+  and scheduled kind smoke tests.
+
 ## Continuous Integration
 
 GitHub Actions uses three workflows:
@@ -119,10 +144,13 @@ repository includes PostgreSQL for feature flag persistence, user credentials
 are intentionally kept out of the application database. In this portfolio
 scope, local authentication is only a deployment boundary; PostgreSQL is
 reserved for flag state, rollout configuration, validation behavior, and audit
-events. A production deployment would need its authentication boundary to be
-evaluated against its operational and compliance context. Startup password
-encoding is only for the in-memory user store; it does not protect environment
-variables or Kubernetes Secrets.
+events. A production deployment should replace HTTP Basic with OIDC or another
+organization-managed identity provider that maps users to equivalent
+reader/operator authorities. See
+[ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md)
+for the local security-boundary decision. Startup password encoding is only for
+the in-memory user store; it does not protect environment variables or
+Kubernetes Secrets.
 
 Route-to-authority mappings are also intentionally kept in `SecurityConfig` for
 this small portfolio service. In a production system, this model could evolve
@@ -327,6 +355,10 @@ Actuator health endpoints are public for probes, while Prometheus metrics
 require HTTP Basic credentials from any configured local user. See
 [docs/observability.md](docs/observability.md) for metric names, structured
 logging, Prometheus and Grafana artifacts, and access-control expectations.
+The committed alert rules and tests are intentionally alerting-ready local
+artifacts rather than a production Alertmanager, PagerDuty, or Grafana
+provisioning stack; see
+[ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md).
 
 ### Pack the codebase for implementation review
 
