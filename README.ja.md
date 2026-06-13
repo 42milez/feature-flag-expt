@@ -2,127 +2,273 @@
 
 [English](README.md) | 日本語
 
-## 概要
+[![CI](https://github.com/42milez/feature-flag-expt/actions/workflows/ci.yaml/badge.svg)](https://github.com/42milez/feature-flag-expt/actions/workflows/ci.yaml)
+![Java](https://img.shields.io/badge/Java-25-orange)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0-6DB33F)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-kind-326CE5)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-[![CI](https://github.com/42milez/feature-flag-expt/actions/workflows/ci.yaml/badge.svg)](https://github.com/42milez/feature-flag-expt/.github/workflows/ci.yaml)
+> **ステータス:** ポートフォリオ / 学習用プロジェクト。バックエンド開発の実践を
+> 端から端まで示すことを目的としており、本番サービスではありません。
 
-feature-flag-expt は、フィーチャーフラグを管理・評価するための Spring Boot
-サービスです。フラグの作成、取得、更新、評価、プレビュー、ロールアウト変更案の
-検証、監査を行う REST API を提供します。
+フィーチャーフラグ管理サービスを題材に、**JVM でのドメイン設計、実際の Kubernetes
+デプロイ経路、オブザーバビリティ、CI 品質ゲート**を、1 つのレビューしやすい
+リポジトリで示すポートフォリオです。フラグは環境ごとのターゲティング、緊急停止用の
+キルスイッチ、テナント単位の許可リスト、フラグキーとテナント/ユーザー識別子から
+算出する決定的な割合バケットで制御でき、状態の変更はすべて監査イベントとして
+記録されます。
 
-フラグは、環境ごとのターゲティング、緊急停止用のキルスイッチ、テナント単位の
-許可リスト、割合に基づく決定的なロールアウトで制御できます。割合ロールアウトでは、
-フラグキーとテナントまたはユーザーの識別子から、安定したバケットを算出します。
-更新内容は Spring Data JDBC を通じて PostgreSQL に永続化され、状態の変更は
-監査イベントとして記録されます。ロールアウトポリシーの検証は更新時に必ず実行され、
-危険な本番向けロールアウト変更を保存前に検出するため、事前に実行することも
-できます。
+## 目次
 
-本番用のフラグのドメイン、永続化の処理、監査の振る舞い、中核となる評価ロジックの
-大部分は Java で実装されています。プレビュー API は Kotlin で実装されており、
-変更案・サンプルごとの差分・サマリー出力を、変更の保存や監査イベントの書き込みを
-行わずに返します。ロールアウトポリシーの API とサービスも Kotlin で変更案の
-リクエスト処理を扱いますが、再利用されるポリシーのバリデーターは Java のままで、
-本番の更新経路と共有されています。
+- [このプロジェクトで示すこと](#このプロジェクトで示すこと)
+- [アーキテクチャ](#アーキテクチャ)
+- [技術スタック](#技術スタック)
+- [クイックスタート](#クイックスタート)
+- [API 一覧](#api-一覧)
+- [設計上の意思決定](#設計上の意思決定)
+- [デプロイと運用](#デプロイと運用)
+- [オブザーバビリティ](#オブザーバビリティ)
+- [開発](#開発)
+- [リポジトリ構成](#リポジトリ構成)
 
-## ポートフォリオとしての見どころ
+## このプロジェクトで示すこと
 
-- **JVM サービス設計**: 永続化されるフィーチャーフラグのドメイン、評価ロジック、
-  Spring Data JDBC のトランザクションフロー、監査イベントの記録、Micrometer の計装、
-  Spring Security の境界は Java が担当します。リクエスト/レスポンスの組み立てが中心になる
-  プレビューとロールアウトポリシーの API は Kotlin が担当します。
-- **セキュリティ境界**: ローカル用の HTTP Basic ユーザーは設定から注入されます。公開ルートは
-  プローブと API ドキュメントに限定し、保護された API ルートには reader/operator 権限を要求し、
-  Prometheus メトリクスにも認証を要求します。分類されていない `/api/**` ルートは fail closed に
-  なるよう拒否します。
-- **Kubernetes の検証材料**: Kustomize の `base` と `dev` オーバーレイで、kind 上の実際の
-  デプロイ経路を検証します。プローブ、リソース上限、非 root 実行、読み取り専用ルート
-  ファイルシステム、Linux capabilities の削除、上限付き `/tmp`、サービスアカウントトークンの
-  マウント無効化、RuntimeDefault seccomp、グレースフルシャットダウンを含みます。
-- **オブザーバビリティの検証材料**: Actuator メトリクス、ECS JSON の構造化ログ、Prometheus の
-  アラートルールとルールテスト、Grafana ダッシュボードを、ローカル kind 用のオーバーレイと
-  一緒にコミットしています。正本となるアラートルールは
-  `deploy/k8s/overlays/dev-observability/prometheus/feature-flag.rules.yaml` にあります。
-- **CI ゲート**: GitHub Actions では、フォーマット、Error Prone によるコンパイル、サービスの
-  全テスト、Testcontainers を使った統合テスト、Kubernetes マニフェストのレンダリング検証、
-  OpenAPI スナップショットの差分検出、`promtool check rules`、`promtool test rules`、
-  Trivy のシークレットスキャン、イメージ脆弱性スキャン、スケジュール実行の kind スモークテストを
-  実行します。
+- **JVM サービス設計** — 永続化されるフラグのドメイン、評価ロジック、Spring Data
+  JDBC のトランザクションフロー、監査イベントの記録、Micrometer の計装、Spring
+  Security の境界は Java が担当します。リクエスト/レスポンスの組み立てが中心になる
+  プレビューとロールアウトポリシーの API は Kotlin が担当し、再利用されるポリシー
+  バリデーターは Java のまま本番の更新経路と共有します。
+  ([ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md))
+- **フェイルクローズなセキュリティ境界** — reader/operator ロールを持つローカルの
+  HTTP Basic 認証。公開するのはプローブと API ドキュメントだけで、分類されていない
+  `/api/**` ルートは既定で拒否します。
+  ([ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md))
+- **実際の Kubernetes 経路** — Kustomize の `base` と `dev` オーバーレイを kind に
+  デプロイし、Pod Security Standards の *restricted* プロファイル（非 root、読み取り
+  専用ルートファイルシステム、capabilities 全削除、RuntimeDefault seccomp、グレース
+  フルシャットダウン）に沿ってハードニングします。
+  ([ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md))
+- **証拠としてのオブザーバビリティ** — Actuator/Micrometer のメトリクス、ECS JSON の
+  構造化ログ、`promtool` のルールテスト付きでコミットした Prometheus アラートルール、
+  Grafana ダッシュボード。
+  ([ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md))
+- **CI 品質ゲート** — フォーマット、Error Prone、全テストと Testcontainers テスト、
+  Kubernetes マニフェストのレンダリング検証、OpenAPI スナップショットの差分検出、
+  `promtool` チェック、Trivy のシークレット/イメージスキャンを、変更ごとに実行します。
 
-## 継続的インテグレーション
+## アーキテクチャ
+
+フラグのドメイン、評価ロジック、永続化、監査の振る舞いは Java で実装しています。
+プレビューとロールアウトポリシーの API は、変更案・サンプルごとの差分・検証結果を
+表現するために Kotlin で実装し、再利用されるロールアウトポリシーバリデーターは
+Java のまま本番の更新経路と共有しています。
+
+```mermaid
+flowchart LR
+    Client([Client · curl · Swagger UI])
+
+    subgraph Sec["Spring Security · HTTP Basic"]
+        Auth{"reader / operator role"}
+    end
+
+    subgraph API["REST API · /api"]
+        FlagCtl["Feature Flag &amp; Evaluate<br/><b>Java</b>"]
+        PreviewCtl["Preview<br/><b>Kotlin</b>"]
+        PolicyCtl["Rollout Policy<br/><b>Kotlin</b>"]
+    end
+
+    subgraph Core["Domain &amp; Services · Java"]
+        Eval["Feature Flag Evaluator"]
+        Svc["Feature Flag Service"]
+        Policy["Rollout Policy Validator<br/>(shared)"]
+        Audit["Audit Event Service"]
+    end
+
+    Repo[["Spring Data JDBC"]]
+    DB[("PostgreSQL<br/>flags · audit_events")]
+
+    Client --> Auth
+    Auth --> FlagCtl & PreviewCtl & PolicyCtl
+    FlagCtl --> Svc & Eval
+    PreviewCtl --> Eval
+    PolicyCtl --> Policy
+    Svc --> Policy & Audit & Repo
+    Audit --> Repo
+    Repo --> DB
+```
+
+評価は次の順にチェックを適用し、最初に一致したものを結果の `reason` として返します。
+
+```mermaid
+flowchart TD
+    Start([evaluate: flag + context]) --> S{status == DISABLED?}
+    S -- yes --> R1[/false · FLAG_DISABLED/]
+    S -- no --> E{environment targeted?}
+    E -- no --> R2[/false · ENVIRONMENT_NOT_TARGETED/]
+    E -- yes --> K{kill switch active?}
+    K -- yes --> R3[/false · KILL_SWITCH_ACTIVE/]
+    K -- no --> A{tenant in allowlist?}
+    A -- yes --> R4[/true · TENANT_ALLOWLIST_MATCH/]
+    A -- no --> I{tenant or user id present?}
+    I -- no --> R5[/false · ROLLOUT_MISS/]
+    I -- yes --> B{"bucket(flagKey, id) &lt; rolloutPercentage?"}
+    B -- yes --> R6[/true · ROLLOUT_MATCH/]
+    B -- no --> R7[/false · ROLLOUT_MISS/]
+```
+
+> `bucket` は `floorMod(SHA-256(flagKey + ":" + identity), 100)` です。同じフラグ
+> キーと識別子は常に同じバケットに入るため、リクエストごとにランダムになるのではなく、
+> 安定した決定的なロールアウトになります。
+
+## 技術スタック
+
+| 領域 | 技術 |
+|---|---|
+| 言語 | Java 25（ツールチェーン）、Kotlin 2.3 |
+| フレームワーク | Spring Boot 4.0 — Web MVC、Security、Validation、Actuator |
+| 永続化 | Spring Data JDBC + PostgreSQL、Flyway マイグレーション |
+| API ドキュメント | springdoc-openapi 3.0（コードファースト）、コミット済み OpenAPI スナップショット |
+| オブザーバビリティ | Micrometer + Prometheus、ECS JSON ログ、Grafana |
+| ビルド | Gradle（convention plugin + version catalog）→ distroless `java25` イメージ |
+| 品質 | Spotless（google-java-format、ktfmt）、Error Prone |
+| テスト | JUnit 5、MockK、Testcontainers（PostgreSQL）、Spring Security Test |
+| デプロイ | Docker（distroless、非 root）、Kubernetes + Kustomize、kind |
+| CI | GitHub Actions、Trivy、promtool |
+
+正確なパッチバージョンは [`gradle/libs.versions.toml`](gradle/libs.versions.toml) に固定しています。
+
+## クイックスタート
+
+3 ステップでフラグを作成・評価します。Docker と JDK 25 が必要です。
+
+**1. PostgreSQL を起動する**
+
+```bash
+docker run --name feature-flags-postgres \
+  -e POSTGRES_DB=featureflags -e POSTGRES_USER=featureflags \
+  -e POSTGRES_PASSWORD=featureflags -p 5432:5432 -d postgres:16-alpine
+```
+
+コンテナはデータベースプロセスのみを起動します。スキーママイグレーションは
+アプリケーション起動時に Flyway が適用します。既定値の変更は
+[デプロイと運用](#デプロイと運用) を参照してください。
+
+**2. サービスを起動する**
+
+```bash
+./gradlew :service:bootRun
+```
+
+**3. フラグを作成し、評価する**
+
+```bash
+# 作成: production を対象、tenant-a を許可リストに、25% ロールアウト（operator ロール）
+curl -u featureflags-operator:featureflags-operator \
+  -H 'Content-Type: application/json' \
+  -d '{"flagKey":"checkout-redesign","status":"ENABLED","targetEnvironments":["production"],"killSwitchActive":false,"tenantAllowlist":["tenant-a"],"rolloutPercentage":25}' \
+  http://localhost:8080/api/flags
+```
+
+```jsonc
+// 201 Created
+{ "flagKey": "checkout-redesign", "status": "ENABLED",
+  "targetEnvironments": ["production"], "killSwitchActive": false,
+  "tenantAllowlist": ["tenant-a"], "rolloutPercentage": 25 }
+```
+
+```bash
+# production + tenant-a の文脈で評価（reader ロール）
+curl -u featureflags-reader:featureflags-reader \
+  -H 'Content-Type: application/json' \
+  -d '{"flagKey":"checkout-redesign","environment":"production","tenantId":"tenant-a"}' \
+  http://localhost:8080/api/evaluate
+```
+
+```jsonc
+// 200 OK — tenant-a は許可リストに含まれるため、割合ロールアウトの手前で確定する。
+// ロールアウトロジックに到達しないので bucket は null。
+{ "flagKey": "checkout-redesign", "enabled": true,
+  "reason": "TENANT_ALLOWLIST_MATCH", "bucket": null }
+```
+
+`enabled` と `reason` により、呼び出し側はフラグ設定の内部構造を知らずに機能を
+切り替えられます。全エンドポイントは **`http://localhost:8080/swagger-ui.html`** で
+対話的に確認できます。Kubernetes/kind の経路は
+[デプロイと運用](#デプロイと運用) を参照してください。
+
+## API 一覧
+
+| メソッド | パス | ロール | 用途 | 実装 |
+|---|---|---|---|---|
+| `POST` | `/api/flags` | operator | フラグの作成 | Java |
+| `GET` | `/api/flags/{flagKey}` | reader / operator | フラグの取得 | Java |
+| `PATCH` | `/api/flags/{flagKey}` | operator | フラグの更新（ロールアウトポリシー検証あり） | Java |
+| `POST` | `/api/evaluate` | reader / operator | 文脈に基づくフラグの評価 | Java |
+| `GET` | `/api/flags/{flagKey}/audit-events` | reader / operator | 監査イベントの一覧（古い順） | Java |
+| `POST` | `/api/flags/{flagKey}/preview` | reader / operator | 変更案のプレビュー（差分、書き込みなし） | Kotlin |
+| `POST` | `/api/flags/{flagKey}/validate-change` | reader / operator | 変更案のロールアウトポリシー検証 | Kotlin |
+
+**運用エンドポイント**
+
+| パス | アクセス |
+|---|---|
+| `/actuator/health`（`/liveness`、`/readiness`） | 公開（プローブ用） |
+| `/actuator/prometheus` | 認証必須（任意のローカルユーザー） |
+| `/swagger-ui.html`、`/v3/api-docs(.yaml)` | 公開 |
+| その他の `/api/**` | 拒否（フェイルクローズ） |
+
+生の OpenAPI 仕様は `/v3/api-docs`（JSON）と `/v3/api-docs.yaml`（YAML）で提供され、
+静的スナップショットを [docs/openapi.yaml](docs/openapi.yaml) にコミットしています。
+
+## 設計上の意思決定
+
+重要な意思決定は、MADR v4 形式の
+[Architecture Decision Records](docs/decisions/README.md) として記録しています。
+代表的なもの:
+
+- [ADR-0002](docs/decisions/0002-use-spring-data-jdbc-instead-of-jpa.md) — JPA/Hibernate ではなく Spring Data JDBC を採用
+- [ADR-0005](docs/decisions/0005-separate-domain-records-from-persistence-entities.md) — ドメインレコードと永続化エンティティを分離
+- [ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md) — 評価プレビュー API に Kotlin を採用
+- [ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md) — ローカル Kubernetes と CI 検証に kind を採用
+- [ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md) — ローカルのセキュリティ境界に HTTP Basic を採用
+
+すべての記録は[インデックス](docs/decisions/README.md)を参照してください。
+
+## デプロイと運用
+
+### 継続的インテグレーション
 
 GitHub Actions は 3 つのワークフローを使用します。
 
 | ワークフロー | トリガー | 対象 |
 |---|---|---|
-| `CI` | `main` への push、プルリクエスト、手動実行 | サービスのフォーマット、Error Prone によるコンパイル、ユニットテスト、Testcontainers を使った統合テスト、Kubernetes マニフェストのレンダリング検証、OpenAPI スナップショットの差分検出、Prometheus アラートルールの検証 |
-| `Image Vulnerability Scan` | `main` への push、プルリクエスト、毎日 18:00 UTC（03:00 JST）、手動実行 | サービスイメージのビルド確認と Trivy イメージスキャン。テストやデプロイのスモークテストとは別のシグナルとして扱います |
-| `Kind Smoke Test` | 毎日 18:00 UTC（03:00 JST）と手動実行 | kind クラスターでの起動をスケジュール実行と手動実行で検証し、デプロイ失敗時には Kubernetes の診断情報を収集します |
+| `CI` | `main` への push、プルリクエスト、手動実行 | フォーマット、Error Prone コンパイル、ユニットテスト、Testcontainers 統合テスト、Kubernetes マニフェストのレンダリング検証、OpenAPI スナップショットの差分検出、Prometheus アラートルールの検証 |
+| `Image Vulnerability Scan` | `main` への push、プルリクエスト、毎日 18:00 UTC（03:00 JST）、手動実行 | サービスイメージのビルド確認と Trivy イメージスキャン。テストやデプロイのシグナルとは分離 |
+| `Kind Smoke Test` | 毎日 18:00 UTC（03:00 JST）、手動実行 | kind クラスターでの起動検証。デプロイ失敗時には Kubernetes の診断情報を収集 |
 
-プルリクエストの CI では、Prometheus サーバーを起動せずに `promtool` で
-アラートルールを検証します。イメージ脆弱性スキャンのワークフローでは、
-サービスイメージをローカルでビルドし、その同じイメージを Trivy でスキャンします。
-このスキャンは `main` への push、プルリクエスト、毎晩のスケジュール実行、手動実行で走ります。
-修正済みの High / Critical の OS・ライブラリ脆弱性が見つかった場合は失敗し、
-修正版がまだ提供されていない検出結果は失敗条件から除外します。また、
-未修正の High / Critical の検出結果も含む非ブロッキングの Trivy サマリーを
-出力するため、ゲートを失敗させないリスクもレビュー時に確認できます。
-スケジュール実行の脆弱性ゲートは、アプリケーションコードに変更がなくても、
-新しい CVE が公開されたタイミングで赤くなることがあります。これは脆弱性ゲートとして
-想定される挙動であり、未修正の検出結果を失敗条件から除外しても、その可能性が
-小さくなるだけで完全になくなるわけではありません。
+プルリクエストの CI では、Prometheus サーバーを起動せずに `promtool` でアラート
+ルールを検証します。イメージのワークフローはサービスイメージをローカルでビルドし、
+その同じイメージを Trivy でスキャンします。
 
-Docker Compose は、メインのローカル実行環境として意図的に提供していません。Docker
-Compose では、Kubernetes マニフェスト、サービスディスカバリ、プローブ、デプロイ設定、
-`kubectl apply` の一連の流れを検証できないためです。代わりに kind を使い、ローカルと
-スケジュール実行のスモークテスト環境の両方で、Kubernetes へのデプロイ経路を検証します。
-データベースを必要とする統合テストは Testcontainers で実行し、外部依存はテストコード側で
-管理します。ローカルの Kubernetes スタックでは、開発者ひとり向けに最小・最軽量のローカル
-Kubernetes 体験を追求するよりも、CI と共有できるシンプルな検証フローと、標準的な Kubernetes
-に近い挙動とのバランスを優先しています。これはポートフォリオ作品として意図した選択であり、
-ローカルのセットアップを小さく保ちつつ、CI/CD と Kubernetes へのデプロイの実践を示すための
-ものです。ローカル Kubernetes に関する判断については
-[ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md)
-を参照してください。
+<details>
+<summary>脆弱性ゲートの挙動</summary>
 
-Kubernetes の `base` レイヤーは、アプリケーションのワークロードとサービスの仕様を定義します。
-`dev` オーバーレイは、ローカルの kind 向けの依存として、クラスター内 PostgreSQL、ローカルの
-データベース設定、プレースホルダーの認証情報、`kind load` で使うローカルのイメージタグを追加します。
+Trivy ゲートは、**修正済み**の High / Critical の OS・ライブラリ脆弱性で失敗し、
+未修正の検出結果は失敗条件から除外します。また、未修正の High / Critical を*含む*
+非ブロッキングのジョブサマリーを出力するため、ゲートを失敗させないリスクもレビュー時に
+確認できます。スケジュール実行は、アプリケーションコードに変更がなくても新しい CVE の
+公開で赤くなることがあります。これは脆弱性ゲートとして想定される挙動であり、未修正の
+検出結果を除外してもその可能性は小さくなるだけで完全にはなくなりません。
 
-アプリケーションのソースコード、Kubernetes マニフェスト、オブザーバビリティスタック、CI は、
-すべて単一のリポジトリに置いています。本番システムでは、デプロイ設定を別のコンフィグリポジトリに分け、
-Argo CD や Flux のような GitOps コントローラーで同期させるのが一般的です。そうすることで、
-デプロイのタイミングや頻度をアプリケーション開発とは独立させられ、クラスターに影響する変更への
-アクセス制御をより厳密にできます。また、クラスターへの書き込み権限を持つ認証情報を、
-アプリケーションの CI から分離して扱えます。
+</details>
 
-このリポジトリでは、検証の流れを端から端まで追いやすくするため、これらを 1 つにまとめています。
-アプリケーションコード、イメージビルド、マニフェスト、オブザーバビリティ、CI チェックの関係を、
-別リポジトリに依存せず確認できます。このプロジェクトの範囲では、本番運用で重要になるリリース境界の
-分離よりも、ポートフォリオとして全体像を追いやすく、レビューしやすい構成を優先しています。
+### 設定
 
-アプリケーションのワークロードは、Kubernetes Pod Security Standards の restricted プロファイルに
-沿った、最小限のランタイムのハードニングを行っています。具体的には、非 root のユーザー/グループ、
-Linux capabilities の全削除、サービスアカウントトークンのマウントの無効化、書き込み可能な `/tmp`
-ボリュームのみを許可する読み取り専用ルートファイルシステム、RuntimeDefault の seccomp、リソース上限、
-ヘルスプローブ、グレースフルシャットダウンを設定しています。kind と Kustomize のワークフローは、
-宣言的なデプロイ経路と起動時の挙動をスモークテストで検証するためのものであり、本番クラスターの完全な
-セキュリティモデルではありません。実際の本番トラフィックでは、Kubernetes によるエンドポイントの削除と
-SIGTERM の送信が競合する可能性が残ります。そのため、プラットフォーム側がエンドポイントの伝播に追加の
-時間を必要とする場合は、ロールアウトに短い `preStop` の遅延を追加できます。
-
-## サービスの実行
-
-### 前提条件
-
-PostgreSQL のインスタンスが起動しており、接続できる必要があります。API へのアクセスには、
-ローカル用の HTTP Basic ユーザーを 2 つ使います。reader は参照系の操作用、operator は
-作成・更新の操作用です。Prometheus のメトリクスには、設定済みのローカルユーザーのいずれかが
-必要です。Swagger UI と OpenAPI ドキュメントは、ポートフォリオをローカルで確認しやすいように
-認証なしで公開しています。
-監査イベントは、作成・更新の操作について、認証済みの HTTP Basic のプリンシパルを `actor` として
-記録します。actor はサービスが Spring Security から導出するもので、リクエストのペイロードからは
-受け取りません。
+接続可能な PostgreSQL インスタンスが必要です。以下の既定値はクイックスタートの
+コンテナと一致するため、ローカル実行に追加設定は不要です。別のデータベースを指したい
+場合や認証情報を変えたい場合は、これらの環境変数を上書きします。
 
 | 変数 | ローカルでの値 |
 |---|---|
@@ -134,285 +280,178 @@ PostgreSQL のインスタンスが起動しており、接続できる必要が
 | `FEATURE_FLAGS_SECURITY_OPERATOR_USERNAME` | `featureflags-operator` |
 | `FEATURE_FLAGS_SECURITY_OPERATOR_PASSWORD` | `featureflags-operator` |
 
-HTTP Basic は、現段階のポートフォリオをローカルで動かすための最低限の認証方式です。
-このリポジトリには、フィーチャーフラグの永続化用に PostgreSQL が含まれていますが、
-ユーザーの認証情報は意図的にアプリケーションのデータベースの外に置いています。この
-ポートフォリオの範囲では、ローカルの認証はデプロイの境界にとどめ、PostgreSQL はフラグの
-状態、ロールアウト設定、検証の挙動、監査イベントのために使います。本番環境へのデプロイでは、
-HTTP Basic を OIDC など組織で管理するアイデンティティプロバイダーに置き換え、同等の
-reader/operator 権限にマッピングする想定です。ローカルのセキュリティ境界に関する判断は
-[ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md)
-を参照してください。起動時のパスワードのエンコードは、インメモリのユーザーストア用であり、
-環境変数や Kubernetes Secret そのものを保護するものではありません。
+マイグレーションは `service/src/main/resources/db/migration` 以下にあり、アプリ
+ケーション起動時に Flyway が適用します。コンテナの初期化フローではなく、この起動時
+適用を標準のマイグレーション経路としています。
 
-ルートと権限の対応も、この小規模なポートフォリオのサービスでは意図的に `SecurityConfig` に
-直接記述しています。本番システムでは、エンドポイントのグルーピングの明確化、`flags:read`・
-`flags:write`・`metrics:read` のような操作単位の権限、より複雑なチェックに対するメソッド
-セキュリティ、あるいはポリシーの判断をアプリケーションの外で管理する必要がある場合の外部
-認可レイヤーへと発展させる選択肢があります。このプロジェクトでは、余分な設定の間接化を
-増やさず、セキュリティの境界を読み取りやすく保つために、対応をハードコードしています。
+### セキュリティ
 
-### Docker で PostgreSQL を起動する
+API アクセスにはローカルの HTTP Basic ユーザーを 2 つ使います。参照系の **reader**
+と、作成・更新系の **operator** です。Prometheus メトリクスには任意の設定済みユーザー
+が必要で、Swagger UI と OpenAPI ドキュメントはローカルで確認しやすいよう公開のままに
+しています。監査イベントは認証済みプリンシパルを `actor` として記録します。actor は
+サービスが Spring Security から導出するもので、リクエストのペイロードからは受け取りません。
 
-ローカルで Swagger UI を確認する場合は、既定のデータベース設定で PostgreSQL コンテナを起動します。
+<details>
+<summary>セキュリティモデルの範囲と発展</summary>
 
-```bash
-docker run --name feature-flags-postgres \
-  -e POSTGRES_DB=featureflags \
-  -e POSTGRES_USER=featureflags \
-  -e POSTGRES_PASSWORD=featureflags \
-  -p 5432:5432 \
-  -d postgres:16-alpine
-```
+HTTP Basic はローカルのポートフォリオ用の最低限の認証です。ユーザーの認証情報は
+意図的にアプリケーションのデータベースの外に置き、PostgreSQL はフラグの状態、ロール
+アウト設定、検証の挙動、監査イベントのために使います。ステートレスな JSON API のため
+CSRF は無効化していますが、HTTP Basic はブラウザでは CSRF の影響を受けるため、本番で
+ブラウザからアクセスする場合は CSRF 保護を再有効化するか Basic を置き換える必要があります。
+起動時のパスワードエンコードはインメモリのユーザーストア用であり、環境変数や Kubernetes
+Secret そのものを保護するものではありません。
 
-コンテナが既に存在する場合は、再度起動します。
+ルートと権限の対応は `SecurityConfig` に直接記述し、余分な間接化なしに境界を読み取り
+やすく保っています。本番システムでは、`flags:read`・`flags:write`・`metrics:read` の
+ような操作単位の権限、メソッドセキュリティ、外部認可レイヤーへ発展させたり、HTTP Basic を
+OIDC など組織で管理するアイデンティティプロバイダーに置き換えて同等の reader/operator
+権限にマッピングしたりできます。[ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md) を参照してください。
 
-```bash
-docker start feature-flags-postgres
-```
-
-PostgreSQL コンテナはデータベースプロセスのみを起動します。スキーママイグレーションは、Spring Boot アプリケーションの起動時に Flyway によって適用されます。マイグレーションには `service/src/main/resources/db/migration` 以下のファイルが使用されます。
-
-Flyway CLI や `docker-entrypoint-initdb.d` などのツールを使って PostgreSQL コンテナの起動フローからマイグレーションを実行することもできますが、このプロジェクトでは Spring Boot の起動時に実行する方法を標準のマイグレーション経路としています。
-
-### サービスを起動する
-
-```bash
-./gradlew :service:bootRun
-```
-
-フィーチャーフラグの価値は、設定を保存することだけではなく、アプリケーションが
-実行時のコンテキストに応じて機能を有効にするかどうかを判断できる点にあります。まず、
-本番環境を対象とし、`tenant-a` を許可リストに含めたフラグを作成します。
-
-```bash
-curl -u featureflags-operator:featureflags-operator \
-  -H 'Content-Type: application/json' \
-  -d '{"flagKey":"checkout-redesign","status":"ENABLED","targetEnvironments":["production"],"killSwitchActive":false,"tenantAllowlist":["tenant-a"],"rolloutPercentage":25}' \
-  http://localhost:8080/api/flags
-```
-
-次に、実行時コンテキストとして本番環境と `tenant-a` を渡してフラグを評価します。
-レスポンスの `enabled` と `reason` により、呼び出し側はフラグ設定の内部構造を知らずに
-機能を切り替えられます。
-
-```bash
-curl -u featureflags-reader:featureflags-reader \
-  -H 'Content-Type: application/json' \
-  -d '{"flagKey":"checkout-redesign","environment":"production","tenantId":"tenant-a"}' \
-  http://localhost:8080/api/evaluate
-```
+</details>
 
 ### kind で実行する
 
-kind ワークフローは Gradle タスクと対応するシェルスクリプトから利用できます。
-標準のプロジェクトエントリポイントを使いたい場合は Gradle を使い、より小さな
-シェルのみのコマンドを使いたい場合は `scripts/` 配下のスクリプトを直接実行します。
-
-ローカル kind クラスターを作成します。
-
-```bash
-./gradlew kindCreate
-# or: scripts/kind-create.sh
-```
-
-Spring Boot の jar をビルドし、Docker イメージをビルドして kind にロードします。
-Dockerfile は、サービスのビルド出力から、固定の jar 名
+kind ワークフローは Gradle タスクと、`scripts/` 配下の対応するシェルスクリプトから
+利用できます。Dockerfile は、サービスのビルド出力から固定の jar 名
 `feature-flag-platform.jar` をコピーします。
 
 ```bash
-./gradlew kindLoadImage
-# or: scripts/kind-load-image.sh
+./gradlew kindCreate          # ローカルクラスターを作成（または kindRecreate / kindDelete）
+./gradlew kindLoadImage       # jar とイメージをビルドし kind にロード
+./gradlew k8sRenderDev        # dev のレンダリング済みマニフェストをプレビュー
+./gradlew devDeploy           # ビルド・ロード・適用・待機・Pod ステータス表示を一括実行
+./gradlew k8sPortForward      # アプリの Service をポートフォワード（続けて ./gradlew appHealth）
 ```
 
-既存の kind クラスターがノード設定の変更前に作成されていた場合は、ワーカーノードと
-ラベルが適用されるように再作成します。
+`dev` オーバーレイは `base` の上にローカル kind 用の依存を追加します。クラスター内
+PostgreSQL、ローカルのデータベース設定、プレースホルダーの認証情報、`kind load` で使う
+ローカルのイメージタグです。各 Gradle タスクには、より小さなシェルのみのコマンドとして
+`scripts/*.sh` の同等物があります。
+
+アプリのオーバーレイ起動後に、任意で適用できるローカルの Prometheus/Grafana スタックを
+追加できます。
 
 ```bash
-./gradlew kindRecreate
-# or: scripts/kind-recreate.sh
+./gradlew k8sApplyObservabilityDev   # 続けて k8sWaitObservabilityDev / k8sStatusObservabilityDev
+./gradlew k8sPortForwardPrometheus   # http://localhost:9090
+./gradlew k8sPortForwardGrafana      # http://localhost:3000（開発専用 admin / admin）
 ```
 
-不要になったローカル kind クラスターを削除します。
+Docker Compose は意図的に**提供していません**。マニフェスト、サービスディスカバリ、
+プローブ、`kubectl apply` といった、Compose では検証できない実際の Kubernetes デプロイ
+経路を kind で検証するためです。データベースを必要とする統合テストは代わりに
+Testcontainers で実行します。[ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md) を参照してください。
+
+### ランタイムのハードニング
+
+ワークロードは Pod Security Standards の *restricted* プロファイルに沿っています。
+
+- 非 root のユーザー/グループ、サービスアカウントトークンのマウント無効化
+- 書き込み可能な `/tmp` ボリュームのみを許可する読み取り専用ルートファイルシステム
+- Linux capabilities の全削除、RuntimeDefault seccomp
+- リソース上限、ヘルスプローブ、グレースフルシャットダウン
+
+<details>
+<summary>ハードニングの範囲と本番での注意点</summary>
+
+kind と Kustomize のワークフローは、宣言的なデプロイ経路と起動時の挙動をスモークテストで
+検証するためのものであり、本番クラスターの完全なセキュリティモデルではありません。実際の
+本番トラフィックでは、Kubernetes によるエンドポイントの削除と SIGTERM の送信が競合する
+可能性が残ります。そのため、プラットフォーム側がエンドポイントの伝播に追加の時間を必要と
+する場合は、ロールアウトに短い `preStop` の遅延を追加できます。
+
+</details>
+
+<details>
+<summary>なぜ単一リポジトリなのか</summary>
+
+アプリケーションコード、マニフェスト、オブザーバビリティスタック、CI を 1 つのリポジトリに
+まとめているのは、検証の流れを端から端まで、別リポジトリに依存せずレビューできるように
+するためです。本番システムでは、デプロイ設定を別のコンフィグリポジトリに分け、Argo CD や
+Flux のような GitOps コントローラーで同期させるのが一般的です。そうすることで、デプロイの
+頻度をアプリケーション開発から独立させ、クラスターに影響する変更へのアクセス制御を厳密にし、
+クラスターへの書き込み権限を持つ認証情報をアプリケーションの CI から分離できます。この
+ポートフォリオの範囲では、そうしたリリース境界の分離よりも、全体像を一望できるコンパクトな
+構成を優先しています。
+
+</details>
+
+## オブザーバビリティ
+
+Actuator のヘルスエンドポイントはプローブ用に公開し、Prometheus メトリクスには任意の
+設定済みユーザーの HTTP Basic 認証情報が必要です。メトリクス名、構造化ロギング、Prometheus
+と Grafana の成果物、サンプルトラフィックの送信コマンド、ルールやダッシュボードを変更した
+後の手動リフレッシュ手順については [docs/observability.md](docs/observability.md) を
+参照してください。
+
+コミット済みのアラートルールとテストは、Alertmanager・PagerDuty・Grafana の本番
+プロビジョニングではなく、ローカルで alerting-ready な成果物として意図的に扱っています
+（[ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md)）。
+オーバーレイは標準出力・標準エラー出力のログと、小さな Prometheus/Grafana スタックまでを
+対象とし、クラスター全体のログ収集ミドルウェアはインストールしません。本番環境への
+デプロイでは、対象プラットフォームに応じてログの収集・ルーティング・保持・アクセス制御の
+ミドルウェアを選定する必要があります。
+
+## 開発
+
+### 静的解析
 
 ```bash
-./gradlew kindDelete
-# or: scripts/kind-delete.sh
+./gradlew :service:spotlessCheck    # フォーマットを確認
+./gradlew :service:spotlessApply    # フォーマットを自動修正
+./gradlew :service:compileJava      # Error Prone はコンパイル時に実行される
 ```
 
-`dev` オーバーレイは、ローカルの PostgreSQL、ローカルのデータベース URL、プレースホルダーの
-データベース認証情報、ローカルのイメージタグを提供します。生成された ConfigMap、Secret、
-リソース一式を確認したい場合は、レンダリングしたマニフェストをプレビューします。
+### テスト
 
 ```bash
-./gradlew k8sRenderDev
-./gradlew k8sApplyDev
-# or: scripts/k8s-render-dev.sh
-# or: scripts/k8s-apply-dev.sh
+./gradlew :service:test             # すべてのテスト
+
+# 特定のクラス・メソッド
+./gradlew :service:test --tests "com.github.milez42.featureflags.flags.FeatureFlagEvaluatorTest"
+./gradlew :service:test --tests "com.github.milez42.featureflags.flags.FeatureFlagEvaluatorTest.fullRolloutEnablesFlag"
 ```
 
-PostgreSQL とアプリケーションが Ready 状態になるまで待ちます。
-
-```bash
-./gradlew k8sWaitDev
-# or: scripts/k8s-wait-dev.sh
-```
-
-アプリケーションと PostgreSQL の Pod がワーカーノードにスケジュールされていることを
-確認します。
-
-```bash
-./gradlew k8sStatusDev
-# or: scripts/k8s-status-dev.sh
-```
-
-アプリの Service をポートフォワードし、ヘルスエンドポイントを確認します。
-
-```bash
-./gradlew k8sPortForward
-# or: scripts/k8s-port-forward.sh
-```
-
-ポートフォワードが有効な間に、別のターミナルでヘルスチェックを実行します。
-
-```bash
-./gradlew appHealth
-# or: scripts/app-health.sh
-```
-
-ビルド、ロード、適用、待機、Pod ステータスの表示を 1 つのコマンドで実行します。
-
-```bash
-./gradlew devDeploy
-# or: scripts/dev-deploy.sh
-```
-
-アプリの `dev` オーバーレイが起動した後、任意で適用できるローカルの Prometheus/Grafana
-スタックを追加できます。
-
-```bash
-./gradlew k8sApplyObservabilityDev
-./gradlew k8sWaitObservabilityDev
-./gradlew k8sStatusObservabilityDev
-```
-
-確認したい場合は、ローカルのオブザーバビリティのサービスをポートフォワードします。
-
-```bash
-./gradlew k8sPortForwardPrometheus
-./gradlew k8sPortForwardGrafana
-```
-
-Prometheus は `http://localhost:9090`、Grafana は `http://localhost:3000`
-で利用できます。Grafana の開発専用のプレースホルダー認証情報は `admin` / `admin` です。
-ローカルでの検証手順、サンプルのトラフィック送信コマンド、ルールやダッシュボードを変更した後の
-手動リフレッシュの手順については [docs/observability.md](docs/observability.md) を参照してください。
-
-ローカルのオブザーバビリティのオーバーレイは、このリポジトリをポートフォリオ作品として扱う
-範囲に合わせ、標準出力・標準エラー出力のログと、小さな Prometheus/Grafana スタックまでを
-意図的な対象範囲にしています。クラスター全体のログ収集ミドルウェアはインストールしません。
-本番環境へのデプロイでは、対象のプラットフォームと運用要件に基づいて、ログの収集・ルーティング・
-保持・アクセス制御のためのミドルウェアを選定する必要があります。
-
-## 関連情報
-
-### Swagger UI
-
-サービスが起動したら、ブラウザで Swagger UI を開きます。
-
-```
-http://localhost:8080/swagger-ui.html
-```
-
-生の OpenAPI 仕様も以下で確認できます。
-
-| 形式 | URL |
-|---|---|
-| JSON | `http://localhost:8080/v3/api-docs` |
-| YAML | `http://localhost:8080/v3/api-docs.yaml` |
-
-仕様の静的スナップショットは [docs/openapi.yaml](docs/openapi.yaml) にコミットされています。
-
-### Observability
-
-Actuator のヘルスエンドポイントはプローブ用に公開しており、Prometheus のメトリクスには、
-設定済みのローカルユーザーのいずれかの HTTP Basic 認証情報が必要です。メトリクス名、構造化
-ロギング、Prometheus と Grafana の成果物、アクセス制御の想定については
-[docs/observability.md](docs/observability.md) を参照してください。
-コミット済みのアラートルールとテストは、Alertmanager、PagerDuty、Grafana の本番向け
-プロビジョニングまでを含むものではなく、ローカルで alerting-ready な成果物として扱います。
-この判断については
-[ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md)
-を参照してください。
-
-### 実装レビュー用にコードベースをパックする
+### レビュー用にコードベースをパックする
 
 [Repomix](https://repomix.com/ja/guide) を使って、ソース、テスト、API ドキュメント、
 デプロイ用マニフェスト、選択した運用設定から、AI に渡しやすい単一の実装レビュー用パックを
 生成します。
 
 ```bash
-npx repomix@1.14.1 --config repomix.config.json
+npx repomix@1.14.1 --config repomix.config.json                       # → build/repomix/feature-flag-expt-review.xml
+npx repomix@1.14.1 --config repomix.config.json --token-count-tree 1000   # 1000 トークン以上のファイル/ディレクトリを表示
+npx repomix@1.14.1 --config repomix.config.json --include-diffs        # ワーキングツリー + ステージ済みの差分を含める
 ```
 
-生成されたファイルは `build/repomix/feature-flag-expt-review.xml` に出力されます。
-生成された Repomix の出力は Git から除外されます。Repomix はセキュリティチェックを実行しますが、
-人による確認の代わりにはなりません。生成ファイルを外部の AI サービスに共有する前に、シークレット、
-個人データ、内部 URL、認証情報、環境固有の設定が含まれていないことを確認してください。
+生成ファイルは Git から除外されます。Repomix はセキュリティチェックを実行しますが、人に
+よる確認の代わりにはなりません。生成ファイルを外部の AI サービスに共有する前に、シーク
+レット、個人データ、内部 URL、認証情報、環境固有の設定が含まれていないことを確認して
+ください。
 
-パックの生成時にトークン数が大きい項目を確認するには、トークン数ツリーの閾値を指定して
-同じコマンドを実行します。値 `1000` は「1000 トークン以上のファイル/ディレクトリを表示する」
-という意味であり、トークン数の上限ではありません。
+## リポジトリ構成
 
-```bash
-npx repomix@1.14.1 --config repomix.config.json --token-count-tree 1000
-```
-
-ローカルでの作業中の変更をレビュー対象に含める場合は、ワーキングツリーとステージ済みの差分を
-明示的に含めます。
-
-```bash
-npx repomix@1.14.1 --config repomix.config.json --include-diffs
-```
-
-## 静的解析
-
-### フォーマットを確認する（Spotless）
-
-```bash
-./gradlew :service:spotlessCheck
-```
-
-### フォーマットを自動修正する（Spotless）
-
-```bash
-./gradlew :service:spotlessApply
-```
-
-### 静的解析を実行する（Error Prone）
-
-Error Prone はコンパイル時に自動的に実行されます。
-
-```bash
-./gradlew :service:compileJava
-```
-
-## テストの実行
-
-### すべてのテストを実行する
-
-```bash
-./gradlew :service:test
-```
-
-### 特定のテストクラスを実行する
-
-```bash
-./gradlew :service:test --tests "com.github.milez42.featureflags.flags.FeatureFlagEvaluatorTest"
-```
-
-### 特定のテストメソッドを実行する
-
-```bash
-./gradlew :service:test --tests "com.github.milez42.featureflags.flags.FeatureFlagEvaluatorTest.fullRolloutEnablesFlag"
+```text
+.
+├── service/                       # Spring Boot サービス（Java + Kotlin）
+│   └── src/main/.../featureflags/
+│       ├── flags/                 # フラグドメイン・評価・永続化       （Java）
+│       ├── audit/                 # 監査イベント                       （Java）
+│       ├── policy/                # ロールアウトポリシー: validator は Java、API/service は Kotlin
+│       ├── preview/               # プレビュー API                     （Kotlin）
+│       └── SecurityConfig, OpenApiConfig, ...
+├── deploy/
+│   ├── k8s/base/                  # アプリの Deployment + Service
+│   ├── k8s/overlays/dev/          # kind: クラスター内 PostgreSQL、ローカル設定
+│   ├── k8s/overlays/dev-observability/   # Prometheus + Grafana + アラートルール
+│   └── kind/cluster.yaml
+├── docs/
+│   ├── decisions/                 # ADR（MADR v4）
+│   ├── observability.md
+│   └── openapi.yaml               # コミット済み OpenAPI スナップショット
+├── scripts/                       # kind/k8s Gradle タスクのシェル版
+├── .github/workflows/             # CI · イメージスキャン · kind スモークテスト
+└── build-logic/                   # Gradle convention plugin
 ```
