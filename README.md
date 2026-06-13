@@ -10,11 +10,8 @@ English | [日本語](README.ja.md)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-kind-326CE5)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-> **Status:** Portfolio / learning project — built to demonstrate backend
-> engineering practices end to end, not a production service.
-
 A Spring Boot feature-flag service used as a vehicle to demonstrate **JVM domain
-design, a real Kubernetes deployment path, observability, and CI quality gates**
+design, Kubernetes deployment, observability, and CI quality gates**
 in one reviewable repository. Flags are targeted by environment, guarded by an
 emergency kill switch, allowlisted per tenant, and rolled out by a deterministic
 percentage bucket derived from the flag key and tenant or user identity — with
@@ -22,7 +19,8 @@ every state change recorded as an audit event.
 
 ## Table of Contents
 
-- [What This Project Demonstrates](#what-this-project-demonstrates)
+- [What You Can Review in This Project](#what-you-can-review-in-this-project)
+- [Development Approach](#development-approach)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
 - [Quick Start](#quick-start)
@@ -33,38 +31,78 @@ every state change recorded as an audit event.
 - [Development](#development)
 - [Repository Layout](#repository-layout)
 
-## What This Project Demonstrates
+## What You Can Review in This Project
 
 - **JVM service design** — Java owns the persisted flag domain, evaluator,
   Spring Data JDBC transaction flow, audit recording, Micrometer metrics, and
-  the Spring Security boundary; Kotlin owns the request/response-heavy preview
-  and rollout-policy APIs, while the reusable policy validator stays in Java and
-  is shared with the production update path.
+  the Spring Security boundary. Kotlin is limited to read-oriented API
+  boundaries to demonstrate Java/Kotlin interoperability in a Spring Boot
+  service: immutable DTOs fit preview proposed changes, per-sample diffs, and
+  summaries, and the rollout-policy API follows the same request/response
+  shape while the policy validator shares the Java implementation.
   ([ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md))
-- **Fail-closed security boundary** — local HTTP Basic with reader/operator
-  roles, a public surface limited to probes and API docs, and unclassified
-  `/api/**` routes denied by default.
+- **Fail-closed security boundary** — in-memory user management with local HTTP
+  Basic reader/operator roles. Only health check endpoints (Kubernetes liveness
+  / readiness probes) and Swagger UI / OpenAPI docs are public; known `/api/**`
+  routes are allowed by role, and unclassified `/api/**` routes are denied by
+  default even for authenticated users.
   ([ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md))
-- **Real Kubernetes path** — Kustomize `base` and `dev` overlays deployed to
+- **Kubernetes deployment** — Kustomize `base` and `dev` overlays deployed to
   kind, hardened to the Pod Security Standards [restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) profile (non-root,
   read-only root filesystem, dropped capabilities, RuntimeDefault seccomp,
   graceful shutdown).
   ([ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md))
-- **Observability as evidence** — Actuator/Micrometer metrics, ECS JSON
+- **Observability** — Actuator/Micrometer metrics, ECS JSON
   structured logs, committed Prometheus alert rules with `promtool` rule tests,
   and a Grafana dashboard.
   ([ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md))
 - **CI quality gates** — formatting, Error Prone, the full and Testcontainers
   test suites, Kubernetes render validation, OpenAPI snapshot drift detection,
   `promtool` checks, and Trivy secret/image scanning on every change.
+- **AI-agent development workflow** — a human-directed development cycle. AI
+  agents assist with planning, design, implementation, and review, while the
+  repository owner makes the final merge decision after reviewing the substance
+  of the change.
+
+## Development Approach
+
+This repository is developed through a human-directed AI-agent workflow. The
+owner defines the product intent, reviews decisions and implementation details,
+and approves merges; AI agents assist with planning, design, implementation,
+and review.
+
+The typical flow is:
+
+For small capabilities or clearly scoped fixes, the roadmap step may be skipped
+and the work may begin with design or implementation.
+
+1. The owner describes the desired capability, and an AI agent drafts a roadmap
+   (Markdown) that organizes it into multiple implementation phases.
+2. Once the roadmap is accepted, a design document (Markdown) is created for
+   each phase.
+3. After the design is approved, an AI agent implements the change from that
+   design.
+4. The owner reviews the implementation.
+5. If issues are found, the change goes back for revision; otherwise it is
+   merged.
+
+Steps 1 through 4 also receive AI-agent peer review, for example with Codex
+handling design or implementation and Claude Code reviewing it. The
+main review lenses are whether the work follows modern 2026-era practices, is
+secure in design and implementation, and avoids obvious over-engineering. AI
+review is an input to the process, not a replacement for the owner's final
+judgment.
 
 ## Architecture
 
 The flag domain, evaluator, persistence, and audit behavior are implemented in
-Java. The preview and rollout-policy APIs are implemented in Kotlin to model
-proposed changes, per-sample diffs, and validation results, while the reusable
-rollout policy validator stays in Java and is shared with the production update
-path.
+Java. Kotlin is used at the read-only preview boundary to demonstrate
+Java/Kotlin interoperability in a Spring Boot service while keeping persisted
+domain behavior, transactions, and audit logic in Java. The preview API models
+proposed changes, per-sample before/after diffs, and summaries with nested
+Kotlin request/response DTOs; the rollout-policy API uses the same Kotlin
+request/response boundary for validation results, while the reusable policy
+validator shares the Java implementation.
 
 ```mermaid
 flowchart LR
@@ -135,7 +173,7 @@ flowchart TD
 | Observability | Micrometer + Prometheus, ECS JSON logging, Grafana |
 | Build | Gradle (convention plugins + version catalog) → distroless `java25` image |
 | Quality | Spotless (google-java-format, ktfmt), Error Prone |
-| Test | JUnit 5, MockK, Testcontainers (PostgreSQL), Spring Security Test |
+| Test | JUnit, MockK, Testcontainers (PostgreSQL), Spring Security Test |
 | Deploy | Docker (distroless, non-root), Kubernetes + Kustomize, kind |
 | CI | GitHub Actions, Trivy, promtool |
 

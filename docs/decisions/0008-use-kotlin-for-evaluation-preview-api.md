@@ -8,7 +8,7 @@ informed: []
 
 # Use Kotlin for the Evaluation Preview API
 
-> Note: Kotlin was intentionally introduced for this `/preview` feature primarily as a portfolio signal. The technical rationale below explains why the evaluation preview boundary is a reasonable and contained place to use Kotlin; it should not be read as the original or sole reason for adopting Kotlin.
+> Note: Kotlin was intentionally introduced for this `/preview` feature to demonstrate Java/Kotlin interoperability as part of the project's portfolio goals. The technical rationale below explains why the evaluation preview boundary is a reasonable and contained place to use Kotlin; it should not be read as the original or sole reason for adopting Kotlin.
 
 ## Context and Problem Statement
 

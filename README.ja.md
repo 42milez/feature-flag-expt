@@ -10,13 +10,12 @@
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-kind-326CE5)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-> **ステータス:** ポートフォリオ / 学習用プロジェクト。バックエンド開発の実践を端から端まで示すことを目的としており、本番サービスではありません。
-
-フィーチャーフラグ管理サービスを題材に、**JVM でのドメイン設計、実際の Kubernetes デプロイ経路、オブザーバビリティ、CI 品質ゲート**を、1 つのレビューしやすいリポジトリで示すポートフォリオです。フラグは環境ごとのターゲティング、緊急停止用のキルスイッチ、テナント単位の許可リスト、フラグキーとテナント/ユーザー識別子から算出する決定的な割合バケットで制御でき、状態の変更はすべて監査イベントとして記録されます。
+フィーチャーフラグ管理サービスを題材に、**JVM でのドメイン設計、Kubernetes デプロイ、オブザーバビリティ、CI 品質ゲート**を、1 つのレビューしやすいリポジトリで示すポートフォリオです。フラグは環境ごとのターゲティング、緊急停止用のキルスイッチ、テナント単位の許可リスト、フラグキーとテナント/ユーザー識別子から算出する決定的な割合バケットで制御でき、状態の変更はすべて監査イベントとして記録されます。
 
 ## 目次
 
-- [このプロジェクトで示すこと](#このプロジェクトで示すこと)
+- [このプロジェクトでご覧いただけること](#このプロジェクトでご覧いただけること)
+- [開発アプローチ](#開発アプローチ)
 - [アーキテクチャ](#アーキテクチャ)
 - [技術スタック](#技術スタック)
 - [クイックスタート](#クイックスタート)
@@ -27,17 +26,32 @@
 - [開発](#開発)
 - [リポジトリ構成](#リポジトリ構成)
 
-## このプロジェクトで示すこと
+## このプロジェクトでご覧いただけること
 
-- **JVM サービス設計** — 永続化されるフラグのドメイン、評価ロジック、Spring Data JDBC のトランザクションフロー、監査イベントの記録、Micrometer の計装、Spring Security の境界は Java が担当します。リクエスト/レスポンスの組み立てが中心になるプレビューとロールアウトポリシーの API は Kotlin が担当し、再利用されるポリシーバリデーターは Java のまま本番の更新経路と共有します。([ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md))
-- **フェイルクローズなセキュリティ境界** — reader/operator ロールを持つローカルの HTTP Basic 認証。公開するのはプローブと API ドキュメントだけで、分類されていない `/api/**` ルートは既定で拒否します。([ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md))
-- **実際の Kubernetes 経路** — Kustomize の `base` と `dev` オーバーレイを kind にデプロイし、Pod Security Standards の [restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) プロファイル（非 root、読み取り専用ルートファイルシステム、capabilities 全削除、RuntimeDefault seccomp、グレースフルシャットダウン）に沿ってハードニングします。([ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md))
-- **証拠としてのオブザーバビリティ** — Actuator/Micrometer のメトリクス、ECS JSON の構造化ログ、`promtool` のルールテスト付きでコミットした Prometheus アラートルール、Grafana ダッシュボード。([ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md))
+- **JVM サービス設計** — 永続化されるフラグのドメイン、評価ロジック、Spring Data JDBC のトランザクションフロー、監査イベントの記録、Micrometer の計装、Spring Security の境界は Java が担当します。Kotlin は Spring Boot サービス内での Java/Kotlin 相互運用を示すため、読み取り中心の API 境界に限定して使っています。プレビュー API では変更案・サンプルごとの差分・集計を immutable な DTO で表し、ロールアウトポリシー API も同じリクエスト/レスポンス中心の形に置きます。ポリシーバリデーターは Java 実装を共有します。([ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md))
+- **フェイルクローズなセキュリティ境界** — reader/operator ロールを伴うインメモリのユーザー管理（HTTP Basic 認証）。認証なしで公開されるのはヘルスチェック用エンドポイント（Kubernetes の liveness / readiness プローブ）と Swagger UI / OpenAPI ドキュメントだけで、既知の `/api/**` ルートはロール別に許可し、分類されていない `/api/**` ルートは認証済みでも既定で拒否します。([ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md))
+- **Kubernetes デプロイ** — Kustomize の `base` と `dev` オーバーレイを kind にデプロイし、Pod Security Standards の [restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) プロファイルに沿ってハードニングします。([ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md))
+- **オブザーバビリティ** — Actuator/Micrometer のメトリクス、ECS JSON の構造化ログ、`promtool` のルールテスト付きでコミットした Prometheus アラートルール、Grafana ダッシュボード。([ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md))
 - **CI 品質ゲート** — フォーマット、Error Prone、全テストと Testcontainers テスト、Kubernetes マニフェストのレンダリング検証、OpenAPI スナップショットの差分検出、`promtool` チェック、Trivy のシークレット/イメージスキャンを、変更ごとに実行します。
+- **AI エージェントを活用した開発ワークフロー** — 人間が主導する開発サイクルです。AI エージェントは計画、設計、実装、レビューを支援し、最終的なマージ判断は内容を精査した上でリポジトリオーナーが行います。
+
+## 開発アプローチ
+
+このリポジトリは、人間が主導する AI エージェント活用ワークフローで開発しています。プロダクトとしての意図を定義し、設計判断や実装内容をレビューし、マージを承認するのはオーナーです。AI エージェントは計画、設計、実装、レビューを支援する開発パートナーとして使用しています。
+
+典型的な流れは次のとおりです。小さな機能や明確な修正では、ロードマップの作成を省略し、設計や実装から始めます。
+
+1. オーナーが作りたい機能を伝え、AI エージェントがその内容を複数の実装フェーズに整理したロードマップ（Markdown）を作成します。
+2. ロードマップが確定したら、フェーズごとに設計書（Markdown）を作成します。
+3. 設計が承認されたら、その設計書をもとに AI エージェントが実装します。
+4. オーナーが実装をレビューします。
+5. 問題があれば修正を依頼し、なければマージします。
+
+1〜4 の各段階では、AI エージェント同士のピアレビューも行います。たとえば Codex が設計、実装を行い、Claude Code がレビューします。主なレビュー観点は、2026 年時点のモダンなプラクティスに沿っていること、設計と実装がセキュアであること、明らかなオーバーエンジニアリングの兆候がないことです。AI によるレビューは判断材料の一つであり、オーナーによる最終判断の代わりではありません。
 
 ## アーキテクチャ
 
-フラグのドメイン、評価ロジック、永続化、監査の振る舞いは Java で実装しています。プレビューとロールアウトポリシーの API は、変更案・サンプルごとの差分・検証結果を表現するために Kotlin で実装し、再利用されるロールアウトポリシーバリデーターは Java のまま本番の更新経路と共有しています。
+フラグのドメイン、評価ロジック、永続化、監査の振る舞いは Java で実装しています。Kotlin は、Spring Boot サービス内での Java/Kotlin 相互運用を示しつつ、永続化されるドメイン、トランザクション、監査ロジックを Java 側に保つため、読み取り専用のプレビュー境界に導入しています。プレビュー API では、変更案、サンプルごとの before/after 差分、集計を Kotlin のネストしたリクエスト/レスポンス DTO で表しています。ロールアウトポリシー API も検証結果を返す同じ Kotlin のリクエスト/レスポンス境界に置き、再利用するポリシーバリデーターは Java 実装を共有しています。
 
 ```mermaid
 flowchart LR
@@ -105,7 +119,7 @@ flowchart TD
 | オブザーバビリティ | Micrometer + Prometheus、ECS JSON ログ、Grafana |
 | ビルド | Gradle（convention plugin + version catalog）→ distroless `java25` イメージ |
 | 品質 | Spotless（google-java-format、ktfmt）、Error Prone |
-| テスト | JUnit 5、MockK、Testcontainers（PostgreSQL）、Spring Security Test |
+| テスト | JUnit、MockK、Testcontainers（PostgreSQL）、Spring Security Test |
 | デプロイ | Docker（distroless、非 root）、Kubernetes + Kustomize、kind |
 | CI | GitHub Actions、Trivy、promtool |
 
