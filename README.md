@@ -46,7 +46,7 @@ every state change recorded as an audit event.
   `/api/**` routes denied by default.
   ([ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md))
 - **Real Kubernetes path** — Kustomize `base` and `dev` overlays deployed to
-  kind, hardened to the Pod Security Standards *restricted* profile (non-root,
+  kind, hardened to the Pod Security Standards [restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) profile (non-root,
   read-only root filesystem, dropped capabilities, RuntimeDefault seccomp,
   graceful shutdown).
   ([ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md))
@@ -353,7 +353,7 @@ tests run with Testcontainers instead. See
 
 ### Runtime hardening
 
-The workload aligns with the Pod Security Standards *restricted* profile:
+The workload aligns with the Pod Security Standards [restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) profile:
 
 - Non-root user and group, no service account token mount
 - Read-only root filesystem with a bounded writable `/tmp` volume
