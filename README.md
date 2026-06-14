@@ -10,8 +10,8 @@ English | [日本語](README.ja.md)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-kind-326CE5)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A Spring Boot feature-flag service used as a vehicle to demonstrate **JVM domain
-design, Kubernetes deployment, observability, and CI quality gates**
+A Spring Boot feature-flag service used as a vehicle to demonstrate JVM domain
+design, Kubernetes deployment, observability, and CI quality gates
 in one reviewable repository. Flags are targeted by environment, guarded by an
 emergency kill switch, allowlisted per tenant, and rolled out by a deterministic
 percentage bucket derived from the flag key and tenant or user identity — with
@@ -185,7 +185,10 @@ Exact patch versions are managed in [`gradle/libs.versions.toml`](gradle/libs.ve
 
 ## Quick Start
 
-Create and evaluate a flag in three steps. Requires Docker and JDK 25.
+Create and evaluate a flag in three steps. Requires Docker and JDK 25. This
+project is intended to run on macOS, Linux, or a WSL environment on Windows;
+native Windows execution is not currently supported because some Gradle tasks
+invoke shell scripts and Unix tools such as `curl`.
 
 **1. Start PostgreSQL**
 
@@ -358,15 +361,16 @@ replacing Basic with OIDC or another organization-managed identity provider.
 ### Run on kind
 
 The kind workflow is available through Gradle tasks and matching shell scripts
-under `scripts/`. The Dockerfile copies the fixed jar name
+under `scripts/`. The Dockerfile copies the fixed jar file
 `feature-flag-platform.jar` from the service build output.
 
 ```bash
-./gradlew kindCreate          # create the local cluster (or: kindRecreate / kindDelete)
+./gradlew kindCreate          # create the local cluster (or: kindRecreate)
 ./gradlew kindLoadImage       # build the jar + image and load it into kind
-./gradlew k8sRenderDev        # preview the rendered dev manifests
+./gradlew k8sRenderDev        # optionally preview the rendered dev manifests
 ./gradlew devDeploy           # build, load, apply, wait, and show pod status in one step
-./gradlew k8sPortForward      # forward the app service, then: ./gradlew appHealth
+./gradlew k8sPortForward      # forward the app service
+./gradlew appHealth           # check the local health endpoints
 ```
 
 The `dev` overlay adds the local kind dependencies on top of `base`: in-cluster
@@ -375,18 +379,13 @@ image tag used by `kind load`. Each Gradle task has a `scripts/*.sh` equivalent
 for a smaller shell-only command.
 
 An opt-in local Prometheus/Grafana stack can be applied after the app overlay is
-running:
-
-```bash
-./gradlew k8sApplyObservabilityDev   # then k8sWaitObservabilityDev / k8sStatusObservabilityDev
-./gradlew k8sPortForwardPrometheus   # http://localhost:9090
-./gradlew k8sPortForwardGrafana      # http://localhost:3000  (dev-only admin / admin)
-```
+running. See [docs/observability.md](docs/observability.md) for the apply,
+wait, status, port-forward, and dev login details.
 
 Docker Compose is intentionally **not** provided: kind validates the real
 Kubernetes deployment path — manifests, service discovery, probes, and
 `kubectl apply` — that Compose cannot exercise. Database-dependent integration
-tests run with Testcontainers instead. See
+tests run with Testcontainers instead. For details, see
 [ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md).
 
 ### Runtime hardening

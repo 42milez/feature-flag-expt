@@ -10,7 +10,7 @@
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-kind-326CE5)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-フィーチャーフラグ管理サービスを題材に、**JVM でのドメイン設計、Kubernetes デプロイ、オブザーバビリティ、CI 品質ゲート**を、1 つのレビューしやすいリポジトリで示すポートフォリオです。フラグは環境ごとのターゲティング、緊急停止用のキルスイッチ、テナント単位の許可リスト、フラグキーとテナント/ユーザー識別子から算出する決定的な割合バケットで制御でき、状態の変更はすべて監査イベントとして記録されます。
+フィーチャーフラグ管理サービスを題材に、JVM でのドメイン設計、Kubernetes デプロイ、オブザーバビリティ、CI 品質ゲートを、1 つのレビューしやすいリポジトリで示すポートフォリオです。フラグは環境ごとのターゲティング、緊急停止用のキルスイッチ、テナント単位の許可リスト、フラグキーとテナント/ユーザー識別子から算出する決定的な割合バケットで制御でき、状態の変更はすべて監査イベントとして記録されます。
 
 ## 目次
 
@@ -127,7 +127,7 @@ flowchart TD
 
 ## クイックスタート
 
-3 ステップでフラグを作成・評価します。Docker と JDK 25 が必要です。
+3 ステップでフラグを作成・評価します。Docker と JDK 25 が必要です。このプロジェクトは macOS、Linux、または Windows では WSL 環境での実行を想定しています。一部の Gradle タスクがシェルスクリプトや `curl` などの Unix 系コマンドを呼び出すため、Windows ネイティブ環境での実行は現在サポートしていません。
 
 **1. PostgreSQL を起動する**
 
@@ -264,27 +264,20 @@ HTTP Basic はローカルのポートフォリオ用の最低限の認証です
 
 ### kind で実行する
 
-kind ワークフローは Gradle タスクと、`scripts/` 配下の対応するシェルスクリプトから利用できます。Dockerfile は、サービスのビルド出力から固定の jar 名 `feature-flag-platform.jar` をコピーします。
+kind ワークフローは Gradle タスクと、`scripts/` 配下の対応するシェルスクリプトから利用できます。Dockerfile は、サービスのビルド出力から固定の jar ファイル `feature-flag-platform.jar` をコピーします。
 
 ```bash
-./gradlew kindCreate          # ローカルクラスターを作成（または kindRecreate / kindDelete）
-./gradlew kindLoadImage       # jar とイメージをビルドし kind にロード
-./gradlew k8sRenderDev        # dev のレンダリング済みマニフェストをプレビュー
-./gradlew devDeploy           # ビルド・ロード・適用・待機・Pod ステータス表示を一括実行
-./gradlew k8sPortForward      # アプリの Service をポートフォワード（続けて ./gradlew appHealth）
+./gradlew kindCreate     # ローカルクラスターを作成（または kindRecreate）
+./gradlew kindLoadImage  # jar とイメージをビルドし kind にロード
+./gradlew k8sRenderDev   # 必要に応じて dev のレンダリング済みマニフェストをプレビュー
+./gradlew devDeploy      # ビルド・ロード・適用・待機・Pod ステータス表示を一括実行
+./gradlew k8sPortForward # アプリの Service をポートフォワード
+./gradlew appHealth      # ローカルのヘルスエンドポイントを確認
 ```
 
-`dev` オーバーレイは `base` の上にローカル kind 用の依存を追加します。クラスター内 PostgreSQL、ローカルのデータベース設定、プレースホルダーの認証情報、`kind load` で使うローカルのイメージタグです。各 Gradle タスクには、より小さなシェルのみのコマンドとして `scripts/*.sh` の同等物があります。
+`dev` オーバーレイは `base` の上に、クラスター内 PostgreSQL、ローカルのデータベース設定、プレースホルダーの認証情報、`kind load` で使うローカルのイメージタグを追加します。アプリのオーバーレイ起動後に任意で適用できるローカルの Prometheus/Grafana スタックについては、適用・待機・ステータス確認・ポートフォワード・開発用ログイン情報まで含めて [docs/observability.md](docs/observability.md) にまとめています。
 
-アプリのオーバーレイ起動後に、任意で適用できるローカルの Prometheus/Grafana スタックを追加できます。
-
-```bash
-./gradlew k8sApplyObservabilityDev   # 続けて k8sWaitObservabilityDev / k8sStatusObservabilityDev
-./gradlew k8sPortForwardPrometheus   # http://localhost:9090
-./gradlew k8sPortForwardGrafana      # http://localhost:3000（開発専用 admin / admin）
-```
-
-Docker Compose は意図的に**提供していません**。マニフェスト、サービスディスカバリ、プローブ、`kubectl apply` といった、Compose では検証できない実際の Kubernetes デプロイ経路を kind で検証するためです。データベースを必要とする統合テストは代わりに Testcontainers で実行します。[ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md) を参照してください。
+Docker Compose は意図的に**提供していません**。マニフェスト、サービスディスカバリ、プローブ、`kubectl apply` といった、Compose では検証できない実際の Kubernetes デプロイ経路を kind で検証するためです。データベースを必要とする統合テストは代わりに Testcontainers で実行します。詳細は [ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md) を参照してください。
 
 ### ランタイムのハードニング
 
