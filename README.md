@@ -58,8 +58,9 @@ every state change recorded as an audit event.
   and a Grafana dashboard.
   ([ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md))
 - **CI quality gates** — formatting, Error Prone, the full and Testcontainers
-  test suites, Kubernetes render validation, OpenAPI snapshot drift detection,
-  `promtool` checks, and Trivy secret/image scanning on every change.
+  test suites, JaCoCo coverage upload to Codacy, Kubernetes render validation,
+  OpenAPI snapshot drift detection, `promtool` checks, and Trivy secret/image
+  scanning on every change.
 - **AI-agent development workflow** — a human-directed development cycle. AI
   agents assist with planning, design, implementation, and review, while the
   repository owner makes the final merge decision after reviewing the substance
@@ -177,7 +178,7 @@ flowchart TD
 | API docs | springdoc-openapi 3.0 (code-first), committed OpenAPI snapshot |
 | Observability | Micrometer + Prometheus, ECS JSON logging, Grafana |
 | Build | Gradle inside a multi-stage Docker build → distroless `java25` image |
-| Quality | Spotless (google-java-format, ktfmt), Error Prone |
+| Quality | Spotless (google-java-format, ktfmt), Error Prone, JaCoCo, Codacy |
 | Test | JUnit, MockK, Testcontainers (PostgreSQL), Spring Security Test |
 | Deploy | Docker (distroless, non-root), Kubernetes + Kustomize, kind |
 | CI | GitHub Actions, Trivy, promtool |
@@ -320,13 +321,18 @@ GitHub Actions uses three workflows:
 
 | Workflow | Trigger | Coverage |
 |---|---|---|
-| `CI` | Pushes to `main`, pull requests, manual dispatch | Formatting, Error Prone compilation, unit tests, Testcontainers integration tests, Kubernetes render validation, OpenAPI snapshot drift detection, Prometheus alert rule validation |
+| `CI` | Pushes to `main`, pull requests, manual dispatch | Formatting, Error Prone compilation, unit tests, Testcontainers integration tests, JaCoCo coverage report generation, Kubernetes render validation, OpenAPI snapshot drift detection, Prometheus alert rule validation |
 | `Image Vulnerability Scan` | Pushes to `main`, pull requests, daily at 18:00 UTC (03:00 JST), manual dispatch | Service image buildability and Trivy image scanning, kept separate from test and deploy signals |
 | `Kind Smoke Test` | Daily at 18:00 UTC (03:00 JST), manual dispatch | Cluster startup verification in kind, with Kubernetes failure diagnostics on deploy failure |
 
 Pull request CI validates Prometheus alert rules with `promtool` without running
 a Prometheus server. The image workflow builds the service image locally and
 scans that exact image with Trivy.
+
+Codacy is included for coverage visibility, feedback on code issues, and
+related review signals. Spotless remains the formatting authority, Error Prone
+remains the compile-time Java static analysis gate, and Trivy continues to
+cover repository secret scanning and built-image vulnerability scanning.
 
 <details>
 <summary>Vulnerability gate behavior</summary>
@@ -497,7 +503,8 @@ contributors who already have the host Java toolchain:
 ### Tests
 
 ```bash
-./gradlew :service:test # all tests
+./gradlew :service:test             # all tests
+./gradlew :service:jacocoTestReport # generate JaCoCo XML and HTML coverage reports
 
 # a single class or method
 ./gradlew :service:test --tests "com.github.milez42.featureflags.flags.FeatureFlagEvaluatorTest"
