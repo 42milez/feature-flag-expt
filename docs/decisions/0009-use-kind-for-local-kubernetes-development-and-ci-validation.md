@@ -111,6 +111,20 @@ NetworkPolicy, ingress, TLS, IAM, or cloud-managed dependencies.
 * The Kubernetes `dev` overlay supplies local-only dependencies such as
   in-cluster PostgreSQL, placeholder credentials, and the local image tag.
 
+### Amendment: supplementary Docker Compose runtime
+
+Docker Compose is now provided as a supplementary local application runtime for
+the Quick Start path. It starts the Spring Boot application and PostgreSQL
+without requiring a Kubernetes cluster, which keeps first-run verification small
+while preserving kind as the accepted path for validating Kubernetes manifests,
+service discovery, probes, and the `kubectl apply` workflow.
+
+The Compose stack is intentionally scoped to local application execution. It
+uses its own `feature-flag-platform:compose-local` image tag, binds application
+and PostgreSQL ports to loopback only, and treats database state as disposable.
+This amendment does not change the accepted decision that kind is the local and
+CI environment for Kubernetes deployment validation.
+
 ## Pros and Cons of the Options
 
 ### kind
@@ -191,6 +205,7 @@ NetworkPolicy, ingress, TLS, IAM, or cloud-managed dependencies.
 * [`scripts/kind-load-image.sh`](../../scripts/kind-load-image.sh)
 * [`scripts/k8s-wait-dev.sh`](../../scripts/k8s-wait-dev.sh)
 * [`scripts/app-health.sh`](../../scripts/app-health.sh)
+* [`compose.yaml`](../../compose.yaml)
 * [minikube Docker driver](https://minikube.sigs.k8s.io/docs/drivers/docker/)
 * [minikube in GitHub Actions](https://minikube.sigs.k8s.io/docs/tutorials/setup_minikube_in_github_actions/)
 * [`README.md`](../../README.md)

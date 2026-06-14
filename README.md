@@ -185,38 +185,27 @@ Exact patch versions are managed in [`gradle/libs.versions.toml`](gradle/libs.ve
 
 ## Quick Start
 
-Create and evaluate a flag in three steps. Requires Docker and JDK 25. This
-project is intended to run on macOS, Linux, or a WSL environment on Windows;
-native Windows execution is not currently supported because some Gradle tasks
-invoke shell scripts and Unix tools such as `curl`.
+Create and evaluate a flag in three steps. Requires Docker, Docker Compose, and
+JDK 25; Eclipse Temurin 25 is recommended to match CI. This project is intended
+to run on macOS, Linux, or a WSL environment on Windows; native Windows
+execution is not currently supported because some Gradle tasks invoke shell
+scripts and Unix tools such as `curl`.
 
-**1. Start PostgreSQL**
-
-```bash
-docker run --name feature-flags-postgres \
-  -e POSTGRES_DB=featureflags -e POSTGRES_USER=featureflags \
-  -e POSTGRES_PASSWORD=featureflags -p 5432:5432 -d postgres:16-alpine
-```
-
-The container only runs the database process. Schema migration files live under
-`service/src/main/resources/db/migration`; this portfolio applies them with
-Flyway on application startup to keep verification simple. In production, the
-application and database change lifecycles should be separated by running
-migrations from a deployment pipeline or dedicated Job. See
-[Configuration](#configuration) if you want to change the database connection
-or credentials.
-
-**2. Run the service**
+**1. Start the local Compose stack**
 
 ```bash
-./gradlew :service:bootRun
+./gradlew composeUp
 ```
 
-`bootRun` keeps the application running in the foreground, so Gradle's progress
-display remains at `EXECUTING`. The application is ready once
-`Started FeatureFlagApplication` appears. Press `Ctrl+C` to stop it.
+Compose builds the service image and starts the app plus PostgreSQL. The app is
+bound to `127.0.0.1:8080`, and PostgreSQL is bound to `127.0.0.1:5432`, so both
+ports are reachable from the local machine only. The database has no named
+volume and is disposable Quick Start state. Port `8080` conflicts with
+`k8sPortForward`, and port `5432` conflicts with an existing local PostgreSQL
+bound to the same loopback port, so run the Compose and kind port-forwarding
+paths separately.
 
-**3. Create a flag, then evaluate it**
+**2. Create a flag, then evaluate it**
 
 ```bash
 # Create: targets production, allowlists tenant-a, 25% rollout (operator role)
@@ -252,6 +241,12 @@ The `enabled` and `reason` fields let a caller switch behavior without knowing
 the internal structure of the flag configuration. Browse every endpoint
 interactively at **`http://localhost:8080/swagger-ui.html`**. For the
 Kubernetes/kind path, see [Deployment & Operations](#deployment--operations).
+
+**3. Stop the local stack**
+
+```bash
+./gradlew composeDown
+```
 
 ## API Overview
 
@@ -320,10 +315,11 @@ can fail when new CVEs are published, even without application code changes.
 
 ### Configuration
 
-The service requires PostgreSQL to start. If you started the PostgreSQL
-container from Quick Start, the defaults below already connect to it and no
-extra local configuration is needed. Override the corresponding environment
-variables to use a different database or change the username and password.
+The service requires PostgreSQL to start. The Compose Quick Start wires the app
+container to the `postgres` service automatically; when running the JVM directly
+from the host, the defaults below connect to PostgreSQL on `localhost:5432`.
+Override the corresponding environment variables to use a different database or
+change the username and password.
 
 | Variable | Local value |
 |---|---|
@@ -382,10 +378,12 @@ An opt-in local Prometheus/Grafana stack can be applied after the app overlay is
 running. See [docs/observability.md](docs/observability.md) for the apply,
 wait, status, port-forward, and dev login details.
 
-Docker Compose is intentionally **not** provided: kind validates the real
-Kubernetes deployment path — manifests, service discovery, probes, and
-`kubectl apply` — that Compose cannot exercise. Database-dependent integration
-tests run with Testcontainers instead. For details, see
+Docker Compose is provided only for a simple local application runtime. kind
+remains the validation path for Kubernetes manifests, service discovery, probes,
+and `kubectl apply`. Compose binds the app to `127.0.0.1:8080`, which conflicts
+with `k8sPortForward`, so use the Compose and kind port-forwarding paths
+separately. Database-dependent integration tests continue to run with
+Testcontainers. For details, see
 [ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md).
 
 ### Runtime hardening
@@ -442,6 +440,22 @@ access-control middleware based on the target platform.
 
 ## Development
 
+### JVM inner loop
+
+For direct JVM development, start only the local Compose database and run the
+service with `bootRun` from the host:
+
+```bash
+docker compose up -d postgres
+./gradlew :service:bootRun
+```
+
+`bootRun` keeps the application running in the foreground, so Gradle's progress
+display remains at `EXECUTING`. The application is ready once
+`Started FeatureFlagApplication` appears. Press `Ctrl+C` to stop it. The
+database is reachable at `localhost:5432` because Compose publishes PostgreSQL
+on `127.0.0.1:5432`.
+
 ### Static analysis
 
 ```bash
@@ -493,6 +507,7 @@ environment-specific configuration.
 │   ├── k8s/overlays/dev/          # kind: in-cluster PostgreSQL, local config
 │   ├── k8s/overlays/dev-observability/   # Prometheus + Grafana + alert rules
 │   └── kind/cluster.yaml
+├── compose.yaml                   # Local Docker Compose app + PostgreSQL runtime
 ├── docs/
 │   ├── decisions/                 # ADRs (MADR v4)
 │   ├── observability.md

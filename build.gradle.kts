@@ -14,6 +14,20 @@ fun Project.registerScriptTask(
   }
 }
 
+fun Project.registerComposeTask(
+    taskName: String,
+    taskDescription: String,
+    vararg composeArgs: String,
+    configure: Exec.() -> Unit = {},
+) {
+  tasks.register<Exec>(taskName) {
+    group = "local compose"
+    description = taskDescription
+    commandLine("docker", "compose", *composeArgs)
+    configure()
+  }
+}
+
 registerScriptTask("kindCreate", "kind-create.sh", "Create the local kind cluster.")
 
 registerScriptTask("kindDelete", "kind-delete.sh", "Delete the local kind cluster.")
@@ -99,3 +113,15 @@ registerScriptTask(
   dependsOn(":service:bootJar")
   environment("SKIP_BOOT_JAR", "true")
 }
+
+registerComposeTask("composeConfig", "Validate and print the Docker Compose configuration.", "config")
+
+registerComposeTask("composeUp", "Build and start the local Docker Compose stack.", "up", "--build", "-d") {
+  dependsOn(":service:bootJar")
+}
+
+registerComposeTask("composeDown", "Stop and remove the local Docker Compose stack.", "down", "--remove-orphans")
+
+registerComposeTask("composeLogs", "Follow logs for the Docker Compose application service.", "logs", "-f", "app")
+
+registerComposeTask("composePs", "Show local Docker Compose service status.", "ps")
