@@ -338,27 +338,20 @@ API access uses two local HTTP Basic users: a **reader** for read-style
 operations and an **operator** for create and update operations. Prometheus
 metrics require any configured user; Swagger UI and OpenAPI docs stay public so
 the portfolio can be explored locally. Audit events record the authenticated
-principal as `actor`, derived by the service from Spring Security and never
-accepted from request payloads.
+principal as `actor`.
 
 <details>
 <summary>Security model scope and evolution</summary>
 
 HTTP Basic is a local portfolio baseline. User credentials are intentionally
 kept out of the application database; PostgreSQL is reserved for flag state,
-rollout configuration, validation behavior, and audit events. CSRF is disabled
-because this is a stateless JSON API, but HTTP Basic remains CSRF-sensitive in
-browsers, so production browser access must re-enable CSRF or replace Basic.
-Startup password encoding only protects the in-memory user store, not the
-environment variables or Kubernetes Secrets themselves.
-
+rollout configuration, validation behavior, and audit events.
 Route-to-authority mappings are kept hardcoded in `SecurityConfig` so the
-boundary stays easy to inspect without extra indirection. A production system
-could evolve toward operation-level authorities (`flags:read`, `flags:write`,
-`metrics:read`), method security, or an external authorization layer, and would
-replace HTTP Basic with OIDC or another organization-managed identity provider
-mapped to equivalent reader/operator authorities. See
-[ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md).
+security boundary stays easy to inspect without extra indirection. CSRF token
+handling is disabled for the local stateless JSON API, and
+[ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md)
+documents the browser-client trade-off and the production direction of
+replacing Basic with OIDC or another organization-managed identity provider.
 
 </details>
 
