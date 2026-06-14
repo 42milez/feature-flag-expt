@@ -117,7 +117,7 @@ flowchart TD
 | 永続化 | Spring Data JDBC + PostgreSQL、Flyway マイグレーション |
 | API ドキュメント | springdoc-openapi 3.0（コードファースト）、コミット済み OpenAPI スナップショット |
 | オブザーバビリティ | Micrometer + Prometheus、ECS JSON ログ、Grafana |
-| ビルド | multi-stage Docker build 内の Gradle（convention plugin + version catalog）→ distroless `java25` イメージ |
+| ビルド | multi-stage Docker build 内の Gradle → distroless `java25` イメージ |
 | 品質 | Spotless（google-java-format、ktfmt）、Error Prone |
 | テスト | JUnit、MockK、Testcontainers（PostgreSQL）、Spring Security Test |
 | デプロイ | Docker（distroless、非 root）、Kubernetes + Kustomize、kind |

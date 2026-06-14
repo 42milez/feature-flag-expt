@@ -175,7 +175,7 @@ flowchart TD
 | Persistence | Spring Data JDBC + PostgreSQL, Flyway migrations |
 | API docs | springdoc-openapi 3.0 (code-first), committed OpenAPI snapshot |
 | Observability | Micrometer + Prometheus, ECS JSON logging, Grafana |
-| Build | Gradle (convention plugins + version catalog) inside a multi-stage Docker build → distroless `java25` image |
+| Build | Gradle inside a multi-stage Docker build → distroless `java25` image |
 | Quality | Spotless (google-java-format, ktfmt), Error Prone |
 | Test | JUnit, MockK, Testcontainers (PostgreSQL), Spring Security Test |
 | Deploy | Docker (distroless, non-root), Kubernetes + Kustomize, kind |
