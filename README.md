@@ -19,7 +19,7 @@ every state change recorded as an audit event.
 
 ## Table of Contents
 
-- [What You Can Review in This Project](#what-you-can-review-in-this-project)
+- [Project Focus Areas](#project-focus-areas)
 - [Development Approach](#development-approach)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
@@ -31,7 +31,7 @@ every state change recorded as an audit event.
 - [Development](#development)
 - [Repository Layout](#repository-layout)
 
-## What You Can Review in This Project
+## Project Focus Areas
 
 - **JVM service design** — Java owns the persisted flag domain, evaluator,
   Spring Data JDBC transaction flow, audit recording, Micrometer metrics, and
@@ -78,12 +78,12 @@ and the work may begin with design or implementation.
 
 1. The owner describes the desired capability, and an AI agent drafts a roadmap
    (Markdown) that organizes it into multiple implementation phases.
-2. Once the roadmap is accepted, a design document (Markdown) is created for
-   each phase.
-3. After the design is approved, an AI agent implements the change from that
-   design.
+2. Once the owner approves the roadmap, an AI agent creates a design document
+   (Markdown) for each phase.
+3. After the owner approves the design, an AI agent implements the change from
+   that design.
 4. The owner reviews the implementation.
-5. If issues are found, the change goes back for revision; otherwise it is
+5. If issues are found, the owner asks an AI agent to fix them; otherwise it is
    merged.
 
 Steps 1 through 4 also receive AI-agent peer review, for example with Codex
@@ -96,17 +96,19 @@ judgment.
 ## Architecture
 
 The flag domain, evaluator, persistence, and audit behavior are implemented in
-Java. Kotlin is used at the read-only preview boundary to demonstrate
-Java/Kotlin interoperability in a Spring Boot service while keeping persisted
-domain behavior, transactions, and audit logic in Java. The preview API models
-proposed changes, per-sample before/after diffs, and summaries with nested
-Kotlin request/response DTOs; the rollout-policy API uses the same Kotlin
-request/response boundary for validation results, while the reusable policy
-validator shares the Java implementation.
+Java. Kotlin is limited to read-oriented API boundaries such as preview and
+rollout-policy validation to demonstrate Java/Kotlin interoperability in a
+Spring Boot service. The preview API models proposed changes, per-sample
+before/after diffs, and summaries with nested Kotlin request/response DTOs, and
+reuses the Java `FeatureFlagEvaluator`. The rollout-policy validation API uses
+a Kotlin controller/service layer to assemble the current flag and proposed
+change, then validates them with the Java `RolloutPolicyValidator`. The
+validation response DTO is a Java record because it is shared by the validation
+API and the policy-violation response from PATCH updates.
 
 ```mermaid
 flowchart LR
-    Client([Client · curl · Swagger UI])
+    Client([Client (e.g., curl)])
 
     subgraph Sec["Spring Security · HTTP Basic"]
         Auth{"reader / operator role"}
@@ -119,7 +121,7 @@ flowchart LR
     end
 
     subgraph Core["Domain &amp; Services · Java"]
-        Eval["Feature Flag Evaluator"]
+        Eval["Feature Flag Evaluator<br/>(shared)"]
         Svc["Feature Flag Service"]
         Policy["Rollout Policy Validator<br/>(shared)"]
         Audit["Audit Event Service"]
@@ -143,7 +145,7 @@ the result `reason`:
 
 ```mermaid
 flowchart TD
-    Start([evaluate: flag + context]) --> S{status == DISABLED?}
+    Start([evaluate(flag, context)]) --> S{status == DISABLED?}
     S -- yes --> R1[/false · FLAG_DISABLED/]
     S -- no --> E{environment targeted?}
     E -- no --> R2[/false · ENVIRONMENT_NOT_TARGETED/]
@@ -151,16 +153,18 @@ flowchart TD
     K -- yes --> R3[/false · KILL_SWITCH_ACTIVE/]
     K -- no --> A{tenant in allowlist?}
     A -- yes --> R4[/true · TENANT_ALLOWLIST_MATCH/]
-    A -- no --> I{tenant or user id present?}
+    A -- no --> I{tenant or user id has text?}
     I -- no --> R5[/false · ROLLOUT_MISS/]
-    I -- yes --> B{"bucket(flagKey, id) &lt; rolloutPercentage?"}
+    I -- yes --> B{"bucket(flagKey, rolloutIdentity) &lt; rolloutPercentage?"}
     B -- yes --> R6[/true · ROLLOUT_MATCH/]
     B -- no --> R7[/false · ROLLOUT_MISS/]
 ```
 
-> `bucket` is `floorMod(SHA-256(flagKey + ":" + identity), 100)`, so the same
-> flag key and identity always land in the same bucket — the rollout is stable
-> and deterministic rather than random per request.
+> `bucket` is `floorMod(SHA-256(flagKey + ":" + rolloutIdentity), 100)`.
+> `rolloutIdentity` uses the tenant ID when present, otherwise the user ID. The
+> same flag key and `rolloutIdentity` combination always lands in the same
+> bucket, so the rollout is stable and deterministic rather than random per
+> request.
 
 ## Tech Stack
 
@@ -177,7 +181,7 @@ flowchart TD
 | Deploy | Docker (distroless, non-root), Kubernetes + Kustomize, kind |
 | CI | GitHub Actions, Trivy, promtool |
 
-Exact patch versions are pinned in [`gradle/libs.versions.toml`](gradle/libs.versions.toml).
+Exact patch versions are managed in [`gradle/libs.versions.toml`](gradle/libs.versions.toml).
 
 ## Quick Start
 
@@ -191,15 +195,23 @@ docker run --name feature-flags-postgres \
   -e POSTGRES_PASSWORD=featureflags -p 5432:5432 -d postgres:16-alpine
 ```
 
-The container only runs the database process; schema migrations are applied by
-Flyway when the application starts. See [Configuration](#configuration) to
-override the defaults.
+The container only runs the database process. Schema migration files live under
+`service/src/main/resources/db/migration`; this portfolio applies them with
+Flyway on application startup to keep verification simple. In production, the
+application and database change lifecycles should be separated by running
+migrations from a deployment pipeline or dedicated Job. See
+[Configuration](#configuration) if you want to change the database connection
+or credentials.
 
 **2. Run the service**
 
 ```bash
 ./gradlew :service:bootRun
 ```
+
+`bootRun` keeps the application running in the foreground, so Gradle's progress
+display remains at `EXECUTING`. The application is ready once
+`Started FeatureFlagApplication` appears. Press `Ctrl+C` to stop it.
 
 **3. Create a flag, then evaluate it**
 
@@ -297,19 +309,18 @@ scans that exact image with Trivy.
 
 The Trivy gate fails on **fixed** high or critical OS and library
 vulnerabilities while excluding unfixed findings from the failure condition. It
-also publishes a non-blocking job summary that *includes* unfixed high/critical
-findings, so reviewers can see risks that do not fail the gate. The scheduled
-run can turn red when new CVEs are published even without an application code
-change; that is expected for a vulnerability gate, and excluding unfixed
-findings only reduces — not eliminates — that possibility.
+also publishes a non-blocking job summary that includes unfixed high/critical
+findings, so reviewers can see risks that do not fail the gate. Scheduled runs
+can fail when new CVEs are published, even without application code changes.
 
 </details>
 
 ### Configuration
 
-A reachable PostgreSQL instance is required. Defaults below match the Quick
-Start container, so no configuration is needed to run locally; override these
-environment variables to point at a different database or change credentials.
+The service requires PostgreSQL to start. If you started the PostgreSQL
+container from Quick Start, the defaults below already connect to it and no
+extra local configuration is needed. Override the corresponding environment
+variables to use a different database or change the username and password.
 
 | Variable | Local value |
 |---|---|
@@ -320,10 +331,6 @@ environment variables to point at a different database or change credentials.
 | `FEATURE_FLAGS_SECURITY_READER_PASSWORD` | `featureflags-reader` |
 | `FEATURE_FLAGS_SECURITY_OPERATOR_USERNAME` | `featureflags-operator` |
 | `FEATURE_FLAGS_SECURITY_OPERATOR_PASSWORD` | `featureflags-operator` |
-
-Schema migrations live under `service/src/main/resources/db/migration` and are
-applied by Flyway on application startup, which this project uses as the
-standard migration path instead of a container init flow.
 
 ### Security
 

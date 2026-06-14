@@ -250,6 +250,7 @@ class SecurityBoundaryIntegrationTest {
 
   @Test
   void unlistedRoutesRequireAuthentication() throws Exception {
+    mockMvc.perform(get("/")).andExpect(status().isUnauthorized());
     mockMvc.perform(get("/unlisted")).andExpect(status().isUnauthorized());
   }
 
