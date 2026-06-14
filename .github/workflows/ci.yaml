@@ -36,6 +36,8 @@ jobs:
   test:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      CODACY_PROJECT_TOKEN_AVAILABLE: ${{ secrets.CODACY_PROJECT_TOKEN != '' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2, verified 2026-05-24
         with:
@@ -49,6 +51,15 @@ jobs:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
       - name: Run service checks
         run: ./gradlew :service:spotlessCheck :service:compileJava :service:test --no-daemon
+      - name: Generate service coverage report
+        run: ./gradlew :service:jacocoTestReport --no-daemon
+      - name: Upload coverage to Codacy
+        if: env.CODACY_PROJECT_TOKEN_AVAILABLE == 'true'
+        uses: codacy/codacy-coverage-reporter-action@6904bd01e29ada115135b5eca20125758ccae53b # master, verified 2026-06-14
+        with:
+          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+          coverage-reports: service/build/reports/jacoco/test/jacocoTestReport.xml
+          coverage-reporter-version: 14.1.3
       - name: Render Kubernetes manifests
         run: ./gradlew k8sRenderDev --no-daemon
       - name: Check OpenAPI snapshot drift

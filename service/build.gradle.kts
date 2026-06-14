@@ -1,6 +1,9 @@
+import org.gradle.testing.jacoco.tasks.JacocoReport
+
 // Plugins add capabilities and conventions to the Gradle build itself.
 plugins {
   id("spring-boot-conventions")
+  jacoco
   alias(libs.plugins.spring.boot)
   alias(libs.plugins.spring.dependency.management)
   alias(libs.plugins.springdoc.openapi)
@@ -10,6 +13,8 @@ plugins {
 // Keep this Spring Boot property override paired with the temporary Trivy gate
 // pins documented in gradle/libs.versions.toml.
 extra["tomcat.version"] = libs.versions.tomcat.get()
+
+jacoco { toolVersion = libs.versions.jacoco.get() }
 
 // Dependencies add libraries used by the application at compile time, runtime, or during tests.
 dependencies {
@@ -63,6 +68,15 @@ tasks.named("forkedSpringBootStop") {
   notCompatibleWithConfigurationCache(
       "springdoc-openapi-gradle-plugin stop task captures task instances"
   )
+}
+
+tasks.named<JacocoReport>("jacocoTestReport") {
+  dependsOn(tasks.named<Test>("test"))
+  reports {
+    xml.required.set(true)
+    html.required.set(true)
+    csv.required.set(false)
+  }
 }
 
 // Rename the bootJar output to a fixed file name.

@@ -1,5 +1,6 @@
 [versions]
 error-prone-plugin = "5.1.0"
+jacoco = "0.8.15"
 kotlin = "2.3.21"
 mockk = "1.14.9"
 spotless = "8.4.0"
