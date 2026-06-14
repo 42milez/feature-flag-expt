@@ -117,7 +117,7 @@ flowchart TD
 | 永続化 | Spring Data JDBC + PostgreSQL、Flyway マイグレーション |
 | API ドキュメント | springdoc-openapi 3.0（コードファースト）、コミット済み OpenAPI スナップショット |
 | オブザーバビリティ | Micrometer + Prometheus、ECS JSON ログ、Grafana |
-| ビルド | Gradle（convention plugin + version catalog）→ distroless `java25` イメージ |
+| ビルド | multi-stage Docker build 内の Gradle（convention plugin + version catalog）→ distroless `java25` イメージ |
 | 品質 | Spotless（google-java-format、ktfmt）、Error Prone |
 | テスト | JUnit、MockK、Testcontainers（PostgreSQL）、Spring Security Test |
 | デプロイ | Docker（distroless、非 root）、Kubernetes + Kustomize、kind |
@@ -127,15 +127,15 @@ flowchart TD
 
 ## クイックスタート
 
-3 ステップでフラグを作成・評価します。Docker、Docker Compose、JDK 25 が必要で、CI と揃えるため Eclipse Temurin 25 を推奨します。このプロジェクトは macOS、Linux、または Windows では WSL 環境での実行を想定しています。一部の Gradle タスクがシェルスクリプトや `curl` などの Unix 系コマンドを呼び出すため、Windows ネイティブ環境での実行は現在サポートしていません。
+3 ステップでフラグを作成・評価します。必要なのは Docker Compose v2 と BuildKit に対応した新しめの Docker 環境です。この Docker だけで進める経路では、ホスト側に JDK をインストールする必要はありません。
 
 **1. ローカルの Compose スタックを起動する**
 
 ```bash
-./gradlew composeUp
+docker compose up --build -d
 ```
 
-Compose はサービスイメージをビルドし、アプリと PostgreSQL を起動します。アプリは `127.0.0.1:8080`、PostgreSQL は `127.0.0.1:5432` にバインドされるため、どちらのポートもローカルマシンからのみ到達できます。データベースには named volume を設定していないため、クイックスタート用の破棄可能な状態として扱います。`8080` は `k8sPortForward` と競合し、`5432` は同じ loopback ポートにバインド済みのローカル PostgreSQL と競合するため、Compose と kind のポートフォワード経路は分けて実行してください。
+Compose は Spring Boot の jar 生成を含めてサービスイメージをビルドし、アプリと PostgreSQL を起動します。アプリは `127.0.0.1:8080`、PostgreSQL は `127.0.0.1:5432` にバインドされるため、どちらのポートもローカルマシンからのみ到達できます。データベースには named volume を設定していないため、クイックスタート用の破棄可能な状態として扱います。`8080` は `k8sPortForward` と競合し、`5432` は同じ loopback ポートにバインド済みのローカル PostgreSQL と競合するため、Compose と kind のポートフォワード経路は分けて実行してください。
 
 **2. フラグを作成し、評価する**
 
@@ -174,7 +174,7 @@ curl -u featureflags-reader:featureflags-reader \
 **3. ローカルスタックを停止する**
 
 ```bash
-./gradlew composeDown
+docker compose down --remove-orphans
 ```
 
 ## API 一覧
@@ -260,11 +260,11 @@ HTTP Basic はローカルのポートフォリオ用の最低限の認証です
 
 ### kind で実行する
 
-kind ワークフローは Gradle タスクと、`scripts/` 配下の対応するシェルスクリプトから利用できます。Dockerfile は、サービスのビルド出力から固定の jar ファイル `feature-flag-platform.jar` をコピーします。
+kind ワークフローは Gradle タスクと、`scripts/` 配下の対応するシェルスクリプトから利用できます。Dockerfile は Docker の中で固定名の jar ファイル `feature-flag-platform.jar` をビルドし、ランタイムイメージへコピーします。
 
 ```bash
 ./gradlew kindCreate     # ローカルクラスターを作成（または kindRecreate）
-./gradlew kindLoadImage  # jar とイメージをビルドし kind にロード
+./gradlew kindLoadImage  # イメージをビルドし kind にロード
 ./gradlew k8sRenderDev   # 必要に応じて dev のレンダリング済みマニフェストをプレビュー
 ./gradlew devDeploy      # ビルド・ロード・適用・待機・Pod ステータス表示を一括実行
 ./gradlew k8sPortForward # アプリの Service をポートフォワード
@@ -308,7 +308,9 @@ Actuator のヘルスエンドポイントはプローブ用に公開し、Prome
 
 ### JVM の内側ループ
 
-JVM で直接開発する場合は、ローカル Compose データベースだけを起動し、ホストから `bootRun` でサービスを起動します。
+ホスト側で Gradle を使う開発ワークフローには JDK 25 が必要です。CI と揃えるため Eclipse Temurin 25 を推奨します。テスト、`bootRun`、OpenAPI 生成、kind 補助 Gradle タスクではこのツールチェーンを使ってください。このプロジェクトは macOS、Linux、または Windows では WSL 環境での実行を想定しています。一部の Gradle タスクがシェルスクリプトや `curl` などの Unix 系コマンドを呼び出すため、Windows ネイティブ環境での実行は現在サポートしていません。
+
+そのホスト側ツールチェーンをインストール済みの開発者が JVM で直接開発する場合は、ローカル Compose データベースだけを起動し、ホストから `bootRun` でサービスを起動します。
 
 ```bash
 docker compose up -d postgres
@@ -316,6 +318,14 @@ docker compose up -d postgres
 ```
 
 `bootRun` はアプリケーションをフォアグラウンドで起動し続けるため、Gradle の進捗表示が `EXECUTING` のまま止まって見えます。`Started FeatureFlagApplication` が出たら起動完了です。終了するには `Ctrl+C` を押します。Compose が PostgreSQL を `127.0.0.1:5432` に公開するため、データベースは `localhost:5432` で利用できます。
+
+Gradle の Compose タスクは、ホスト側の Java ツールチェーンを持っている開発者向けの Docker Compose ラッパーとして残しています。
+
+```bash
+./gradlew composeConfig
+./gradlew composeUp
+./gradlew composeDown
+```
 
 ### 静的解析
 

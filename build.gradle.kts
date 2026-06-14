@@ -100,25 +100,17 @@ registerScriptTask(
     "kindLoadImage",
     "kind-load-image.sh",
     "Build and load the local application image into kind.",
-) {
-  dependsOn(":service:bootJar")
-  environment("SKIP_BOOT_JAR", "true")
-}
+)
 
 registerScriptTask(
     "devDeploy",
     "dev-deploy.sh",
     "Build, load, apply, wait for, and show the dev deployment.",
-) {
-  dependsOn(":service:bootJar")
-  environment("SKIP_BOOT_JAR", "true")
-}
+)
 
 registerComposeTask("composeConfig", "Validate and print the Docker Compose configuration.", "config")
 
-registerComposeTask("composeUp", "Build and start the local Docker Compose stack.", "up", "--build", "-d") {
-  dependsOn(":service:bootJar")
-}
+registerComposeTask("composeUp", "Build and start the local Docker Compose stack.", "up", "--build", "-d")
 
 registerComposeTask("composeDown", "Stop and remove the local Docker Compose stack.", "down", "--remove-orphans")
 

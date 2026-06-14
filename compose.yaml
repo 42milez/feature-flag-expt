@@ -16,7 +16,8 @@ services:
   app:
     image: feature-flag-platform:compose-local
     build:
-      context: ./service
+      context: .
+      dockerfile: service/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy

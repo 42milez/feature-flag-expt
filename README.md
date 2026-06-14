@@ -175,7 +175,7 @@ flowchart TD
 | Persistence | Spring Data JDBC + PostgreSQL, Flyway migrations |
 | API docs | springdoc-openapi 3.0 (code-first), committed OpenAPI snapshot |
 | Observability | Micrometer + Prometheus, ECS JSON logging, Grafana |
-| Build | Gradle (convention plugins + version catalog) → distroless `java25` image |
+| Build | Gradle (convention plugins + version catalog) inside a multi-stage Docker build → distroless `java25` image |
 | Quality | Spotless (google-java-format, ktfmt), Error Prone |
 | Test | JUnit, MockK, Testcontainers (PostgreSQL), Spring Security Test |
 | Deploy | Docker (distroless, non-root), Kubernetes + Kustomize, kind |
@@ -185,25 +185,23 @@ Exact patch versions are managed in [`gradle/libs.versions.toml`](gradle/libs.ve
 
 ## Quick Start
 
-Create and evaluate a flag in three steps. Requires Docker, Docker Compose, and
-JDK 25; Eclipse Temurin 25 is recommended to match CI. This project is intended
-to run on macOS, Linux, or a WSL environment on Windows; native Windows
-execution is not currently supported because some Gradle tasks invoke shell
-scripts and Unix tools such as `curl`.
+Create and evaluate a flag in three steps. Requires a modern Docker installation
+with Docker Compose v2 and BuildKit support. A host JDK is not required for this
+Docker-only path.
 
 **1. Start the local Compose stack**
 
 ```bash
-./gradlew composeUp
+docker compose up --build -d
 ```
 
-Compose builds the service image and starts the app plus PostgreSQL. The app is
-bound to `127.0.0.1:8080`, and PostgreSQL is bound to `127.0.0.1:5432`, so both
-ports are reachable from the local machine only. The database has no named
-volume and is disposable Quick Start state. Port `8080` conflicts with
-`k8sPortForward`, and port `5432` conflicts with an existing local PostgreSQL
-bound to the same loopback port, so run the Compose and kind port-forwarding
-paths separately.
+Compose builds the service image, including the Spring Boot jar, and starts the
+app plus PostgreSQL. The app is bound to `127.0.0.1:8080`, and PostgreSQL is
+bound to `127.0.0.1:5432`, so both ports are reachable from the local machine
+only. The database has no named volume and is disposable Quick Start state. Port
+`8080` conflicts with `k8sPortForward`, and port `5432` conflicts with an
+existing local PostgreSQL bound to the same loopback port, so run the Compose
+and kind port-forwarding paths separately.
 
 **2. Create a flag, then evaluate it**
 
@@ -245,7 +243,7 @@ Kubernetes/kind path, see [Deployment & Operations](#deployment--operations).
 **3. Stop the local stack**
 
 ```bash
-./gradlew composeDown
+docker compose down --remove-orphans
 ```
 
 ## API Overview
@@ -357,12 +355,12 @@ replacing Basic with OIDC or another organization-managed identity provider.
 ### Run on kind
 
 The kind workflow is available through Gradle tasks and matching shell scripts
-under `scripts/`. The Dockerfile copies the fixed jar file
-`feature-flag-platform.jar` from the service build output.
+under `scripts/`. The Dockerfile builds the fixed jar file
+`feature-flag-platform.jar` inside Docker and copies it into the runtime image.
 
 ```bash
 ./gradlew kindCreate          # create the local cluster (or: kindRecreate)
-./gradlew kindLoadImage       # build the jar + image and load it into kind
+./gradlew kindLoadImage       # build the image and load it into kind
 ./gradlew k8sRenderDev        # optionally preview the rendered dev manifests
 ./gradlew devDeploy           # build, load, apply, wait, and show pod status in one step
 ./gradlew k8sPortForward      # forward the app service
@@ -442,8 +440,14 @@ access-control middleware based on the target platform.
 
 ### JVM inner loop
 
-For direct JVM development, start only the local Compose database and run the
-service with `bootRun` from the host:
+Host-side Gradle workflows require JDK 25; Eclipse Temurin 25 is recommended to
+match CI. Use this toolchain for tests, `bootRun`, OpenAPI generation, and the
+kind helper Gradle tasks. The project is intended to run on macOS, Linux, or a
+WSL environment on Windows; native Windows execution is not currently supported
+because some Gradle tasks invoke shell scripts and Unix tools such as `curl`.
+
+For direct JVM development with that host toolchain installed, start only the
+local Compose database and run the service with `bootRun` from the host:
 
 ```bash
 docker compose up -d postgres
@@ -455,6 +459,15 @@ display remains at `EXECUTING`. The application is ready once
 `Started FeatureFlagApplication` appears. Press `Ctrl+C` to stop it. The
 database is reachable at `localhost:5432` because Compose publishes PostgreSQL
 on `127.0.0.1:5432`.
+
+The Gradle Compose tasks remain convenience wrappers around Docker Compose for
+contributors who already have the host Java toolchain:
+
+```bash
+./gradlew composeConfig
+./gradlew composeUp
+./gradlew composeDown
+```
 
 ### Static analysis
 
