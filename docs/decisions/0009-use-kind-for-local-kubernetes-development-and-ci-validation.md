@@ -95,9 +95,9 @@ NetworkPolicy, ingress, TLS, IAM, or cloud-managed dependencies.
 * The scheduled `Kind Smoke Test` GitHub Actions workflow creates a kind cluster.
 * The smoke-test workflow builds the service image, loads it into kind, applies
   the dev overlay, waits for readiness, and prints Kubernetes status.
-* The scheduled smoke test passes when `:service:bootJar`, the Docker image
-  build, `kind load docker-image`, `k8sApplyDev`, `k8sWaitDev`, and
-  `k8sStatusDev` all exit successfully. `k8sWaitDev` requires successful
+* The scheduled smoke test passes when the Docker image build, `kind load
+  docker-image`, `k8sApplyDev`, `k8sWaitDev`, and `k8sStatusDev` all exit
+  successfully. `k8sWaitDev` requires successful
   `kubectl rollout status` results for `statefulset/feature-flag-postgres` and
   `deployment/feature-flag-platform`.
 * Local scripts and Gradle tasks expose the same cluster creation, image loading,
@@ -110,6 +110,27 @@ NetworkPolicy, ingress, TLS, IAM, or cloud-managed dependencies.
   shape used by CI and local development.
 * The Kubernetes `dev` overlay supplies local-only dependencies such as
   in-cluster PostgreSQL, placeholder credentials, and the local image tag.
+
+### Amendment: supplementary Docker Compose runtime
+
+Docker Compose is now provided as a supplementary local application runtime for
+the Quick Start path. It starts the Spring Boot application and PostgreSQL
+without requiring a Kubernetes cluster, which keeps first-run verification small
+while preserving kind as the accepted path for validating Kubernetes manifests,
+service discovery, probes, and the `kubectl apply` workflow.
+
+The Compose stack is intentionally scoped to local application execution. It
+uses its own `feature-flag-platform:compose-local` image tag, binds application
+and PostgreSQL ports to loopback only, and treats database state as disposable.
+This amendment does not change the accepted decision that kind is the local and
+CI environment for Kubernetes deployment validation.
+
+The Compose Quick Start now builds the Spring Boot jar inside the multi-stage
+Docker build, so portfolio reviewers can start the stack with Docker and Docker
+Compose only. The service image ships the Spring Boot fat jar as a single layer
+instead of using layered-jar extraction because images are loaded into kind via
+`kind load image-archive` and are not pushed to a registry; revisit this if a
+registry-push workflow is added.
 
 ## Pros and Cons of the Options
 
@@ -191,6 +212,7 @@ NetworkPolicy, ingress, TLS, IAM, or cloud-managed dependencies.
 * [`scripts/kind-load-image.sh`](../../scripts/kind-load-image.sh)
 * [`scripts/k8s-wait-dev.sh`](../../scripts/k8s-wait-dev.sh)
 * [`scripts/app-health.sh`](../../scripts/app-health.sh)
+* [`compose.yaml`](../../compose.yaml)
 * [minikube Docker driver](https://minikube.sigs.k8s.io/docs/drivers/docker/)
 * [minikube in GitHub Actions](https://minikube.sigs.k8s.io/docs/tutorials/setup_minikube_in_github_actions/)
 * [`README.md`](../../README.md)
