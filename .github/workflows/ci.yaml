@@ -50,12 +50,17 @@ jobs:
         with:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
       - name: Run service checks
-        run: ./gradlew :service:spotlessCheck :service:compileJava :service:test --no-daemon
-      - name: Generate service coverage report
+        run: ./gradlew :service:spotlessCheck :service:compileJava --no-daemon
+      - name: Run tests and prepare service coverage report for upload
         run: ./gradlew :service:jacocoTestReport --no-daemon
       - name: Upload coverage to Codacy
         if: env.CODACY_PROJECT_TOKEN_AVAILABLE == 'true'
-        uses: codacy/codacy-coverage-reporter-action@6904bd01e29ada115135b5eca20125758ccae53b # master, verified 2026-06-14
+        # The latest tagged action release (v1.3.0) shells out to Codacy's coverage reporter
+        # downloader without exposing a way to pin the downloaded reporter binary. Newer action
+        # code adds coverage-reporter-version, which sets CODACY_REPORTER_VERSION before running
+        # coverage.codacy.com/get.sh. Pin this master commit by full SHA so both layers stay
+        # deterministic: the GitHub Action implementation and the reporter CLI it downloads.
+        uses: codacy/codacy-coverage-reporter-action@6904bd01e29ada115135b5eca20125758ccae53b # verified 2026-06-14
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           coverage-reports: service/build/reports/jacoco/test/jacocoTestReport.xml
