@@ -23,6 +23,7 @@ every state change recorded as an audit event.
 - [Development Approach](#development-approach)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
+- [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
 - [API Overview](#api-overview)
 - [Design Decisions (ADRs)](#design-decisions-adrs)
@@ -183,11 +184,38 @@ flowchart TD
 
 Exact patch versions are managed in [`gradle/libs.versions.toml`](gradle/libs.versions.toml).
 
+## Prerequisites
+
+Choose the smallest setup path for the workflow you want to run.
+
+### Docker-only Quick Start
+
+Requires a Docker environment where the `docker compose` command is available.
+On macOS, use whichever option fits your environment, such as
+[Docker Desktop](https://docs.docker.com/desktop/) or
+[OrbStack](https://docs.orbstack.dev/install). On Linux, use Docker Engine plus
+the Compose plugin or an equivalent setup.
+
+### Local kind / Kubernetes validation
+
+Requires `kind` and `kubectl` in addition to `docker`. The kind deployment
+workflow and the local Prometheus/Grafana verification commands depend on these
+tools. See the official [kind installation](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)
+and [Kubernetes tools](https://kubernetes.io/docs/tasks/tools/) docs.
+
+### Host JVM development
+
+Requires JDK 25. [Eclipse Temurin 25](https://adoptium.net/temurin/releases/?version=25)
+is recommended to match CI. This path is needed for host-side tests, `bootRun`,
+OpenAPI generation, and Gradle helper tasks. The project targets macOS, Linux,
+or Windows through WSL because some Gradle tasks invoke shell scripts and Unix
+tools.
+
 ## Quick Start
 
-Create and evaluate a flag in three steps. Requires a modern Docker installation
-with Docker Compose v2 and BuildKit support. A host JDK is not required for this
-Docker-only path.
+Create and evaluate a flag in three steps. Use the
+[Docker-only Quick Start prerequisites](#docker-only-quick-start); a host JDK is
+not required for this path.
 
 **1. Start the local Compose stack**
 
@@ -354,34 +382,28 @@ replacing Basic with OIDC or another organization-managed identity provider.
 
 ### Run on kind
 
-The kind workflow is available through Gradle tasks and matching shell scripts
-under `scripts/`. The Dockerfile builds the fixed jar file
-`feature-flag-platform.jar` inside Docker and copies it into the runtime image.
+Use the [Local kind / Kubernetes validation prerequisites](#local-kind--kubernetes-validation)
+before running the kind workflow.
 
 ```bash
-./gradlew kindCreate          # create the local cluster (or: kindRecreate)
-./gradlew kindLoadImage       # build the image and load it into kind
-./gradlew k8sRenderDev        # optionally preview the rendered dev manifests
-./gradlew devDeploy           # build, load, apply, wait, and show pod status in one step
-./gradlew k8sPortForward      # forward the app service
-./gradlew appHealth           # check the local health endpoints
+./gradlew kindCreate     # create the local cluster (or: kindRecreate)
+./gradlew kindLoadImage  # build the image and load it into kind
+./gradlew k8sRenderDev   # optionally preview the rendered dev manifests
+./gradlew devDeploy      # build, load, apply, wait, and show pod status in one step
+./gradlew k8sPortForward # forward the app service
+./gradlew appHealth      # check the local health endpoints
 ```
 
 The `dev` overlay adds the local kind dependencies on top of `base`: in-cluster
 PostgreSQL, local database configuration, placeholder credentials, and the local
-image tag used by `kind load`. Each Gradle task has a `scripts/*.sh` equivalent
-for a smaller shell-only command.
-
-An opt-in local Prometheus/Grafana stack can be applied after the app overlay is
-running. See [docs/observability.md](docs/observability.md) for the apply,
-wait, status, port-forward, and dev login details.
+image tag used by `kind load`.
 
 Docker Compose is provided only for a simple local application runtime. kind
-remains the validation path for Kubernetes manifests, service discovery, probes,
-and `kubectl apply`. Compose binds the app to `127.0.0.1:8080`, which conflicts
-with `k8sPortForward`, so use the Compose and kind port-forwarding paths
-separately. Database-dependent integration tests continue to run with
-Testcontainers. For details, see
+is the validation path for Kubernetes manifests, service discovery, probes, and
+`kubectl apply`. Compose binds the app to `127.0.0.1:8080`, which conflicts with
+`k8sPortForward`. Do not use the Compose and kind application exposure paths at
+the same time; choose one or the other. Database-dependent integration tests
+continue to run with Testcontainers. For details, see
 [ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md).
 
 ### Runtime hardening
@@ -440,14 +462,9 @@ access-control middleware based on the target platform.
 
 ### JVM inner loop
 
-Host-side Gradle workflows require JDK 25; Eclipse Temurin 25 is recommended to
-match CI. Use this toolchain for tests, `bootRun`, OpenAPI generation, and the
-kind helper Gradle tasks. The project is intended to run on macOS, Linux, or a
-WSL environment on Windows; native Windows execution is not currently supported
-because some Gradle tasks invoke shell scripts and Unix tools such as `curl`.
-
-For direct JVM development with that host toolchain installed, start only the
-local Compose database and run the service with `bootRun` from the host:
+Use the [Host JVM development prerequisites](#host-jvm-development) for direct
+JVM development. With that host toolchain installed, start only the local
+Compose database and run the service with `bootRun` from the host:
 
 ```bash
 docker compose up -d postgres
@@ -464,23 +481,23 @@ The Gradle Compose tasks remain convenience wrappers around Docker Compose for
 contributors who already have the host Java toolchain:
 
 ```bash
-./gradlew composeConfig
-./gradlew composeUp
-./gradlew composeDown
+./gradlew composeConfig # validate the Compose configuration
+./gradlew composeUp     # start the Compose stack through Gradle
+./gradlew composeDown   # stop and remove the Compose stack
 ```
 
 ### Static analysis
 
 ```bash
-./gradlew :service:spotlessCheck    # check formatting
-./gradlew :service:spotlessApply    # fix formatting
-./gradlew :service:compileJava      # Error Prone runs during compilation
+./gradlew :service:spotlessCheck # check formatting
+./gradlew :service:spotlessApply # fix formatting
+./gradlew :service:compileJava   # Error Prone runs during compilation
 ```
 
 ### Tests
 
 ```bash
-./gradlew :service:test             # all tests
+./gradlew :service:test # all tests
 
 # a single class or method
 ./gradlew :service:test --tests "com.github.milez42.featureflags.flags.FeatureFlagEvaluatorTest"
@@ -494,9 +511,9 @@ implementation-review pack from the source, tests, API docs, deployment
 manifests, and selected operational configuration:
 
 ```bash
-npx repomix@1.14.1 --config repomix.config.json                       # → build/repomix/feature-flag-expt-review.xml
-npx repomix@1.14.1 --config repomix.config.json --token-count-tree 1000   # show files/dirs ≥ 1000 tokens
-npx repomix@1.14.1 --config repomix.config.json --include-diffs        # include working-tree + staged diffs
+npx repomix@1.14.1 --config repomix.config.json                         # → build/repomix/feature-flag-expt-review.xml
+npx repomix@1.14.1 --config repomix.config.json --token-count-tree 1000 # show files/dirs ≥ 1000 tokens
+npx repomix@1.14.1 --config repomix.config.json --include-diffs         # include working-tree + staged diffs
 ```
 
 Generated output is git-ignored. Repomix runs a security check, but it does not
@@ -508,24 +525,24 @@ environment-specific configuration.
 
 ```text
 .
-├── service/                       # Spring Boot service (Java + Kotlin)
+├── service/                            # Spring Boot service (Java + Kotlin)
 │   └── src/main/.../featureflags/
-│       ├── flags/                 # Flag domain, evaluator, persistence  (Java)
-│       ├── audit/                 # Audit events                        (Java)
-│       ├── policy/                # Rollout policy: validator Java, API/service Kotlin
-│       ├── preview/               # Preview API                         (Kotlin)
+│       ├── flags/                      # Flag domain, evaluator, persistence (Java)
+│       ├── audit/                      # Audit events (Java)
+│       ├── policy/                     # Rollout policy: validator Java, API/service Kotlin
+│       ├── preview/                    # Preview API (Kotlin)
 │       └── SecurityConfig, OpenApiConfig, ...
 ├── deploy/
-│   ├── k8s/base/                  # App Deployment + Service
-│   ├── k8s/overlays/dev/          # kind: in-cluster PostgreSQL, local config
-│   ├── k8s/overlays/dev-observability/   # Prometheus + Grafana + alert rules
+│   ├── k8s/base/                       # App Deployment + Service
+│   ├── k8s/overlays/dev/               # kind: in-cluster PostgreSQL, local config
+│   ├── k8s/overlays/dev-observability/ # Prometheus + Grafana + alert rules
 │   └── kind/cluster.yaml
-├── compose.yaml                   # Local Docker Compose app + PostgreSQL runtime
+├── compose.yaml                        # Local Docker Compose app + PostgreSQL runtime
 ├── docs/
-│   ├── decisions/                 # ADRs (MADR v4)
+│   ├── decisions/                      # ADRs (MADR v4)
 │   ├── observability.md
-│   └── openapi.yaml               # Committed OpenAPI snapshot
-├── scripts/                       # Shell equivalents of the kind/k8s Gradle tasks
-├── .github/workflows/             # CI · image scan · kind smoke test
-└── build-logic/                   # Gradle convention plugins
+│   └── openapi.yaml                    # Committed OpenAPI snapshot
+├── scripts/                            # Shell equivalents of the kind/k8s Gradle tasks
+├── .github/workflows/                  # CI · image scan · kind smoke test
+└── build-logic/                        # Gradle convention plugins
 ```
