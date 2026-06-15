@@ -55,6 +55,28 @@ registerScriptTask("k8sStatusDev", "k8s-status-dev.sh", "Show dev pod placement 
 }
 
 registerScriptTask(
+    "k8sRenderDebug",
+    "k8s-render-debug.sh",
+    "Render the debug Kubernetes manifests.",
+)
+
+registerScriptTask("k8sApplyDebug", "k8s-apply-debug.sh", "Apply the debug Kubernetes manifests.")
+
+registerScriptTask(
+    "k8sWaitDebug",
+    "k8s-wait-debug.sh",
+    "Wait for the debug PostgreSQL StatefulSet and application Deployment.",
+) {
+  mustRunAfter("k8sApplyDebug")
+}
+
+registerScriptTask(
+    "debugDeploy",
+    "debug-deploy.sh",
+    "Build, load, apply, wait for, and show the debug deployment.",
+)
+
+registerScriptTask(
     "k8sApplyObservabilityDev",
     "k8s-apply-observability-dev.sh",
     "Apply the local kind Prometheus and Grafana manifests.",

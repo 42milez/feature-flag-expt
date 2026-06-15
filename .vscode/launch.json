@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Attach to local service bootRun",
+      "request": "attach",
+      "hostName": "localhost",
+      "port": 5005,
+      "preLaunchTask": "service: bootRun debug"
+    },
+    {
+      "type": "java",
+      "name": "Attach to kind service",
+      "request": "attach",
+      "hostName": "localhost",
+      "port": 5005,
+      "preLaunchTask": "kind: port-forward debug"
+    }
+  ]
+}

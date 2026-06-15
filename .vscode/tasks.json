@@ -1,0 +1,52 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "service: bootRun debug",
+      "type": "shell",
+      "command": "${workspaceFolder}/gradlew",
+      "args": [
+        ":service:bootRun",
+        "--debug-jvm"
+      ],
+      "isBackground": true,
+      "detail": "Starts the host JVM debug listener on local port 5005; stop the kind debug task before using this.",
+      "problemMatcher": {
+        "owner": "java",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Listening for transport dt_socket at address: 5005"
+        }
+      }
+    },
+    {
+      "label": "kind: port-forward debug",
+      "type": "shell",
+      "command": "kubectl",
+      "args": [
+        "-n",
+        "feature-flag-platform",
+        "port-forward",
+        "deployment/feature-flag-platform",
+        "5005:5005"
+      ],
+      "isBackground": true,
+      "detail": "Forwards the kind debug Pod to local port 5005; stop the local bootRun debug task before using this.",
+      "problemMatcher": {
+        "owner": "kubectl",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Forwarding from .*:5005"
+        }
+      }
+    }
+  ]
+}

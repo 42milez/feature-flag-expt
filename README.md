@@ -493,6 +493,57 @@ contributors who already have the host Java toolchain:
 ./gradlew composeDown   # stop and remove the Compose stack
 ```
 
+### VS Code debugging
+
+Shared VS Code setup lives in `.vscode/launch.json`, `.vscode/tasks.json`, and
+`.vscode/extensions.json`. Install the recommended Java Extension Pack, Gradle
+for Java, and Kotlin extensions when VS Code prompts for workspace
+recommendations. Keep machine-specific Java runtime paths in your personal
+`.vscode/settings.json`; that file remains ignored and should not be committed.
+
+The workspace provides two application attach configurations. Both use local
+port `5005`, so stop one debug mode before starting the other.
+
+**Mode 1: host JVM app with Docker PostgreSQL**
+
+```bash
+docker compose up -d postgres
+```
+
+Then run **Attach to local service bootRun** from VS Code. Its pre-launch task
+starts `${workspaceFolder}/gradlew :service:bootRun --debug-jvm`, which listens
+on `localhost:5005` and uses the default local JDBC URL
+`jdbc:postgresql://localhost:5432/featureflags`.
+
+**Mode 2: kind app Pod with kind PostgreSQL**
+
+```bash
+./gradlew debugDeploy
+```
+
+Then run **Attach to kind service** from VS Code. `debugDeploy` builds and loads
+the local image, applies the `debug` overlay, waits for PostgreSQL and the app,
+and shows pod status. The VS Code pre-launch task only starts the debug
+port-forward:
+
+```bash
+kubectl -n feature-flag-platform port-forward deployment/feature-flag-platform 5005:5005
+```
+
+It does not deploy or patch the Pod.
+
+The kind debug path runs both the app and PostgreSQL inside the kind cluster. If
+you skip `debugDeploy`, port-forwarding can fail because no app Pod exists, or
+it can connect to a normal `dev` Pod while VS Code attach is still refused
+because JDWP is not enabled. The debug overlay uses `suspend=n` so Kubernetes
+startup and readiness probes are not blocked while VS Code is detached.
+
+The debug overlay intentionally copies the Dockerfile's
+`JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=75.0` value and appends JDWP. Kubernetes
+container environment values override image-level `ENV` values, so future
+Dockerfile `JAVA_TOOL_OPTIONS` changes must also be mirrored in
+`deploy/k8s/overlays/debug/patches/enable-jdwp.yaml`.
+
 ### Static analysis
 
 ```bash
@@ -543,6 +594,7 @@ environment-specific configuration.
 ├── deploy/
 │   ├── k8s/base/                       # App Deployment + Service
 │   ├── k8s/overlays/dev/               # kind: in-cluster PostgreSQL, local config
+│   ├── k8s/overlays/debug/             # kind: dev overlay plus JDWP attach port
 │   ├── k8s/overlays/dev-observability/ # Prometheus + Grafana + alert rules
 │   └── kind/cluster.yaml
 ├── compose.yaml                        # Local Docker Compose app + PostgreSQL runtime
@@ -551,6 +603,7 @@ environment-specific configuration.
 │   ├── observability.md
 │   └── openapi.yaml                    # Committed OpenAPI snapshot
 ├── scripts/                            # Shell equivalents of the kind/k8s Gradle tasks
+├── .vscode/                            # Shared VS Code debug configs and recommendations
 ├── .github/workflows/                  # CI · image scan · kind smoke test
 └── build-logic/                        # Gradle convention plugins
 ```

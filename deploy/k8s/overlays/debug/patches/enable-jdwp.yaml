@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feature-flag-platform
+  namespace: feature-flag-platform
+spec:
+  template:
+    spec:
+      containers:
+        - name: app
+          ports:
+            - name: debug
+              containerPort: 5005
+          env:
+            # Kubernetes env entries override Dockerfile ENV values, so keep this
+            # value synchronized with service/Dockerfile's JAVA_TOOL_OPTIONS.
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:MaxRAMPercentage=75.0 -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
