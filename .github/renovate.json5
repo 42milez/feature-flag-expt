@@ -1,0 +1,71 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Dependency Dashboard",
+  "timezone": "Asia/Tokyo",
+  "schedule": ["before 9am on monday"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "labels": ["dependencies"],
+  "enabledManagers": ["gradle", "gradle-wrapper", "github-actions", "dockerfile"],
+  "pinDigests": true,
+  "rangeStrategy": "bump",
+  "vulnerabilityAlerts": {
+    "labels": ["dependencies", "security"],
+    "vulnerabilityFixStrategy": "lowest"
+  },
+  "packageRules": [
+    {
+      "description": "Keep temporary Spring Boot-managed runtime dependency pins manual until Spring Boot manages the fixed baselines.",
+      "matchPackageNames": [
+        "org.apache.tomcat.embed:tomcat-embed-core",
+        "org.apache.tomcat.embed:tomcat-embed-el",
+        "org.apache.tomcat.embed:tomcat-embed-websocket",
+        "org.postgresql:postgresql"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Group Spring Boot and Spring dependency-management plugin updates.",
+      "matchPackageNames": [
+        "org.springframework.boot",
+        "org.springframework.boot:*",
+        "io.spring.dependency-management"
+      ],
+      "groupName": "Spring platform"
+    },
+    {
+      "description": "Group Testcontainers modules.",
+      "matchPackageNames": ["org.testcontainers:*"],
+      "groupName": "Testcontainers"
+    },
+    {
+      "description": "Group Kotlin Gradle plugin and Kotlin runtime support.",
+      "matchPackageNames": [
+        "org.jetbrains.kotlin.plugin.spring",
+        "org.jetbrains.kotlin:kotlin-gradle-plugin",
+        "org.jetbrains.kotlin:kotlin-reflect"
+      ],
+      "groupName": "Kotlin"
+    },
+    {
+      "description": "Group Gradle build tooling plugins used by build-logic.",
+      "matchPackageNames": [
+        "net.ltgt.gradle:gradle-errorprone-plugin",
+        "com.diffplug.spotless:spotless-plugin-gradle"
+      ],
+      "groupName": "Gradle build tooling"
+    },
+    {
+      "description": "Keep GitHub Actions updates separate from application dependencies and preserve SHA pin comments.",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "description": "Keep Docker base image digest updates separate from application dependencies.",
+      "matchManagers": ["dockerfile"],
+      "groupName": "Docker base images"
+    }
+  ]
+}
