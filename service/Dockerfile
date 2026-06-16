@@ -15,7 +15,7 @@ FROM gcr.io/distroless/java25-debian13:nonroot@sha256:dade01b669efd3bea3977f73cc
 
 WORKDIR /app
 
-ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0"
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError -Xlog:gc*:stdout:time,level,tags"
 
 # Single-layer fat jar by design. Revisit layered-jar extraction if a
 # registry-push workflow is added.

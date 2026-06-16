@@ -73,3 +73,32 @@ tests:
       - eval_time: 26m
         alertname: FeatureFlagEvaluationTrafficMissing
         exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'jvm_memory_used_bytes{area="heap"}'
+        values: "900+0x10"
+      - series: 'jvm_memory_max_bytes{area="heap"}'
+        values: "1000+0x10"
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: FeatureFlagJvmHeapUsageHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              service: feature-flag-platform
+            exp_annotations:
+              summary: Feature flag service JVM heap usage is high
+              description: JVM heap usage has been above 85% for 5 minutes. Check GC logs, traffic pattern, and memory limit settings.
+              runbook_url: https://github.com/42milez/feature-flag-expt/blob/main/docs/observability.md#alerting
+
+  - interval: 1m
+    input_series:
+      - series: 'jvm_memory_used_bytes{area="heap"}'
+        values: "700+0x10"
+      - series: 'jvm_memory_max_bytes{area="heap"}'
+        values: "1000+0x10"
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: FeatureFlagJvmHeapUsageHigh
+        exp_alerts: []

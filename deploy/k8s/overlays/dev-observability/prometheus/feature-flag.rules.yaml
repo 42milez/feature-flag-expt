@@ -21,3 +21,17 @@ groups:
           summary: Feature flag evaluation traffic is missing
           description: Prometheus can scrape the feature flag service, but no evaluation counter increments have been observed for at least 15 minutes plus the alert hold window.
           runbook_url: https://github.com/42milez/feature-flag-expt/blob/main/docs/observability.md#alerting
+
+      - alert: FeatureFlagJvmHeapUsageHigh
+        expr: |
+          sum(jvm_memory_used_bytes{area="heap"})
+            /
+          sum(jvm_memory_max_bytes{area="heap"}) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: feature-flag-platform
+        annotations:
+          summary: Feature flag service JVM heap usage is high
+          description: JVM heap usage has been above 85% for 5 minutes. Check GC logs, traffic pattern, and memory limit settings.
+          runbook_url: https://github.com/42milez/feature-flag-expt/blob/main/docs/observability.md#alerting
