@@ -19,3 +19,4 @@ This directory contains Architecture Decision Records (ADRs) for this project, f
 | [0011](0011-keep-observability-stack-alerting-ready-but-local.md) | Keep observability stack alerting-ready but local             | Accepted |
 | [0012](0012-use-codacy-for-quality-visibility-and-new-change-gates.md) | Use Codacy for quality visibility and new-change gates        | Accepted |
 | [0013](0013-use-dependabot-alerts-and-renovate-for-sca.md) | Use Dependabot alerts and Renovate for SCA                    | Accepted |
+| [0014](0014-configure-jvm-runtime-options-for-kubernetes.md) | Configure JVM runtime options for Kubernetes                  | Accepted |

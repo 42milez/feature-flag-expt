@@ -1,5 +1,6 @@
 package com.github.milez42.featureflags;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -53,5 +54,24 @@ class ActuatorHealthIntegrationTest extends PostgreSqlIntegrationTest {
     mockMvc
         .perform(get("/actuator/prometheus").with(httpBasic(READER_USERNAME, READER_PASSWORD)))
         .andExpect(status().isOk());
+  }
+
+  @Test
+  void prometheusEndpointExposesJvmRuntimeMetrics() throws Exception {
+    String metrics =
+        mockMvc
+            .perform(get("/actuator/prometheus").with(httpBasic(READER_USERNAME, READER_PASSWORD)))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    assertThat(metrics)
+        .contains("jvm_memory_used_bytes")
+        .contains("jvm_memory_max_bytes")
+        .contains("jvm_gc_pause_seconds_count")
+        .contains("jvm_gc_pause_seconds_sum")
+        .contains("process_uptime_seconds")
+        .contains("process_cpu_usage");
   }
 }
