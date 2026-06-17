@@ -44,6 +44,15 @@ jobs:
           cache-to: type=gha,mode=max,scope=feature-flag-platform
       - run: kind load image-archive /tmp/feature-flag-platform.tar --name feature-flag-platform
       - run: ./gradlew k8sApplyDev k8sWaitDev k8sStatusDev
+      - name: Smoke test application health endpoints
+        run: |
+          set -euo pipefail
+
+          kubectl -n feature-flag-platform port-forward service/feature-flag-platform 8080:8080 &
+          port_forward_pid=$!
+          trap 'kill "${port_forward_pid}" 2>/dev/null || true' EXIT
+
+          ./gradlew appHealth
       - name: Collect Kubernetes diagnostics
         if: failure()
         run: |
