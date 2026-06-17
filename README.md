@@ -15,9 +15,10 @@ A portfolio project built around a Spring Boot feature-flag platform service:
 the kind of internal developer platform component that helps product teams
 release changes safely through environment targeting, emergency kill switches,
 tenant allowlists, deterministic percentage rollouts, and audit events. The
-repository keeps the application, deployment manifests, observability assets,
-and CI quality gates together so the end-to-end delivery path can be reviewed in
-one place.
+repository keeps the application, container image definition, Kubernetes
+manifests, observability assets, and CI quality gates together so the
+operational platform components that support product development can be
+reviewed in one place.
 
 ## Table of Contents
 
