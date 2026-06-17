@@ -31,7 +31,7 @@
 
 - **JVM サービス設計** — 永続化されるフラグのドメイン、評価ロジック、Spring Data JDBC のトランザクションフロー、監査イベントの記録、Micrometer の計装、Spring Security の境界は Java が担当し、Kotlin は immutable DTO が合う読み取り中心の API 境界に限定しています。([ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md))
 - **フェイルクローズなセキュリティ境界** — ローカル HTTP Basic の reader/operator ロールで、プローブと API ドキュメントだけを公開し、既知の `/api/**` ルートはロール別に許可し、未分類の API ルートは既定で拒否します。([ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md))
-- **Kubernetes デプロイ** — Kustomize の `base` と `dev` オーバーレイを kind にデプロイし、Pod Security Standards の [restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) プロファイルに沿うワークロードにしています。([ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md))
+- **Kubernetes デプロイ** — Kustomize の `base` と `dev` オーバーレイを kind にデプロイし、Pod Security Standards の [restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) プロファイルに沿う Pod として実行しています。([ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md))
 - **オブザーバビリティ** — Actuator/Micrometer のメトリクス、ECS JSON の構造化ログ、`promtool` テスト付きの Prometheus アラートルール、Grafana ダッシュボードで、ローカル環境でも挙動を追えるようにしています。([ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md))
 - **CI 品質ゲート** — フォーマット、Error Prone、ユニットテストと Testcontainers テスト、JaCoCo/Codacy カバレッジ、Kubernetes マニフェストのレンダリング検証、OpenAPI 差分検出、`promtool`、Trivy スキャンを変更ごとに実行します。
 - **AI エージェントを活用した開発ワークフロー** — AI エージェントは計画、設計、実装、レビューを支援し、最終的なマージ判断は変更内容を精査した上でリポジトリオーナーが行います。
@@ -128,7 +128,7 @@ flowchart TD
 
 ## クイックスタート
 
-Docker Compose でフラグを作成・評価します。ホスト側に JDK をインストールする必要はありません。事前準備、ポート競合の注意、kind、ホスト JVM 開発の手順は [docs/development.md](docs/development.md) を参照してください。
+Docker Compose でフラグを作成・評価します。ホスト側に JDK をインストールする必要はありません。事前準備、ポート競合の注意、kind、ホスト JVM 開発の手順は [docs/development.ja.md](docs/development.ja.md) を参照してください。
 
 **1. ローカルの Compose スタックを起動する**
 
@@ -136,7 +136,7 @@ Docker Compose でフラグを作成・評価します。ホスト側に JDK を
 docker compose up --build -d
 ```
 
-Compose は Spring Boot の jar 生成を含めてサービスイメージをビルドし、アプリと PostgreSQL を破棄可能なローカル状態で起動します。
+Compose は Spring Boot の jar 生成を含めてサービスイメージをビルドし、アプリと PostgreSQL を起動します。
 
 **2. フラグを作成し、評価する**
 
@@ -215,7 +215,7 @@ docker compose down --remove-orphans
 
 ## デプロイと運用
 
-ローカル設定値、kind コマンド、ホスト JVM 開発の手順は [docs/development.md](docs/development.md) にまとめています。
+ローカル設定値、kind コマンド、ホスト JVM 開発の手順は [docs/development.ja.md](docs/development.ja.md) にまとめています。
 
 ### 継続的インテグレーション
 
@@ -251,7 +251,7 @@ HTTP Basic はローカルのポートフォリオ用の最低限の認証です
 
 ### ランタイムのハードニング
 
-ワークロードは Pod Security Standards の [restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) プロファイルに沿っています。
+Pod は Pod Security Standards の [restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) プロファイルに沿っています。
 
 - 非 root のユーザー/グループ、サービスアカウントトークンのマウント無効化
 - 書き込み可能な `/tmp` ボリュームのみを許可する読み取り専用ルートファイルシステム
@@ -280,7 +280,7 @@ Actuator のヘルスエンドポイントはプローブ用に公開し、Prome
 
 ## 開発・セットアップ
 
-ローカルでの詳しい実行・開発手順は [docs/development.md](docs/development.md) にまとめています。事前準備、詳細な Compose クイックスタート、環境変数、kind デプロイ、ホスト JVM 開発、静的解析、テスト、Repomix のレビュー用パック生成を扱います。
+ローカルでの詳しい実行・開発手順は [docs/development.ja.md](docs/development.ja.md) にまとめています。事前準備、詳細な Compose クイックスタート、環境変数、kind デプロイ、ホスト JVM 開発、静的解析、テスト、Repomix のレビュー用パック生成を扱います。
 
 ## リポジトリ構成
 
@@ -301,7 +301,8 @@ Actuator のヘルスエンドポイントはプローブ用に公開し、Prome
 ├── compose.yaml                        # ローカル Docker Compose のアプリ + PostgreSQL 実行環境
 ├── docs/
 │   ├── decisions/                      # ADR（MADR v4）
-│   ├── development.md                  # ローカル実行・開発リファレンス
+│   ├── development.md                  # ローカル実行・開発リファレンス（英語版）
+│   ├── development.ja.md               # ローカル実行・開発リファレンス（日本語版）
 │   ├── observability.md
 │   └── openapi.yaml                    # コミット済み OpenAPI スナップショット
 ├── scripts/                            # kind/k8s Gradle タスクのシェル版

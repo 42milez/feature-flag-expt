@@ -410,7 +410,8 @@ packs.
 ├── compose.yaml                        # Local Docker Compose app + PostgreSQL runtime
 ├── docs/
 │   ├── decisions/                      # ADRs (MADR v4)
-│   ├── development.md                  # Local run and development reference
+│   ├── development.md                  # Local run and development reference (English)
+│   ├── development.ja.md               # Local run and development reference (Japanese)
 │   ├── observability.md
 │   └── openapi.yaml                    # Committed OpenAPI snapshot
 ├── scripts/                            # Shell equivalents of the kind/k8s Gradle tasks

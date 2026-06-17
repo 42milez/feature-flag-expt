@@ -1,5 +1,7 @@
 # Development
 
+[English](development.md) | [日本語](development.ja.md)
+
 Full reference for running and developing locally. See the [README](../README.md)
 for the project overview, architecture, API surface, and operational rationale.
 
