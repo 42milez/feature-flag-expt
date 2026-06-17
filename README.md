@@ -90,6 +90,10 @@ secure in design and implementation, and avoids obvious over-engineering. AI
 review is an input to the process, not a replacement for the owner's final
 judgment.
 
+A worked example of this flow is committed under [docs/plans/](docs/plans/README.md): the roadmap
+that organized a past refinement of the codebase into reviewable phases, and the design document for
+that roadmap's Phase 2, produced by one AI agent and reviewed by another before implementation.
+
 ## Architecture
 
 The flag domain, evaluator, persistence, and audit behavior are implemented in
