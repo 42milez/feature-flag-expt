@@ -6,7 +6,7 @@ Kubernetes deployment:
 ```text
 -XX:MaxRAMPercentage=75.0
 -XX:+ExitOnOutOfMemoryError
--Xlog:gc*:stdout:time,level,tags
+-Xlog:gc*:stderr:utctime,level,tags
 ```
 
 `-XX:MaxRAMPercentage=75.0` keeps the Java heap sized as a percentage of the
@@ -35,8 +35,14 @@ Kubernetes can restart the Pod. The image does not enable
 sensitive in-memory values, and this deployment uses a read-only root
 filesystem.
 
-`-Xlog:gc*:stdout:time,level,tags` writes GC activity to standard output so it
+`-Xlog:gc*:stderr:utctime,level,tags` writes GC activity to standard error so it
 is available through normal container log collection and local `kubectl logs`.
+JVM unified logging emits GC lines as plain text and has no JSON output, so GC
+logs are kept on `stderr`, separate from the structured ECS JSON application logs
+on `stdout`. Keeping each stream single-format lets a log collector route by
+stream instead of inferring the format from line content. `utctime` records each
+line with a timezone-independent UTC timestamp so GC events correlate cleanly
+with application logs and Prometheus metrics.
 
 Inspect GC logs in kind:
 

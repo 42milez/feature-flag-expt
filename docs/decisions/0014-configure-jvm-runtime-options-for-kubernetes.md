@@ -51,7 +51,7 @@ The service image sets:
 ```text
 -XX:MaxRAMPercentage=75.0
 -XX:+ExitOnOutOfMemoryError
--Xlog:gc*:stdout:time,level,tags
+-Xlog:gc*:stderr:utctime,level,tags
 ```
 
 `MaxRAMPercentage=75.0` is kept as the local portfolio baseline. With the
@@ -67,6 +67,13 @@ portfolio deployment. The selected collector is still observable at startup
 through the unified GC log line emitted by `-Xlog:gc*`. If production latency,
 throughput, or CPU baselines require a different collector, add an explicit GC
 option such as `-XX:+UseG1GC` in a follow-up change backed by load testing.
+
+GC logs are written to `stderr` with `utctime` timestamps rather than `stdout`.
+JVM unified logging emits GC lines as plain text and has no JSON output, while
+the application logs to `stdout` as structured ECS JSON. Keeping GC text on
+`stderr` keeps each stream single-format, so a log collector can route by stream
+instead of inferring the format from line content. `utctime` keeps GC timestamps
+correlatable with application logs and metrics in UTC.
 
 Heap dumps are intentionally not enabled by default. They can contain
 credentials and other sensitive values from memory, and the deployment uses a

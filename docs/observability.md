@@ -185,6 +185,11 @@ assuming a specific log backend. A real deployment may switch to `logstash` or
 `gelf` if the logging platform requires that format, but each deployment should
 use one format consistently.
 
+This `stdout` console stream stays single-format ECS JSON. JVM GC logs are
+plain text, so `-Xlog:gc*` writes them to `stderr` instead (see
+[JVM runtime safety](runtime-safety.md)), keeping each stream parseable by a log
+collector without inferring the format from line content.
+
 Successful evaluations, updates, and kill switch enablement emit key-value logs.
 Evaluation logs include `event`, `flagKey`, `environment`, `tenantId`,
 `enabled`, `reason`, and `bucket`. `tenantId` may appear in logs for incident
