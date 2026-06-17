@@ -1,0 +1,203 @@
+# Development
+
+Full reference for running and developing locally. See the [README](../README.md)
+for the project overview, architecture, API surface, and operational rationale.
+
+## Prerequisites
+
+Choose the smallest setup path for the workflow you want to run.
+
+### Docker-only Quick Start
+
+Requires a Docker environment where the `docker compose` command is available.
+On macOS, use whichever option fits your environment, such as
+[Docker Desktop](https://docs.docker.com/desktop/) or
+[OrbStack](https://docs.orbstack.dev/install). On Linux, use Docker Engine plus
+the Compose plugin or an equivalent setup.
+
+### Local kind / Kubernetes validation
+
+Requires `kind` and `kubectl` in addition to `docker`. The kind deployment
+workflow and the local Prometheus/Grafana verification commands depend on these
+tools. See the official
+[kind installation](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)
+and [Kubernetes tools](https://kubernetes.io/docs/tasks/tools/) docs.
+
+### Host JVM development
+
+Requires JDK 25. [Eclipse Temurin 25](https://adoptium.net/temurin/releases/?version=25)
+is recommended to match CI. This path is needed for host-side tests, `bootRun`,
+OpenAPI generation, and Gradle helper tasks. The project targets macOS, Linux,
+or Windows through WSL because some Gradle tasks invoke shell scripts and Unix
+tools.
+
+## Quick Start (full)
+
+Create and evaluate a flag in three steps. Use the
+[Docker-only Quick Start prerequisites](#docker-only-quick-start); a host JDK is
+not required for this path.
+
+**1. Start the local Compose stack**
+
+```bash
+docker compose up --build -d
+```
+
+Compose builds the service image, including the Spring Boot jar, and starts the
+app plus PostgreSQL. The app is bound to `127.0.0.1:8080`, and PostgreSQL is
+bound to `127.0.0.1:5432`, so both ports are reachable from the local machine
+only. The database has no named volume and is disposable Quick Start state. Port
+`8080` conflicts with `k8sPortForward`, and port `5432` conflicts with an
+existing local PostgreSQL bound to the same loopback port, so run the Compose
+and kind port-forwarding paths separately.
+
+**2. Create a flag, then evaluate it**
+
+```bash
+# Create: targets production, allowlists tenant-a, 25% rollout (operator role)
+curl -u featureflags-operator:featureflags-operator \
+  -H 'Content-Type: application/json' \
+  -d '{"flagKey":"checkout-redesign","status":"ENABLED","targetEnvironments":["production"],"killSwitchActive":false,"tenantAllowlist":["tenant-a"],"rolloutPercentage":25}' \
+  http://localhost:8080/api/flags
+```
+
+```jsonc
+// 201 Created
+{ "flagKey": "checkout-redesign", "status": "ENABLED",
+  "targetEnvironments": ["production"], "killSwitchActive": false,
+  "tenantAllowlist": ["tenant-a"], "rolloutPercentage": 25 }
+```
+
+```bash
+# Evaluate for production + tenant-a (reader role)
+curl -u featureflags-reader:featureflags-reader \
+  -H 'Content-Type: application/json' \
+  -d '{"flagKey":"checkout-redesign","environment":"production","tenantId":"tenant-a"}' \
+  http://localhost:8080/api/evaluate
+```
+
+```jsonc
+// 200 OK — tenant-a is allowlisted, so evaluation short-circuits before the
+// percentage rollout; bucket is null because rollout logic was never reached.
+{ "flagKey": "checkout-redesign", "enabled": true,
+  "reason": "TENANT_ALLOWLIST_MATCH", "bucket": null }
+```
+
+The `enabled` and `reason` fields let a caller switch behavior without knowing
+the internal structure of the flag configuration. Browse every endpoint
+interactively at **`http://localhost:8080/swagger-ui.html`**. For the
+Kubernetes/kind path, see [Running on kind](#running-on-kind).
+
+**3. Stop the local stack**
+
+```bash
+docker compose down --remove-orphans
+```
+
+## Configuration
+
+The service requires PostgreSQL to start. The Compose Quick Start wires the app
+container to the `postgres` service automatically; when running the JVM directly
+from the host, the defaults below connect to PostgreSQL on `localhost:5432`.
+Override the corresponding environment variables to use a different database or
+change the username and password.
+
+| Variable | Local value |
+|---|---|
+| `FEATURE_FLAGS_DB_URL` | `jdbc:postgresql://localhost:5432/featureflags` |
+| `FEATURE_FLAGS_DB_USERNAME` | `featureflags` |
+| `FEATURE_FLAGS_DB_PASSWORD` | `featureflags` |
+| `FEATURE_FLAGS_SECURITY_READER_USERNAME` | `featureflags-reader` |
+| `FEATURE_FLAGS_SECURITY_READER_PASSWORD` | `featureflags-reader` |
+| `FEATURE_FLAGS_SECURITY_OPERATOR_USERNAME` | `featureflags-operator` |
+| `FEATURE_FLAGS_SECURITY_OPERATOR_PASSWORD` | `featureflags-operator` |
+
+## Running on kind
+
+Use the
+[Local kind / Kubernetes validation prerequisites](#local-kind--kubernetes-validation)
+before running the kind workflow.
+
+```bash
+./gradlew kindCreate     # create the local cluster (or: kindRecreate)
+./gradlew kindLoadImage  # build the image and load it into kind
+./gradlew k8sRenderDev   # optionally preview the rendered dev manifests
+./gradlew devDeploy      # build, load, apply, wait, and show pod status in one step
+./gradlew k8sPortForward # forward the app service
+./gradlew appHealth      # check the local health endpoints
+```
+
+The `dev` overlay adds the local kind dependencies on top of `base`: in-cluster
+PostgreSQL, local database configuration, placeholder credentials, and the local
+image tag used by `kind load`.
+
+Docker Compose is provided only for a simple local application runtime. kind
+is the validation path for Kubernetes manifests, service discovery, probes, and
+`kubectl apply`. Compose binds the app to `127.0.0.1:8080`, which conflicts with
+`k8sPortForward`. Do not use the Compose and kind application exposure paths at
+the same time; choose one or the other. Database-dependent integration tests
+continue to run with Testcontainers. For details, see
+[ADR-0009](decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md).
+
+## JVM inner loop
+
+Use the [Host JVM development prerequisites](#host-jvm-development) for direct
+JVM development. With that host toolchain installed, start only the local
+Compose database and run the service with `bootRun` from the host:
+
+```bash
+docker compose up -d postgres
+./gradlew :service:bootRun
+```
+
+`bootRun` keeps the application running in the foreground, so Gradle's progress
+display remains at `EXECUTING`. The application is ready once
+`Started FeatureFlagApplication` appears. Press `Ctrl+C` to stop it. The
+database is reachable at `localhost:5432` because Compose publishes PostgreSQL
+on `127.0.0.1:5432`.
+
+The Gradle Compose tasks remain convenience wrappers around Docker Compose for
+contributors who already have the host Java toolchain:
+
+```bash
+./gradlew composeConfig # validate the Compose configuration
+./gradlew composeUp     # start the Compose stack through Gradle
+./gradlew composeDown   # stop and remove the Compose stack
+```
+
+## Static analysis
+
+```bash
+./gradlew :service:spotlessCheck # check formatting
+./gradlew :service:spotlessApply # fix formatting
+./gradlew :service:compileJava   # Error Prone runs during compilation
+```
+
+## Testing
+
+```bash
+./gradlew :service:test             # all tests
+./gradlew :service:jacocoTestReport # generate JaCoCo XML and HTML coverage reports
+
+# a single class or method
+./gradlew :service:test --tests "com.github.milez42.featureflags.flags.FeatureFlagEvaluatorTest"
+./gradlew :service:test --tests "com.github.milez42.featureflags.flags.FeatureFlagEvaluatorTest.fullRolloutEnablesFlag"
+```
+
+## Packing the codebase for review
+
+Use [Repomix](https://repomix.com/guide) to generate a single AI-friendly
+implementation-review pack from the source, tests, API docs, deployment
+manifests, and selected operational configuration:
+
+```bash
+npx repomix@1.14.1 --config repomix.config.json                         # -> build/repomix/feature-flag-expt-review.xml
+npx repomix@1.14.1 --config repomix.config.json --token-count-tree 1000 # show files/dirs >= 1000 tokens
+npx repomix@1.14.1 --config repomix.config.json --include-diffs         # include working-tree + staged diffs
+```
+
+Run these commands from the repository root. Generated output is git-ignored.
+Repomix runs a security check, but it does not replace human review: before
+sharing the file with external AI services, verify it contains no secrets,
+personal data, internal URLs, credentials, or environment-specific
+configuration.
