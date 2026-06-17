@@ -11,12 +11,14 @@ English | [日本語](README.ja.md)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-kind-326CE5)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A Spring Boot feature-flag service used as a vehicle to demonstrate JVM domain
-design, Kubernetes deployment, observability, and CI quality gates
-in one reviewable repository. Flags are targeted by environment, guarded by an
-emergency kill switch, allowlisted per tenant, and rolled out by a deterministic
-percentage bucket derived from the flag key and tenant or user identity — with
-every state change recorded as an audit event.
+A portfolio project built around a Spring Boot feature-flag platform service:
+the kind of internal developer platform component that helps product teams
+release changes safely through environment targeting, emergency kill switches,
+tenant allowlists, deterministic percentage rollouts, and audit events. The
+repository keeps the application, container image definition, Kubernetes
+manifests, observability assets, and CI quality gates together so the
+operational platform components that support product development can be
+reviewed in one place.
 
 ## Table of Contents
 
@@ -24,48 +26,40 @@ every state change recorded as an audit event.
 - [Development Approach](#development-approach)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
-- [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
 - [API Overview](#api-overview)
 - [Design Decisions (ADRs)](#design-decisions-adrs)
 - [Deployment & Operations](#deployment--operations)
 - [Observability](#observability)
-- [Development](#development)
+- [Development & Setup](#development--setup)
 - [Repository Layout](#repository-layout)
 
 ## Project Focus Areas
 
 - **JVM service design** — Java owns the persisted flag domain, evaluator,
   Spring Data JDBC transaction flow, audit recording, Micrometer metrics, and
-  the Spring Security boundary. Kotlin is limited to read-oriented API
-  boundaries to demonstrate Java/Kotlin interoperability in a Spring Boot
-  service: immutable DTOs fit preview proposed changes, per-sample diffs, and
-  summaries, and the rollout-policy API follows the same request/response
-  shape while the policy validator shares the Java implementation.
+  Spring Security boundary, while Kotlin is used only at read-oriented API
+  boundaries where immutable DTOs are a good fit.
   ([ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md))
-- **Fail-closed security boundary** — in-memory user management with local HTTP
-  Basic reader/operator roles. Only health check endpoints (Kubernetes liveness
-  / readiness probes) and Swagger UI / OpenAPI docs are public; known `/api/**`
-  routes are allowed by role, and unclassified `/api/**` routes are denied by
-  default even for authenticated users.
+- **Fail-closed security boundary** — local HTTP Basic reader/operator roles
+  expose only probes and API docs publicly, classify known `/api/**` routes by
+  role, and deny unclassified API routes by default.
   ([ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md))
-- **Kubernetes deployment** — Kustomize `base` and `dev` overlays deployed to
-  kind, hardened to the Pod Security Standards [restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) profile (non-root,
-  read-only root filesystem, dropped capabilities, RuntimeDefault seccomp,
-  graceful shutdown).
+- **Kubernetes deployment** — Kustomize `base` and `dev` overlays deploy to
+  kind and align the workload with the Pod Security Standards
+  [restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted)
+  profile.
   ([ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md))
-- **Observability** — Actuator/Micrometer metrics, ECS JSON
-  structured logs, committed Prometheus alert rules with `promtool` rule tests,
-  and a Grafana dashboard.
+- **Observability** — Actuator/Micrometer metrics, ECS JSON structured logs,
+  committed Prometheus alert rules with `promtool` tests, and a Grafana
+  dashboard make the local system inspectable.
   ([ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md))
-- **CI quality gates** — formatting, Error Prone, the full and Testcontainers
-  test suites, JaCoCo coverage upload to Codacy, Kubernetes render validation,
-  OpenAPI snapshot drift detection, `promtool` checks, and Trivy secret/image
-  scanning on every change.
-- **AI-agent development workflow** — a human-directed development cycle. AI
-  agents assist with planning, design, implementation, and review, while the
-  repository owner makes the final merge decision after reviewing the substance
-  of the change.
+- **CI quality gates** — formatting, Error Prone, unit and Testcontainers
+  tests, JaCoCo/Codacy coverage, Kubernetes render validation, OpenAPI drift
+  detection, `promtool`, and Trivy scanning run on each change.
+- **AI-agent development workflow** — AI agents support planning, design,
+  implementation, and review, while the repository owner keeps the final
+  merge decision grounded in the substance of the change.
 
 ## Development Approach
 
@@ -96,12 +90,16 @@ secure in design and implementation, and avoids obvious over-engineering. AI
 review is an input to the process, not a replacement for the owner's final
 judgment.
 
+A worked example of this flow is committed under [docs/plans/](docs/plans/README.md): the roadmap
+that organized a past refinement of the codebase into reviewable phases, and the design document for
+that roadmap's Phase 2, produced by one AI agent and reviewed by another before implementation.
+
 ## Architecture
 
 The flag domain, evaluator, persistence, and audit behavior are implemented in
 Java. Kotlin is limited to read-oriented API boundaries such as preview and
-rollout-policy validation to demonstrate Java/Kotlin interoperability in a
-Spring Boot service. The preview API models proposed changes, per-sample
+rollout-policy validation, where null-safe types and default values express
+DTOs concisely. The preview API models proposed changes, per-sample
 before/after diffs, and summaries with nested Kotlin request/response DTOs, and
 reuses the Java `FeatureFlagEvaluator`. The rollout-policy validation API uses
 a Kotlin controller/service layer to assemble the current flag and proposed
@@ -186,38 +184,11 @@ flowchart TD
 
 Exact patch versions are managed in [`gradle/libs.versions.toml`](gradle/libs.versions.toml).
 
-## Prerequisites
-
-Choose the smallest setup path for the workflow you want to run.
-
-### Docker-only Quick Start
-
-Requires a Docker environment where the `docker compose` command is available.
-On macOS, use whichever option fits your environment, such as
-[Docker Desktop](https://docs.docker.com/desktop/) or
-[OrbStack](https://docs.orbstack.dev/install). On Linux, use Docker Engine plus
-the Compose plugin or an equivalent setup.
-
-### Local kind / Kubernetes validation
-
-Requires `kind` and `kubectl` in addition to `docker`. The kind deployment
-workflow and the local Prometheus/Grafana verification commands depend on these
-tools. See the official [kind installation](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)
-and [Kubernetes tools](https://kubernetes.io/docs/tasks/tools/) docs.
-
-### Host JVM development
-
-Requires JDK 25. [Eclipse Temurin 25](https://adoptium.net/temurin/releases/?version=25)
-is recommended to match CI. This path is needed for host-side tests, `bootRun`,
-OpenAPI generation, and Gradle helper tasks. The project targets macOS, Linux,
-or Windows through WSL because some Gradle tasks invoke shell scripts and Unix
-tools.
-
 ## Quick Start
 
-Create and evaluate a flag in three steps. Use the
-[Docker-only Quick Start prerequisites](#docker-only-quick-start); a host JDK is
-not required for this path.
+Create and evaluate a flag with Docker Compose; a host JDK is not required.
+See [docs/development.md](docs/development.md) for prerequisites, port-conflict
+notes, kind, and host JVM workflows.
 
 **1. Start the local Compose stack**
 
@@ -226,12 +197,7 @@ docker compose up --build -d
 ```
 
 Compose builds the service image, including the Spring Boot jar, and starts the
-app plus PostgreSQL. The app is bound to `127.0.0.1:8080`, and PostgreSQL is
-bound to `127.0.0.1:5432`, so both ports are reachable from the local machine
-only. The database has no named volume and is disposable Quick Start state. Port
-`8080` conflicts with `k8sPortForward`, and port `5432` conflicts with an
-existing local PostgreSQL bound to the same loopback port, so run the Compose
-and kind port-forwarding paths separately.
+app plus PostgreSQL with disposable local state.
 
 **2. Create a flag, then evaluate it**
 
@@ -267,8 +233,7 @@ curl -u featureflags-reader:featureflags-reader \
 
 The `enabled` and `reason` fields let a caller switch behavior without knowing
 the internal structure of the flag configuration. Browse every endpoint
-interactively at **`http://localhost:8080/swagger-ui.html`**. For the
-Kubernetes/kind path, see [Deployment & Operations](#deployment--operations).
+interactively at **`http://localhost:8080/swagger-ui.html`**.
 
 **3. Stop the local stack**
 
@@ -316,6 +281,9 @@ See the [full index](docs/decisions/README.md) for all records.
 
 ## Deployment & Operations
 
+Local configuration values, kind commands, and host development workflows live
+in [docs/development.md](docs/development.md).
+
 ### Continuous Integration
 
 GitHub Actions uses three workflows:
@@ -346,24 +314,6 @@ can fail when new CVEs are published, even without application code changes.
 
 </details>
 
-### Configuration
-
-The service requires PostgreSQL to start. The Compose Quick Start wires the app
-container to the `postgres` service automatically; when running the JVM directly
-from the host, the defaults below connect to PostgreSQL on `localhost:5432`.
-Override the corresponding environment variables to use a different database or
-change the username and password.
-
-| Variable | Local value |
-|---|---|
-| `FEATURE_FLAGS_DB_URL` | `jdbc:postgresql://localhost:5432/featureflags` |
-| `FEATURE_FLAGS_DB_USERNAME` | `featureflags` |
-| `FEATURE_FLAGS_DB_PASSWORD` | `featureflags` |
-| `FEATURE_FLAGS_SECURITY_READER_USERNAME` | `featureflags-reader` |
-| `FEATURE_FLAGS_SECURITY_READER_PASSWORD` | `featureflags-reader` |
-| `FEATURE_FLAGS_SECURITY_OPERATOR_USERNAME` | `featureflags-operator` |
-| `FEATURE_FLAGS_SECURITY_OPERATOR_PASSWORD` | `featureflags-operator` |
-
 ### Security
 
 API access uses two local HTTP Basic users: a **reader** for read-style
@@ -386,32 +336,6 @@ documents the browser-client trade-off and the production direction of
 replacing Basic with OIDC or another organization-managed identity provider.
 
 </details>
-
-### Run on kind
-
-Use the [Local kind / Kubernetes validation prerequisites](#local-kind--kubernetes-validation)
-before running the kind workflow.
-
-```bash
-./gradlew kindCreate     # create the local cluster (or: kindRecreate)
-./gradlew kindLoadImage  # build the image and load it into kind
-./gradlew k8sRenderDev   # optionally preview the rendered dev manifests
-./gradlew devDeploy      # build, load, apply, wait, and show pod status in one step
-./gradlew k8sPortForward # forward the app service
-./gradlew appHealth      # check the local health endpoints
-```
-
-The `dev` overlay adds the local kind dependencies on top of `base`: in-cluster
-PostgreSQL, local database configuration, placeholder credentials, and the local
-image tag used by `kind load`.
-
-Docker Compose is provided only for a simple local application runtime. kind
-is the validation path for Kubernetes manifests, service discovery, probes, and
-`kubectl apply`. Compose binds the app to `127.0.0.1:8080`, which conflicts with
-`k8sPortForward`. Do not use the Compose and kind application exposure paths at
-the same time; choose one or the other. Database-dependent integration tests
-continue to run with Testcontainers. For details, see
-[ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md).
 
 ### Runtime hardening
 
@@ -465,69 +389,12 @@ Prometheus/Grafana stack; it does not install cluster-level log collection. A
 production deployment would select log collection, routing, retention, and
 access-control middleware based on the target platform.
 
-## Development
+## Development & Setup
 
-### JVM inner loop
-
-Use the [Host JVM development prerequisites](#host-jvm-development) for direct
-JVM development. With that host toolchain installed, start only the local
-Compose database and run the service with `bootRun` from the host:
-
-```bash
-docker compose up -d postgres
-./gradlew :service:bootRun
-```
-
-`bootRun` keeps the application running in the foreground, so Gradle's progress
-display remains at `EXECUTING`. The application is ready once
-`Started FeatureFlagApplication` appears. Press `Ctrl+C` to stop it. The
-database is reachable at `localhost:5432` because Compose publishes PostgreSQL
-on `127.0.0.1:5432`.
-
-The Gradle Compose tasks remain convenience wrappers around Docker Compose for
-contributors who already have the host Java toolchain:
-
-```bash
-./gradlew composeConfig # validate the Compose configuration
-./gradlew composeUp     # start the Compose stack through Gradle
-./gradlew composeDown   # stop and remove the Compose stack
-```
-
-### Static analysis
-
-```bash
-./gradlew :service:spotlessCheck # check formatting
-./gradlew :service:spotlessApply # fix formatting
-./gradlew :service:compileJava   # Error Prone runs during compilation
-```
-
-### Tests
-
-```bash
-./gradlew :service:test             # all tests
-./gradlew :service:jacocoTestReport # generate JaCoCo XML and HTML coverage reports
-
-# a single class or method
-./gradlew :service:test --tests "com.github.milez42.featureflags.flags.FeatureFlagEvaluatorTest"
-./gradlew :service:test --tests "com.github.milez42.featureflags.flags.FeatureFlagEvaluatorTest.fullRolloutEnablesFlag"
-```
-
-### Pack the codebase for review
-
-Use [Repomix](https://repomix.com/guide) to generate a single AI-friendly
-implementation-review pack from the source, tests, API docs, deployment
-manifests, and selected operational configuration:
-
-```bash
-npx repomix@1.14.1 --config repomix.config.json                         # → build/repomix/feature-flag-expt-review.xml
-npx repomix@1.14.1 --config repomix.config.json --token-count-tree 1000 # show files/dirs ≥ 1000 tokens
-npx repomix@1.14.1 --config repomix.config.json --include-diffs         # include working-tree + staged diffs
-```
-
-Generated output is git-ignored. Repomix runs a security check, but it does not
-replace human review: before sharing the file with external AI services, verify
-it contains no secrets, personal data, internal URLs, credentials, or
-environment-specific configuration.
+Full local setup instructions live in [docs/development.md](docs/development.md):
+prerequisites, the detailed Compose quick start, environment variables, kind
+deployment, host JVM development, static analysis, tests, and Repomix review
+packs.
 
 ## Repository Layout
 
@@ -548,6 +415,8 @@ environment-specific configuration.
 ├── compose.yaml                        # Local Docker Compose app + PostgreSQL runtime
 ├── docs/
 │   ├── decisions/                      # ADRs (MADR v4)
+│   ├── development.md                  # Local run and development reference (English)
+│   ├── development.ja.md               # Local run and development reference (Japanese)
 │   ├── observability.md
 │   └── openapi.yaml                    # Committed OpenAPI snapshot
 ├── scripts/                            # Shell equivalents of the kind/k8s Gradle tasks
