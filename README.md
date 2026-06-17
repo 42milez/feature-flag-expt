@@ -11,8 +11,9 @@ English | [日本語](README.ja.md)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-kind-326CE5)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A Spring Boot feature-flag platform service for helping product teams release
-changes safely through environment targeting, emergency kill switches,
+A portfolio project built around a Spring Boot feature-flag platform service:
+the kind of internal developer platform component that helps product teams
+release changes safely through environment targeting, emergency kill switches,
 tenant allowlists, deterministic percentage rollouts, and audit events. The
 repository keeps the application, deployment manifests, observability assets,
 and CI quality gates together so the end-to-end delivery path can be reviewed in
