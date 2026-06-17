@@ -93,8 +93,8 @@ judgment.
 
 The flag domain, evaluator, persistence, and audit behavior are implemented in
 Java. Kotlin is limited to read-oriented API boundaries such as preview and
-rollout-policy validation to demonstrate Java/Kotlin interoperability in a
-Spring Boot service. The preview API models proposed changes, per-sample
+rollout-policy validation, where null-safe types and default values express
+DTOs concisely. The preview API models proposed changes, per-sample
 before/after diffs, and summaries with nested Kotlin request/response DTOs, and
 reuses the Java `FeatureFlagEvaluator`. The rollout-policy validation API uses
 a Kotlin controller/service layer to assemble the current flag and proposed

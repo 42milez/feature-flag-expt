@@ -52,7 +52,7 @@
 
 ## アーキテクチャ
 
-フラグのドメイン、評価ロジック、永続化、監査の振る舞いは Java で実装しています。Kotlin は、Spring Boot サービス内での Java/Kotlin 相互運用を示すため、プレビューやロールアウトポリシー検証のような読み取り中心の API 境界に限定して使っています。プレビュー API では、変更案、サンプルごとの before/after 差分、集計を Kotlin のネストしたリクエスト/レスポンス DTO で表し、Java の `FeatureFlagEvaluator` を再利用します。ロールアウトポリシー検証 API は Kotlin のコントローラー/サービス層で現在のフラグと変更案を組み立て、Java の validator で検証します。検証結果のレスポンス DTO は、検証 API と PATCH 更新時のポリシー違反レスポンスで共有するため Java record としています。
+フラグのドメイン、評価ロジック、永続化、監査の振る舞いは Java で実装しています。Kotlin は、null 安全な型とデフォルト値で DTO を簡潔に表現できる、プレビューやロールアウトポリシー検証のような読み取り中心の API 境界に限定して使っています。プレビュー API では、変更案、サンプルごとの before/after 差分、集計を Kotlin のネストしたリクエスト/レスポンス DTO で表し、Java の `FeatureFlagEvaluator` を再利用します。ロールアウトポリシー検証 API は Kotlin のコントローラー/サービス層で現在のフラグと変更案を組み立て、Java の validator で検証します。検証結果のレスポンス DTO は、検証 API と PATCH 更新時のポリシー違反レスポンスで共有するため Java record としています。
 
 ```mermaid
 flowchart LR
