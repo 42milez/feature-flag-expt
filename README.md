@@ -406,7 +406,7 @@ packs.
 │       ├── audit/                      # Audit events (Java)
 │       ├── policy/                     # Rollout policy: validator Java, API/service Kotlin
 │       ├── preview/                    # Preview API (Kotlin)
-│       └── SecurityConfig, OpenApiConfig, ...
+│       └── SecurityConfig, ...
 ├── deploy/
 │   ├── k8s/base/                       # App Deployment + Service
 │   ├── k8s/overlays/dev/               # kind: in-cluster PostgreSQL, local config
