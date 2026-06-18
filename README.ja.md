@@ -290,11 +290,11 @@ Actuator のヘルスエンドポイントはプローブ用に公開し、Prome
 .
 ├── service/                            # Spring Boot サービス（Java + Kotlin）
 │   └── src/main/.../featureflags/
-│       ├── flags/                      # フラグドメイン・評価・永続化       （Java）
-│       ├── audit/                      # 監査イベント                       （Java）
+│       ├── flags/                      # フラグドメイン・評価・永続化（Java）
+│       ├── audit/                      # 監査イベント（Java）
 │       ├── policy/                     # ロールアウトポリシー: validator は Java、API/service は Kotlin
-│       ├── preview/                    # プレビュー API                     （Kotlin）
-│       └── SecurityConfig, OpenApiConfig, ...
+│       ├── preview/                    # プレビュー API（Kotlin）
+│       └── SecurityConfig, ...
 ├── deploy/
 │   ├── k8s/base/                       # アプリの Deployment + Service
 │   ├── k8s/overlays/dev/               # kind: クラスター内 PostgreSQL、ローカル設定
