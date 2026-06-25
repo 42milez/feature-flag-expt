@@ -17,16 +17,6 @@
   },
   "packageRules": [
     {
-      "description": "Keep temporary Spring Boot-managed runtime dependency pins manual until Spring Boot manages the fixed baselines.",
-      "matchPackageNames": [
-        "org.apache.tomcat.embed:tomcat-embed-core",
-        "org.apache.tomcat.embed:tomcat-embed-el",
-        "org.apache.tomcat.embed:tomcat-embed-websocket",
-        "org.postgresql:postgresql"
-      ],
-      "enabled": false
-    },
-    {
       "description": "Group Spring Boot and Spring dependency-management plugin updates.",
       "matchPackageNames": [
         "org.springframework.boot",
