@@ -57,6 +57,7 @@ class OpenApiIntegrationTest {
             .andExpect(jsonPath("$.info.title").value("Feature Flag API"))
             .andExpect(jsonPath("$.info.version").value("0.1.0"))
             .andExpect(jsonPath("$.paths['/api/flags'].post").exists())
+            .andExpect(jsonPath("$.paths['/api/flags'].post.responses['422']").exists())
             .andExpect(jsonPath("$.paths['/api/flags/{flagKey}'].get").exists())
             .andExpect(jsonPath("$.paths['/api/flags/{flagKey}'].patch").exists())
             .andExpect(jsonPath("$.paths['/api/evaluate'].post").exists())
@@ -79,6 +80,16 @@ class OpenApiIntegrationTest {
                 jsonPath(
                         "$.components.schemas.CreateFeatureFlagRequest.properties.tenantAllowlist.items.minLength")
                     .value(1))
+            .andExpect(
+                jsonPath(
+                        "$.components.schemas.CreateFeatureFlagRequest.properties.reason.maxLength")
+                    .value(1000))
+            .andExpect(
+                jsonPath("$.components.schemas.CreateFeatureFlagRequest.properties.highRisk")
+                    .doesNotExist())
+            .andExpect(
+                jsonPath("$.components.schemas.CreateFeatureFlagRequest.properties.approvalGranted")
+                    .doesNotExist())
             .andExpect(
                 jsonPath(
                         "$.components.schemas.EvaluateFeatureFlagRequest.properties.flagKey.minLength")

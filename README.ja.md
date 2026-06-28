@@ -184,7 +184,7 @@ docker compose down --remove-orphans
 
 | メソッド | パス | ロール | 用途 | 実装 |
 |---|---|---|---|---|
-| `POST` | `/api/flags` | operator | フラグの作成 | Java |
+| `POST` | `/api/flags` | operator | フラグの作成（ロールアウトポリシー検証あり） | Java |
 | `GET` | `/api/flags/{flagKey}` | reader / operator | フラグの取得 | Java |
 | `PATCH` | `/api/flags/{flagKey}` | operator | フラグの更新（ロールアウトポリシー検証あり） | Java |
 | `POST` | `/api/evaluate` | reader / operator | 文脈に基づくフラグの評価 | Java |

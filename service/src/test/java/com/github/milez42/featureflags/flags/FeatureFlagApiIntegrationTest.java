@@ -17,9 +17,11 @@ import com.github.milez42.featureflags.audit.AuditEventDetails;
 import com.github.milez42.featureflags.audit.AuditEventRepository;
 import com.github.milez42.featureflags.audit.AuditEventType;
 import com.github.milez42.featureflags.support.PostgreSqlIntegrationTest;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -113,6 +115,109 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
   }
 
   @Test
+  void createFullProductionRolloutReturnsUnprocessableContent() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/flags")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "flagKey": "checkout-redesign",
+                                  "status": "ENABLED",
+                                  "targetEnvironments": ["production"],
+                                  "killSwitchActive": false,
+                                  "tenantAllowlist": ["tenant-a"],
+                                  "rolloutPercentage": 100
+                                }
+                                """))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(jsonPath("$.flagKey").value("checkout-redesign"))
+        .andExpect(jsonPath("$.allowed").value(false))
+        .andExpect(jsonPath("$.violations[*].code", containsInAnyOrder("FULL_PRODUCTION_ROLLOUT")));
+  }
+
+  @Test
+  void createDisabledFullProductionRolloutReturnsUnprocessableContent() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/flags")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "flagKey": "checkout-redesign",
+                                  "status": "DISABLED",
+                                  "targetEnvironments": ["production"],
+                                  "killSwitchActive": true,
+                                  "rolloutPercentage": 100
+                                }
+                                """))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(jsonPath("$.flagKey").value("checkout-redesign"))
+        .andExpect(jsonPath("$.allowed").value(false))
+        .andExpect(jsonPath("$.violations[*].code", containsInAnyOrder("FULL_PRODUCTION_ROLLOUT")));
+  }
+
+  @Test
+  void createProductionAccessWithoutAllowlistOrReasonReturnsUnprocessableContent()
+      throws Exception {
+    mockMvc
+        .perform(
+            post("/api/flags")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "flagKey": "checkout-redesign",
+                                  "status": "ENABLED",
+                                  "targetEnvironments": ["production"],
+                                  "killSwitchActive": false,
+                                  "tenantAllowlist": [],
+                                  "rolloutPercentage": 25
+                                }
+                                """))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(jsonPath("$.flagKey").value("checkout-redesign"))
+        .andExpect(jsonPath("$.allowed").value(false))
+        .andExpect(
+            jsonPath(
+                "$.violations[*].code",
+                containsInAnyOrder("PRODUCTION_ENABLEMENT_REQUIRES_REASON")));
+
+    assertThat(repository.findById("checkout-redesign")).isEmpty();
+    assertThat(auditEventRepository.findByFlagKey("checkout-redesign")).isEmpty();
+  }
+
+  @Test
+  void createProductionAccessWithoutAllowlistSucceedsWhenReasonProvided() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/flags")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "flagKey": "checkout-redesign",
+                                  "status": "ENABLED",
+                                  "targetEnvironments": ["production"],
+                                  "killSwitchActive": false,
+                                  "tenantAllowlist": [],
+                                  "rolloutPercentage": 25,
+                                  "reason": "Enable a controlled production rollout."
+                                }
+                                """))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.flagKey").value("checkout-redesign"))
+        .andExpect(jsonPath("$.tenantAllowlist").isEmpty())
+        .andExpect(jsonPath("$.rolloutPercentage").value(25));
+
+    assertThat(auditEventRepository.findByFlagKey("checkout-redesign"))
+        .extracting(AuditEvent::eventType)
+        .containsExactly(AuditEventType.FLAG_CREATED);
+  }
+
+  @Test
   void duplicateCreateReturnsConflict() throws Exception {
     createCheckoutFlag();
 
@@ -162,7 +267,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
 
   @Test
   void auditEventsReturnsEventsOldestFirst() throws Exception {
-    createPolicyCompliantCheckoutFlag();
+    createKillSwitchedCheckoutFlag();
 
     mockMvc
         .perform(
@@ -246,7 +351,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
 
   @Test
   void patchWithEmptyTenantAllowlistClearsAllowlist() throws Exception {
-    createPolicyCompliantCheckoutFlag();
+    createKillSwitchedCheckoutFlag();
 
     mockMvc
         .perform(
@@ -295,7 +400,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
 
   @Test
   void patchWithTargetEnvironmentsReplacementRecordsAuditEvent() throws Exception {
-    createPolicyCompliantCheckoutFlag();
+    createKillSwitchedCheckoutFlag();
 
     mockMvc
         .perform(
@@ -322,7 +427,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
 
   @Test
   void patchStatusRecordsEnabledAndDisabledEvents() throws Exception {
-    createPolicyCompliantCheckoutFlag();
+    createKillSwitchedCheckoutFlag();
 
     mockMvc
         .perform(
@@ -394,7 +499,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
 
   @Test
   void patchWithUnchangedValuesDoesNotRecordAuditEvent() throws Exception {
-    createPolicyCompliantCheckoutFlag();
+    createKillSwitchedCheckoutFlag();
 
     mockMvc
         .perform(
@@ -1319,7 +1424,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
   }
 
   /** Creates a checkout flag with production targeting and an inactive kill switch. */
-  private void createCheckoutFlag() throws Exception {
+  private void createCheckoutFlag() {
     createFlag(
         "checkout-redesign",
         "ENABLED",
@@ -1329,7 +1434,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
         100);
   }
 
-  private void createPolicyCompliantCheckoutFlag() throws Exception {
+  private void createKillSwitchedCheckoutFlag() {
     createFlag(
         "checkout-redesign",
         "ENABLED",
@@ -1345,27 +1450,31 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
       Set<String> targetEnvironments,
       boolean killSwitchActive,
       Set<String> tenantAllowlist,
-      int rolloutPercentage)
-      throws Exception {
-    mockMvc
-        .perform(
-            post("/api/flags")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        Map.of(
-                            "flagKey",
-                            flagKey,
-                            "status",
-                            status,
-                            "targetEnvironments",
-                            targetEnvironments,
-                            "killSwitchActive",
-                            killSwitchActive,
-                            "tenantAllowlist",
-                            tenantAllowlist,
-                            "rolloutPercentage",
-                            rolloutPercentage))))
-        .andExpect(status().isCreated());
+      int rolloutPercentage) {
+    FeatureFlagStatus featureFlagStatus = FeatureFlagStatus.valueOf(status);
+    Set<TargetEnvironmentEntity> targetEnvironmentEntities =
+        targetEnvironments.stream().map(TargetEnvironmentEntity::new).collect(Collectors.toSet());
+    Set<TenantAllowlistEntity> tenantAllowlistEntities =
+        tenantAllowlist.stream().map(TenantAllowlistEntity::new).collect(Collectors.toSet());
+    repository.save(
+        FeatureFlagEntity.create(
+            flagKey,
+            featureFlagStatus,
+            targetEnvironmentEntities,
+            killSwitchActive,
+            tenantAllowlistEntities,
+            rolloutPercentage));
+    auditEventRepository.save(
+        AuditEvent.newEvent(
+            flagKey,
+            AuditEventType.FLAG_CREATED,
+            OPERATOR_USERNAME,
+            new AuditEventDetails.FlagCreatedDetails(
+                featureFlagStatus,
+                rolloutPercentage,
+                killSwitchActive,
+                targetEnvironments,
+                tenantAllowlist),
+            Instant.EPOCH));
   }
 }

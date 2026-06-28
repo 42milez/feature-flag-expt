@@ -245,7 +245,7 @@ docker compose down --remove-orphans
 
 | Method | Path | Role | Purpose | Impl |
 |---|---|---|---|---|
-| `POST` | `/api/flags` | operator | Create a flag | Java |
+| `POST` | `/api/flags` | operator | Create a flag (rollout policy enforced) | Java |
 | `GET` | `/api/flags/{flagKey}` | reader / operator | Get a flag | Java |
 | `PATCH` | `/api/flags/{flagKey}` | operator | Update a flag (rollout policy enforced) | Java |
 | `POST` | `/api/evaluate` | reader / operator | Evaluate a flag for a context | Java |

@@ -33,4 +33,7 @@ public record CreateFeatureFlagRequest(
         @NotNull
         @Min(0)
         @Max(100)
-        Integer rolloutPercentage) {}
+        Integer rolloutPercentage,
+    @Schema(description = "Business reason for enabling production access without an allowlist.")
+        @Size(max = 1000)
+        String reason) {}
