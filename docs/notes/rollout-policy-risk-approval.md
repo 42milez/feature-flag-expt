@@ -22,6 +22,23 @@ high-risk change + no approval = policy violation
 That shape should not become the long-term trust boundary. Client-supplied policy
 context is only a placeholder until the server has durable sources of truth.
 
+## Current Create Enforcement Mitigation
+
+Flag creation now enforces rollout policy before persistence. The create request
+accepts `reason` so callers can provide business context when enabling production
+access without a tenant allowlist, but it does not accept `highRisk` or
+`approvalGranted` while those values remain caller-controlled placeholders.
+
+Create validation uses the shared rollout policy semantics from a synthetic
+non-serving baseline: disabled, no target environments, kill switch active, empty
+tenant allowlist, and 0% rollout. As a result, a direct 0% to 100% production
+rollout configuration is rejected even when the requested flag is disabled or
+kill-switched. Tests that need otherwise-invalid historical or precondition states
+seed those states directly instead of routing setup through `POST /api/flags`.
+
+Server-derived risk classification and server-verified approval state remain
+follow-up work.
+
 ## Why highRisk Should Be Derived Server-Side
 
 `highRisk` decides whether additional approval requirements apply. If a caller can

@@ -60,6 +60,15 @@ public class FeatureFlagService {
             tenantAllowlist(request.tenantAllowlist()),
             request.rolloutPercentage());
 
+    RolloutPolicyValidationResult policyResult =
+        rolloutPolicyValidator.validate(
+            createBaseline(flagKey),
+            toDomain(entity),
+            new RolloutPolicyContext(false, false, request.reason()));
+    if (!policyResult.allowed()) {
+      throw new RolloutPolicyViolationException(policyResult);
+    }
+
     FeatureFlagEntity saved = repository.save(entity);
     auditEventService.record(
         saved.flagKey(),
@@ -157,6 +166,10 @@ public class FeatureFlagService {
     return repository
         .findById(normalizedFlagKey)
         .orElseThrow(() -> new FeatureFlagNotFoundException(normalizedFlagKey));
+  }
+
+  private FeatureFlag createBaseline(String flagKey) {
+    return new FeatureFlag(flagKey, FeatureFlagStatus.DISABLED, Set.of(), true, Set.of(), 0);
   }
 
   private FeatureFlag toDomain(FeatureFlagEntity entity) {

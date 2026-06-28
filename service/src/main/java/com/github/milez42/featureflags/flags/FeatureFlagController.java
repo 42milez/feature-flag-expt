@@ -51,7 +51,12 @@ public class FeatureFlagController {
     @ApiResponse(
         responseCode = "409",
         description = "Feature flag already exists",
-        content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+        content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+    @ApiResponse(
+        responseCode = "422",
+        description = "Rollout policy violation",
+        content =
+            @Content(schema = @Schema(implementation = RolloutPolicyValidationResponse.class)))
   })
   public ResponseEntity<FeatureFlagResponse> create(
       @Valid @RequestBody CreateFeatureFlagRequest request) {
