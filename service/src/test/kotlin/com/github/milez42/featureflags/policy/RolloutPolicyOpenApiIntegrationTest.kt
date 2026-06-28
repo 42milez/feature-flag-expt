@@ -69,6 +69,16 @@ class RolloutPolicyOpenApiIntegrationTest {
                     .value(1000)
             )
             .andExpect(
+                jsonPath("$.components.schemas.RolloutPolicyValidationRequest.properties.highRisk")
+                    .doesNotExist()
+            )
+            .andExpect(
+                jsonPath(
+                        "$.components.schemas.RolloutPolicyValidationRequest.properties.approvalGranted"
+                    )
+                    .doesNotExist()
+            )
+            .andExpect(
                 jsonPath("$.components.schemas.RolloutPolicyViolation.properties.code").exists()
             )
             .andExpect(

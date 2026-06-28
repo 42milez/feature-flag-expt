@@ -65,6 +65,8 @@ Format for each entry (add under the relevant category heading, creating the hea
   authentication before supporting browser-authenticated API clients.
 - **[Security]** Derive audit actor identity from trusted server-side authentication context, not
   request payloads, so callers cannot forge who performed a state-changing operation.
+- **[Security]** Derive rollout risk and approval satisfaction from trusted server-side state, not
+  request payloads, so callers cannot self-authorize protected rollout changes.
 - **[Security]** When a vulnerability gate reports fixed high/critical findings in runtime
   dependencies or image packages, update the dependency or base image before adding ignore entries,
   so the gate remains a real protection rather than a noise filter.

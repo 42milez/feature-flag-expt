@@ -5,10 +5,13 @@ import com.github.milez42.featureflags.audit.AuditEventResponse;
 import com.github.milez42.featureflags.audit.AuditEventService;
 import com.github.milez42.featureflags.audit.AuditEventType;
 import com.github.milez42.featureflags.observability.FeatureFlagMetrics;
+import com.github.milez42.featureflags.policy.ApprovalState;
+import com.github.milez42.featureflags.policy.RiskAssessment;
 import com.github.milez42.featureflags.policy.RolloutPolicyContext;
 import com.github.milez42.featureflags.policy.RolloutPolicyValidationResult;
 import com.github.milez42.featureflags.policy.RolloutPolicyValidator;
 import com.github.milez42.featureflags.policy.RolloutPolicyViolationException;
+import com.github.milez42.featureflags.policy.RolloutRiskClassifier;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -28,6 +31,7 @@ public class FeatureFlagService {
   private final FeatureFlagRepository repository;
   private final FeatureFlagEvaluator evaluator;
   private final RolloutPolicyValidator rolloutPolicyValidator;
+  private final RolloutRiskClassifier rolloutRiskClassifier;
   private final AuditEventService auditEventService;
   private final FeatureFlagMetrics metrics;
 
@@ -35,11 +39,13 @@ public class FeatureFlagService {
       FeatureFlagRepository repository,
       FeatureFlagEvaluator evaluator,
       RolloutPolicyValidator rolloutPolicyValidator,
+      RolloutRiskClassifier rolloutRiskClassifier,
       AuditEventService auditEventService,
       FeatureFlagMetrics metrics) {
     this.repository = repository;
     this.evaluator = evaluator;
     this.rolloutPolicyValidator = rolloutPolicyValidator;
+    this.rolloutRiskClassifier = rolloutRiskClassifier;
     this.auditEventService = auditEventService;
     this.metrics = metrics;
   }
@@ -64,7 +70,8 @@ public class FeatureFlagService {
         rolloutPolicyValidator.validate(
             createBaseline(flagKey),
             toDomain(entity),
-            new RolloutPolicyContext(false, false, request.reason()));
+            new RolloutPolicyContext(
+                RiskAssessment.low(), new ApprovalState.NotRequired(), request.reason()));
     if (!policyResult.allowed()) {
       throw new RolloutPolicyViolationException(policyResult);
     }
@@ -124,12 +131,14 @@ public class FeatureFlagService {
                 ? existing.rolloutPercentage()
                 : request.rolloutPercentage());
 
+    FeatureFlag currentFlag = toDomain(existing);
+    FeatureFlag proposedFlag = toDomain(updated);
+    RiskAssessment risk = rolloutRiskClassifier.classify(currentFlag, proposedFlag);
     RolloutPolicyValidationResult policyResult =
         rolloutPolicyValidator.validate(
-            toDomain(existing),
-            toDomain(updated),
-            new RolloutPolicyContext(
-                request.highRisk(), request.approvalGranted(), request.reason()));
+            currentFlag,
+            proposedFlag,
+            new RolloutPolicyContext(risk, approvalState(risk), request.reason()));
     if (!policyResult.allowed()) {
       throw new RolloutPolicyViolationException(policyResult);
     }
@@ -170,6 +179,12 @@ public class FeatureFlagService {
 
   private FeatureFlag createBaseline(String flagKey) {
     return new FeatureFlag(flagKey, FeatureFlagStatus.DISABLED, Set.of(), true, Set.of(), 0);
+  }
+
+  private ApprovalState approvalState(RiskAssessment risk) {
+    return risk.requiresApproval()
+        ? new ApprovalState.RequiredButMissing()
+        : new ApprovalState.NotRequired();
   }
 
   private FeatureFlag toDomain(FeatureFlagEntity entity) {

@@ -6,6 +6,7 @@ import com.github.milez42.featureflags.flags.Environment;
 import com.github.milez42.featureflags.flags.FeatureFlag;
 import com.github.milez42.featureflags.flags.FeatureFlagStatus;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class RolloutPolicyValidatorTest {
@@ -77,8 +78,7 @@ class RolloutPolicyValidatorTest {
     FeatureFlag current = flag(Set.of("staging"), 25);
     FeatureFlag proposed = flag(Set.of("staging"), 50);
 
-    RolloutPolicyValidationResult result =
-        validator.validate(current, proposed, new RolloutPolicyContext(true, false, null));
+    RolloutPolicyValidationResult result = validator.validate(current, proposed, highRiskContext());
 
     assertThat(result.violations())
         .extracting(RolloutPolicyViolation::code)
@@ -94,7 +94,7 @@ class RolloutPolicyValidatorTest {
         flag(FeatureFlagStatus.ENABLED, Set.of("production"), false, Set.of(), 0);
 
     RolloutPolicyValidationResult result =
-        validator.validate(current, proposed, new RolloutPolicyContext(false, false, " "));
+        validator.validate(current, proposed, lowRiskContext(" "));
 
     assertThat(result.violations())
         .extracting(RolloutPolicyViolation::code)
@@ -110,10 +110,7 @@ class RolloutPolicyValidatorTest {
         flag(FeatureFlagStatus.ENABLED, Set.of("production"), false, Set.of(), 0);
 
     RolloutPolicyValidationResult result =
-        validator.validate(
-            current,
-            proposed,
-            new RolloutPolicyContext(false, false, "valid business justification"));
+        validator.validate(current, proposed, lowRiskContext("valid business justification"));
 
     assertThat(result.allowed()).isTrue();
     assertThat(result.violations()).isEmpty();
@@ -126,8 +123,7 @@ class RolloutPolicyValidatorTest {
     FeatureFlag proposed =
         flag(FeatureFlagStatus.ENABLED, Set.of("production"), false, Set.of(), 100);
 
-    RolloutPolicyValidationResult result =
-        validator.validate(current, proposed, new RolloutPolicyContext(true, false, null));
+    RolloutPolicyValidationResult result = validator.validate(current, proposed, highRiskContext());
 
     assertThat(result.violations())
         .extracting(RolloutPolicyViolation::code)
@@ -147,6 +143,58 @@ class RolloutPolicyValidatorTest {
 
     assertThat(result.allowed()).isTrue();
     assertThat(result.violations()).isEmpty();
+    assertInvariant(result);
+  }
+
+  @Test
+  void directZeroToFullProductionUpdateReturnsFullRolloutAndHighRiskViolations() {
+    FeatureFlag current =
+        flag(FeatureFlagStatus.ENABLED, Set.of("production"), false, Set.of("tenant-a"), 0);
+    FeatureFlag proposed =
+        flag(FeatureFlagStatus.ENABLED, Set.of("production"), false, Set.of("tenant-a"), 100);
+
+    RolloutPolicyValidationResult result = validator.validate(current, proposed, highRiskContext());
+
+    assertThat(result.violations())
+        .extracting(RolloutPolicyViolation::code)
+        .containsExactly("FULL_PRODUCTION_ROLLOUT", "HIGH_RISK_REQUIRES_APPROVAL");
+    assertInvariant(result);
+  }
+
+  @Test
+  void stagedProductionRolloutChangesDoNotReturnFullProductionRollout() {
+    FeatureFlag zero = flag(0, true);
+    FeatureFlag fifty = flag(50, true);
+    FeatureFlag full = flag(100, true);
+
+    assertThat(validate(zero, fifty).violations())
+        .extracting(RolloutPolicyViolation::code)
+        .doesNotContain("FULL_PRODUCTION_ROLLOUT");
+    assertThat(validate(fifty, full).violations())
+        .extracting(RolloutPolicyViolation::code)
+        .doesNotContain("FULL_PRODUCTION_ROLLOUT");
+  }
+
+  @Test
+  void productionEnablementRequiresReasonEvenWhenApprovalIsVerified() {
+    FeatureFlag current =
+        flag(FeatureFlagStatus.DISABLED, Set.of("production"), false, Set.of(), 0);
+    FeatureFlag proposed =
+        flag(FeatureFlagStatus.ENABLED, Set.of("production"), false, Set.of(), 0);
+
+    RolloutPolicyValidationResult result =
+        validator.validate(
+            current,
+            proposed,
+            new RolloutPolicyContext(
+                highRiskAssessment(),
+                new ApprovalState.Verified(
+                    UUID.fromString("00000000-0000-0000-0000-000000000001"), "approver"),
+                null));
+
+    assertThat(result.violations())
+        .extracting(RolloutPolicyViolation::code)
+        .containsExactly("PRODUCTION_ENABLEMENT_REQUIRES_REASON");
     assertInvariant(result);
   }
 
@@ -191,7 +239,20 @@ class RolloutPolicyValidatorTest {
   }
 
   private RolloutPolicyValidationResult validate(FeatureFlag current, FeatureFlag proposed) {
-    return validator.validate(current, proposed, new RolloutPolicyContext(false, false, null));
+    return validator.validate(current, proposed, lowRiskContext(null));
+  }
+
+  private RolloutPolicyContext lowRiskContext(String reason) {
+    return new RolloutPolicyContext(RiskAssessment.low(), new ApprovalState.NotRequired(), reason);
+  }
+
+  private RolloutPolicyContext highRiskContext() {
+    return new RolloutPolicyContext(
+        highRiskAssessment(), new ApprovalState.RequiredButMissing(), null);
+  }
+
+  private RiskAssessment highRiskAssessment() {
+    return new RiskAssessment(RiskLevel.HIGH, Set.of(RiskReason.LARGE_PRODUCTION_ROLLOUT_INCREASE));
   }
 
   private void assertInvariant(RolloutPolicyValidationResult result) {

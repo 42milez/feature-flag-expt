@@ -103,6 +103,12 @@ class OpenApiIntegrationTest {
                         "$.components.schemas.UpdateFeatureFlagRequest.properties.tenantAllowlist.items.minLength")
                     .value(1))
             .andExpect(
+                jsonPath("$.components.schemas.UpdateFeatureFlagRequest.properties.highRisk")
+                    .doesNotExist())
+            .andExpect(
+                jsonPath("$.components.schemas.UpdateFeatureFlagRequest.properties.approvalGranted")
+                    .doesNotExist())
+            .andExpect(
                 jsonPath("$.components.schemas.AuditEventResponse.properties.actor").exists())
             .andReturn();
 

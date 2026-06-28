@@ -30,18 +30,6 @@ public record UpdateFeatureFlagRequest(
         @Min(0)
         @Max(100)
         Integer rolloutPercentage,
-    @Schema(
-            description =
-                "Whether this change is considered operationally high risk. Null is treated as false.")
-        // TODO: Replace with server-derived risk classification; see
-        // docs/notes/rollout-policy-risk-approval.md.
-        Boolean highRisk,
-    @Schema(
-            description =
-                "Whether the required approval for a high-risk change was granted. Null is treated as false.")
-        // TODO: Replace with server-verified approval state; see
-        // docs/notes/rollout-policy-risk-approval.md.
-        Boolean approvalGranted,
     @Schema(description = "Business reason for enabling production access without an allowlist.")
         @Size(max = 1000)
         String reason) {}

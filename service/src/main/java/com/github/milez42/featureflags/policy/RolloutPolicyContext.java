@@ -1,12 +1,11 @@
 package com.github.milez42.featureflags.policy;
 
-public record RolloutPolicyContext(Boolean highRisk, Boolean approvalGranted, String reason) {
-  public boolean isHighRisk() {
-    return Boolean.TRUE.equals(highRisk);
-  }
+import java.util.Objects;
 
-  public boolean isApprovalGranted() {
-    return Boolean.TRUE.equals(approvalGranted);
+public record RolloutPolicyContext(RiskAssessment risk, ApprovalState approval, String reason) {
+  public RolloutPolicyContext {
+    Objects.requireNonNull(risk, "risk must not be null");
+    Objects.requireNonNull(approval, "approval must not be null");
   }
 
   public boolean hasReason() {

@@ -11,7 +11,12 @@ import org.junit.jupiter.api.Test
 
 class RolloutPolicyValidationServiceTest {
   private val featureFlagService = mockk<FeatureFlagService>()
-  private val service = RolloutPolicyValidationService(featureFlagService, RolloutPolicyValidator())
+  private val service =
+      RolloutPolicyValidationService(
+          featureFlagService,
+          RolloutPolicyValidator(),
+          RolloutRiskClassifier(),
+      )
 
   @Test
   fun `validate returns response dto mapped from validator result`() {
@@ -30,8 +35,6 @@ class RolloutPolicyValidationServiceTest {
             "checkout-redesign",
             RolloutPolicyValidationRequest(
                 proposedChange = ProposedFeatureFlagChange(rolloutPercentage = 100),
-                highRisk = true,
-                approvalGranted = false,
             ),
         )
 
@@ -45,5 +48,31 @@ class RolloutPolicyValidationServiceTest {
             "HIGH_RISK_REQUIRES_APPROVAL",
             "PRODUCTION_ENABLEMENT_REQUIRES_REASON",
         )
+  }
+
+  @Test
+  fun `validate derives high-risk approval requirement from proposed change`() {
+    every { featureFlagService.get("checkout-redesign") } returns
+        FeatureFlagResponse(
+            "checkout-redesign",
+            FeatureFlagStatus.ENABLED,
+            setOf("production"),
+            false,
+            setOf("tenant-a"),
+            0,
+        )
+
+    val response =
+        service.validate(
+            "checkout-redesign",
+            RolloutPolicyValidationRequest(
+                proposedChange = ProposedFeatureFlagChange(rolloutPercentage = 80),
+            ),
+        )
+
+    assertThat(response.allowed()).isFalse()
+    assertThat(response.violations())
+        .extracting<String> { it.code() }
+        .containsExactly("HIGH_RISK_REQUIRES_APPROVAL")
   }
 }
