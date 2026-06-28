@@ -13,20 +13,6 @@ data class RolloutPolicyValidationRequest(
     @field:Valid
     val proposedChange: ProposedFeatureFlagChange,
     @field:Schema(
-        description =
-            "Whether this change is considered operationally high risk. Null is treated as false."
-    )
-    // TODO: Replace with server-derived risk classification; see
-    // docs/notes/rollout-policy-risk-approval.md.
-    val highRisk: Boolean? = false,
-    @field:Schema(
-        description =
-            "Whether the required approval for a high-risk change was granted. Null is treated as false."
-    )
-    // TODO: Replace with server-verified approval state; see
-    // docs/notes/rollout-policy-risk-approval.md.
-    val approvalGranted: Boolean? = false,
-    @field:Schema(
         description = "Business reason for enabling production access without an allowlist."
     )
     @field:Size(max = 1000)

@@ -533,9 +533,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
                 .content(
                     """
                                 {
-                                  "rolloutPercentage": 100,
-                                  "highRisk": true,
-                                  "approvalGranted": false
+                                  "rolloutPercentage": 100
                                 }
                                 """))
         .andExpect(status().isUnprocessableContent())
@@ -562,7 +560,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
   }
 
   @Test
-  void patchHighRiskUpdateSucceedsWhenApprovalGranted() throws Exception {
+  void patchServerDerivedLowRiskStagingOnlyUpdateSucceedsWithoutApproval() throws Exception {
     createFlag("checkout-redesign", "ENABLED", Set.of("staging"), false, Set.of("tenant-a"), 25);
 
     mockMvc
@@ -572,9 +570,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
                 .content(
                     """
                                 {
-                                  "rolloutPercentage": 50,
-                                  "highRisk": true,
-                                  "approvalGranted": true
+                                  "rolloutPercentage": 50
                                 }
                                 """))
         .andExpect(status().isOk())
@@ -583,6 +579,55 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
     assertThat(auditEventRepository.findByFlagKey("checkout-redesign"))
         .extracting(AuditEvent::eventType)
         .containsExactly(AuditEventType.FLAG_CREATED, AuditEventType.ROLLOUT_PERCENTAGE_CHANGED);
+  }
+
+  @Test
+  void patchServerDerivedHighRiskUpdateWithoutApprovalFailsClosed() throws Exception {
+    createFlag("checkout-redesign", "ENABLED", Set.of("production"), false, Set.of("tenant-a"), 0);
+
+    mockMvc
+        .perform(
+            patch("/api/flags/checkout-redesign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                                {
+                                  "rolloutPercentage": 80
+                                }
+                                """))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(jsonPath("$.flagKey").value("checkout-redesign"))
+        .andExpect(jsonPath("$.allowed").value(false))
+        .andExpect(
+            jsonPath("$.violations[*].code", containsInAnyOrder("HIGH_RISK_REQUIRES_APPROVAL")));
+
+    mockMvc
+        .perform(get("/api/flags/checkout-redesign"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.rolloutPercentage").value(0));
+
+    assertThat(auditEventRepository.findByFlagKey("checkout-redesign"))
+        .extracting(AuditEvent::eventType)
+        .containsExactly(AuditEventType.FLAG_CREATED);
+  }
+
+  @Test
+  void patchUnknownApprovalFieldsDoNotAuthorizeHighRiskUpdate() throws Exception {
+    createFlag("checkout-redesign", "ENABLED", Set.of("production"), false, Set.of("tenant-a"), 0);
+
+    mockMvc
+        .perform(
+            patch("/api/flags/checkout-redesign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        Map.of(
+                            "rolloutPercentage", 80, "highRisk", false, "approvalGranted", true))))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(jsonPath("$.flagKey").value("checkout-redesign"))
+        .andExpect(jsonPath("$.allowed").value(false))
+        .andExpect(
+            jsonPath("$.violations[*].code", containsInAnyOrder("HIGH_RISK_REQUIRES_APPROVAL")));
   }
 
   @Test
@@ -1223,9 +1268,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
                                 {
                                   "proposedChange": {
                                     "rolloutPercentage": 100
-                                  },
-                                  "highRisk": true,
-                                  "approvalGranted": false
+                                  }
                                 }
                                 """))
         .andExpect(status().isOk())
@@ -1355,7 +1398,6 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
                                     "killSwitchActive": true,
                                     "rolloutPercentage": 0
                                   },
-                                  "approvalGranted": true,
                                   "reason": "staged rollout validation"
                                 }
                                 """))

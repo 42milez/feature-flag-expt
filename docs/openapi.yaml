@@ -495,18 +495,6 @@ components:
         proposedChange:
           $ref: "#/components/schemas/ProposedFeatureFlagChange"
           description: Partial change to validate.
-        highRisk:
-          type:
-          - boolean
-          - "null"
-          description: Whether this change is considered operationally high risk.
-            Null is treated as false.
-        approvalGranted:
-          type:
-          - boolean
-          - "null"
-          description: Whether the required approval for a high-risk change was granted.
-            Null is treated as false.
         reason:
           type:
           - string
@@ -781,14 +769,6 @@ components:
           example: 50
           maximum: 100
           minimum: 0
-        highRisk:
-          type: boolean
-          description: Whether this change is considered operationally high risk.
-            Null is treated as false.
-        approvalGranted:
-          type: boolean
-          description: Whether the required approval for a high-risk change was granted.
-            Null is treated as false.
         reason:
           type: string
           description: Business reason for enabling production access without an allowlist.

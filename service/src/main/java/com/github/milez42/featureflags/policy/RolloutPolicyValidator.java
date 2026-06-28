@@ -2,7 +2,6 @@ package com.github.milez42.featureflags.policy;
 
 import com.github.milez42.featureflags.flags.Environment;
 import com.github.milez42.featureflags.flags.FeatureFlag;
-import com.github.milez42.featureflags.flags.FeatureFlagStatus;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -16,33 +15,32 @@ public class RolloutPolicyValidator {
     Objects.requireNonNull(proposed, "proposed must not be null");
     Objects.requireNonNull(context, "context must not be null");
 
-    String production = Environment.PRODUCTION.value();
     List<RolloutPolicyViolation> violations = new ArrayList<>();
 
     // The current implementation catches only direct 0 -> 100 production rollouts.
     // Partial-to-full jumps should be handled by a future step-size policy if needed.
     if (current.rolloutPercentage() == 0
         && proposed.rolloutPercentage() == 100
-        && proposed.targetEnvironments().contains(production)) {
+        && proposed.targetEnvironments().contains(Environment.PRODUCTION.value())) {
       violations.add(fullProductionRollout());
     }
 
-    if (context.isHighRisk() && !context.isApprovalGranted()) {
+    if (context.risk().requiresApproval() && !approvalSatisfied(context.approval())) {
       violations.add(highRiskRequiresApproval());
     }
 
-    if (enablesProductionWithoutAllowlist(proposed, production) && !context.hasReason()) {
+    if (ProductionExposure.canServeProductionWithoutAllowlist(proposed) && !context.hasReason()) {
       violations.add(productionEnablementRequiresReason());
     }
 
     return RolloutPolicyValidationResult.from(current.flagKey(), violations);
   }
 
-  private boolean enablesProductionWithoutAllowlist(FeatureFlag flag, String production) {
-    return flag.status() == FeatureFlagStatus.ENABLED
-        && flag.targetEnvironments().contains(production)
-        && !flag.killSwitchActive()
-        && flag.tenantAllowlist().isEmpty();
+  private boolean approvalSatisfied(ApprovalState approval) {
+    return switch (approval) {
+      case ApprovalState.Verified _ -> true;
+      case ApprovalState.NotRequired _, ApprovalState.RequiredButMissing _ -> false;
+    };
   }
 
   private RolloutPolicyViolation fullProductionRollout() {
