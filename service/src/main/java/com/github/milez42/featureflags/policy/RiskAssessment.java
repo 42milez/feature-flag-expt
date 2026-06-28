@@ -17,6 +17,8 @@ public record RiskAssessment(RiskLevel level, Set<RiskReason> reasons) {
       throw new IllegalArgumentException("high risk must include at least one reason");
     }
 
+    // Use EnumSet instead of Set.copyOf to keep the compact enum-specific storage, then wrap the
+    // defensive copy so callers cannot mutate stored risk reasons.
     reasons = reasons.isEmpty() ? Set.of() : Collections.unmodifiableSet(EnumSet.copyOf(reasons));
   }
 
