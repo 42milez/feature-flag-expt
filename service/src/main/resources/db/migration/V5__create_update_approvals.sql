@@ -14,38 +14,23 @@ create table feature_flag_update_approvals (
     used_at timestamptz
 );
 
-do $$
-declare
-    constraint_name text;
-begin
-    select con.conname
-    into constraint_name
-    from pg_constraint con
-    join pg_class rel on rel.oid = con.conrelid
-    join pg_namespace nsp on nsp.oid = rel.relnamespace
-    where nsp.nspname = 'public'
-      and rel.relname = 'audit_events'
-      and con.contype = 'c'
-      and pg_get_constraintdef(con.oid) like '%event_type%';
+alter table audit_events
+    drop constraint audit_events_event_type_check;
 
-    if constraint_name is not null then
-        execute format('alter table audit_events drop constraint %I', constraint_name);
-    end if;
-end $$;
-
-alter table audit_events add constraint audit_events_event_type_check check (
-    event_type in (
-        'FLAG_CREATED',
-        'FLAG_ENABLED',
-        'FLAG_DISABLED',
-        'ROLLOUT_PERCENTAGE_CHANGED',
-        'TARGET_ENVIRONMENTS_CHANGED',
-        'TENANT_ALLOWLIST_CHANGED',
-        'KILL_SWITCH_ENABLED',
-        'KILL_SWITCH_DISABLED',
-        'APPROVAL_REQUESTED',
-        'APPROVAL_APPROVED',
-        'APPROVAL_REJECTED',
-        'APPROVAL_USED'
-    )
-);
+alter table audit_events
+    add constraint audit_events_event_type_check check (
+        event_type in (
+            'FLAG_CREATED',
+            'FLAG_ENABLED',
+            'FLAG_DISABLED',
+            'ROLLOUT_PERCENTAGE_CHANGED',
+            'TARGET_ENVIRONMENTS_CHANGED',
+            'TENANT_ALLOWLIST_CHANGED',
+            'KILL_SWITCH_ENABLED',
+            'KILL_SWITCH_DISABLED',
+            'APPROVAL_REQUESTED',
+            'APPROVAL_APPROVED',
+            'APPROVAL_REJECTED',
+            'APPROVAL_USED'
+        )
+    );

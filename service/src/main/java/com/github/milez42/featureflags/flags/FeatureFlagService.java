@@ -123,7 +123,6 @@ public class FeatureFlagService {
     FeatureFlagEntity existing = findEntity(flagKey);
     FeatureFlag currentFlag = toDomain(existing);
     FeatureFlag proposedFlag = updateResolver.resolve(currentFlag, request);
-    FeatureFlagEntity updated = toEntity(proposedFlag);
     RiskAssessment risk = rolloutRiskClassifier.classify(currentFlag, proposedFlag);
     ApprovalState approvalState =
         risk.requiresApproval()
@@ -153,6 +152,7 @@ public class FeatureFlagService {
       }
     }
 
+    FeatureFlagEntity updated = toEntity(proposedFlag);
     FeatureFlagEntity saved = repository.save(updated);
     recordUpdateEvents(existing, saved);
     metrics.recordUpdate(saved.flagKey());
