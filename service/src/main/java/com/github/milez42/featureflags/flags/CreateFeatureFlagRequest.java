@@ -1,5 +1,8 @@
 package com.github.milez42.featureflags.flags;
 
+import static com.github.milez42.featureflags.flags.FeatureFlagConstraints.FLAG_KEY_MAX_LENGTH;
+import static com.github.milez42.featureflags.flags.FeatureFlagConstraints.FLAG_KEY_MIN_LENGTH;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -11,9 +14,12 @@ import java.util.Set;
 
 @Schema(description = "Request to create a feature flag.")
 public record CreateFeatureFlagRequest(
-    @Schema(description = "Stable feature flag key.", example = "checkout-redesign", minLength = 1)
+    @Schema(
+            description = "Stable feature flag key.",
+            example = "checkout-redesign",
+            minLength = FLAG_KEY_MIN_LENGTH)
         @NotBlank
-        @Size(max = 200)
+        @Size(max = FLAG_KEY_MAX_LENGTH)
         String flagKey,
     @Schema(description = "Initial flag status.", example = "ENABLED") @NotNull
         FeatureFlagStatus status,

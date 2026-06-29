@@ -1,5 +1,8 @@
 package com.github.milez42.featureflags.approval;
 
+import static com.github.milez42.featureflags.flags.FeatureFlagConstraints.FLAG_KEY_MAX_LENGTH;
+import static com.github.milez42.featureflags.flags.FeatureFlagConstraints.FLAG_KEY_MIN_LENGTH;
+
 import com.github.milez42.featureflags.policy.RolloutPolicyValidationResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -59,10 +62,10 @@ public class UpdateApprovalController {
       @Parameter(
               description = "Feature flag key.",
               example = "checkout-redesign",
-              schema = @Schema(minLength = 1, maxLength = 200))
+              schema = @Schema(minLength = FLAG_KEY_MIN_LENGTH, maxLength = FLAG_KEY_MAX_LENGTH))
           @PathVariable
           @NotBlank
-          @Size(max = 200)
+          @Size(max = FLAG_KEY_MAX_LENGTH)
           String flagKey,
       @Valid @RequestBody RequestUpdateApprovalRequest request) {
     ApprovalRequestResponse response = service.requestApproval(flagKey, request);
@@ -84,7 +87,8 @@ public class UpdateApprovalController {
     @ApiResponse(responseCode = "409", description = "Approval request already decided")
   })
   public ApprovalRequestResponse approve(
-      @PathVariable @NotBlank @Size(max = 200) String flagKey, @PathVariable UUID approvalId) {
+      @PathVariable @NotBlank @Size(max = FLAG_KEY_MAX_LENGTH) String flagKey,
+      @PathVariable UUID approvalId) {
     return service.approve(flagKey, approvalId);
   }
 
@@ -100,7 +104,8 @@ public class UpdateApprovalController {
     @ApiResponse(responseCode = "409", description = "Approval request already decided")
   })
   public ApprovalRequestResponse reject(
-      @PathVariable @NotBlank @Size(max = 200) String flagKey, @PathVariable UUID approvalId) {
+      @PathVariable @NotBlank @Size(max = FLAG_KEY_MAX_LENGTH) String flagKey,
+      @PathVariable UUID approvalId) {
     return service.reject(flagKey, approvalId);
   }
 
@@ -115,7 +120,8 @@ public class UpdateApprovalController {
     @ApiResponse(responseCode = "404", description = "Approval request not found")
   })
   public ApprovalRequestResponse get(
-      @PathVariable @NotBlank @Size(max = 200) String flagKey, @PathVariable UUID approvalId) {
+      @PathVariable @NotBlank @Size(max = FLAG_KEY_MAX_LENGTH) String flagKey,
+      @PathVariable UUID approvalId) {
     return service.get(flagKey, approvalId);
   }
 }

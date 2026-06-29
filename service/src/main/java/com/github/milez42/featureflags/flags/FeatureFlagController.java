@@ -1,5 +1,8 @@
 package com.github.milez42.featureflags.flags;
 
+import static com.github.milez42.featureflags.flags.FeatureFlagConstraints.FLAG_KEY_MAX_LENGTH;
+import static com.github.milez42.featureflags.flags.FeatureFlagConstraints.FLAG_KEY_MIN_LENGTH;
+
 import com.github.milez42.featureflags.audit.AuditEventResponse;
 import com.github.milez42.featureflags.policy.RolloutPolicyValidationResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -80,10 +83,10 @@ public class FeatureFlagController {
       @Parameter(
               description = "Feature flag key.",
               example = "checkout-redesign",
-              schema = @Schema(minLength = 1, maxLength = 200))
+              schema = @Schema(minLength = FLAG_KEY_MIN_LENGTH, maxLength = FLAG_KEY_MAX_LENGTH))
           @PathVariable
           @NotBlank
-          @Size(max = 200)
+          @Size(max = FLAG_KEY_MAX_LENGTH)
           String flagKey) {
     return service.get(flagKey);
   }
@@ -106,10 +109,10 @@ public class FeatureFlagController {
       @Parameter(
               description = "Feature flag key.",
               example = "checkout-redesign",
-              schema = @Schema(minLength = 1, maxLength = 200))
+              schema = @Schema(minLength = FLAG_KEY_MIN_LENGTH, maxLength = FLAG_KEY_MAX_LENGTH))
           @PathVariable
           @NotBlank
-          @Size(max = 200)
+          @Size(max = FLAG_KEY_MAX_LENGTH)
           String flagKey) {
     return service.auditEvents(flagKey);
   }
@@ -139,10 +142,10 @@ public class FeatureFlagController {
       @Parameter(
               description = "Feature flag key.",
               example = "checkout-redesign",
-              schema = @Schema(minLength = 1, maxLength = 200))
+              schema = @Schema(minLength = FLAG_KEY_MIN_LENGTH, maxLength = FLAG_KEY_MAX_LENGTH))
           @PathVariable
           @NotBlank
-          @Size(max = 200)
+          @Size(max = FLAG_KEY_MAX_LENGTH)
           String flagKey,
       @Valid @RequestBody UpdateFeatureFlagRequest request) {
     return service.update(flagKey, request);

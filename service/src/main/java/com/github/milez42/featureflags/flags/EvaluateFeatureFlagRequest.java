@@ -1,5 +1,8 @@
 package com.github.milez42.featureflags.flags;
 
+import static com.github.milez42.featureflags.flags.FeatureFlagConstraints.FLAG_KEY_MAX_LENGTH;
+import static com.github.milez42.featureflags.flags.FeatureFlagConstraints.FLAG_KEY_MIN_LENGTH;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -9,9 +12,9 @@ public record EvaluateFeatureFlagRequest(
     @Schema(
             description = "Feature flag key to evaluate.",
             example = "checkout-redesign",
-            minLength = 1)
+            minLength = FLAG_KEY_MIN_LENGTH)
         @NotBlank
-        @Size(max = 200)
+        @Size(max = FLAG_KEY_MAX_LENGTH)
         String flagKey,
     @Schema(description = "Runtime environment.", example = "production", minLength = 1)
         @NotBlank
