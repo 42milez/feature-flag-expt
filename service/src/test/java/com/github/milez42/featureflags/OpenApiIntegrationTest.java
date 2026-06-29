@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.github.milez42.featureflags.approval.UpdateApprovalController;
+import com.github.milez42.featureflags.approval.UpdateApprovalService;
 import com.github.milez42.featureflags.flags.FeatureFlagController;
 import com.github.milez42.featureflags.flags.FeatureFlagService;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,6 +64,18 @@ class OpenApiIntegrationTest {
             .andExpect(jsonPath("$.paths['/api/flags/{flagKey}'].patch").exists())
             .andExpect(jsonPath("$.paths['/api/evaluate'].post").exists())
             .andExpect(jsonPath("$.paths['/api/flags/{flagKey}/audit-events'].get").exists())
+            .andExpect(jsonPath("$.paths['/api/flags/{flagKey}/approval-requests'].post").exists())
+            .andExpect(
+                jsonPath("$.paths['/api/flags/{flagKey}/approval-requests/{approvalId}'].get")
+                    .exists())
+            .andExpect(
+                jsonPath(
+                        "$.paths['/api/flags/{flagKey}/approval-requests/{approvalId}/approve'].post")
+                    .exists())
+            .andExpect(
+                jsonPath(
+                        "$.paths['/api/flags/{flagKey}/approval-requests/{approvalId}/reject'].post")
+                    .exists())
             .andExpect(
                 jsonPath("$.paths['/api/flags/{flagKey}'].get.parameters[0].schema.minLength")
                     .value(1))
@@ -103,6 +117,17 @@ class OpenApiIntegrationTest {
                         "$.components.schemas.UpdateFeatureFlagRequest.properties.tenantAllowlist.items.minLength")
                     .value(1))
             .andExpect(
+                jsonPath("$.components.schemas.UpdateFeatureFlagRequest.properties.approvalId")
+                    .exists())
+            .andExpect(
+                jsonPath(
+                        "$.components.schemas.RequestUpdateApprovalRequest.properties.tenantAllowlist.items.minLength")
+                    .value(1))
+            .andExpect(
+                jsonPath("$.components.schemas.RequestUpdateApprovalRequest.properties.approvalId")
+                    .doesNotExist())
+            .andExpect(jsonPath("$.components.schemas.ApprovalRequestResponse").exists())
+            .andExpect(
                 jsonPath("$.components.schemas.UpdateFeatureFlagRequest.properties.highRisk")
                     .doesNotExist())
             .andExpect(
@@ -118,6 +143,8 @@ class OpenApiIntegrationTest {
             "\"CreateFeatureFlagRequest\"",
             "\"UpdateFeatureFlagRequest\"",
             "\"FeatureFlagResponse\"",
+            "\"RequestUpdateApprovalRequest\"",
+            "\"ApprovalRequestResponse\"",
             "\"EvaluateFeatureFlagRequest\"",
             "\"EvaluateFeatureFlagResponse\"",
             "\"AuditEventResponse\"",
@@ -134,16 +161,30 @@ class OpenApiIntegrationTest {
         mockMvc.perform(get("/v3/api-docs.yaml")).andExpect(status().isOk()).andReturn();
 
     assertThat(result.getResponse().getContentAsString())
-        .contains("openapi:", "Feature Flag API", "/api/flags/{flagKey}/audit-events:");
+        .contains(
+            "openapi:",
+            "Feature Flag API",
+            "/api/flags/{flagKey}/audit-events:",
+            "/api/flags/{flagKey}/approval-requests:");
   }
 
   @Configuration
   @EnableAutoConfiguration
-  @Import({FeatureFlagController.class, OpenApiConfig.class, SecurityConfig.class})
+  @Import({
+    FeatureFlagController.class,
+    UpdateApprovalController.class,
+    OpenApiConfig.class,
+    SecurityConfig.class
+  })
   static class TestApplication {
     @Bean
     FeatureFlagService featureFlagService() {
       return mock(FeatureFlagService.class);
+    }
+
+    @Bean
+    UpdateApprovalService updateApprovalService() {
+      return mock(UpdateApprovalService.class);
     }
   }
 }

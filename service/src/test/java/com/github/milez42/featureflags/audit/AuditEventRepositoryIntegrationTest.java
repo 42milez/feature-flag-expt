@@ -3,10 +3,12 @@ package com.github.milez42.featureflags.audit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.milez42.featureflags.flags.FeatureFlagStatus;
+import com.github.milez42.featureflags.policy.RiskReason;
 import com.github.milez42.featureflags.support.PostgreSqlIntegrationTest;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -131,6 +133,42 @@ class AuditEventRepositoryIntegrationTest extends PostgreSqlIntegrationTest {
   }
 
   @Test
+  void savesAndLoadsApprovalDetails() {
+    Instant occurredAt = Instant.parse("2026-05-05T00:00:00Z");
+    UUID approvalId = UUID.fromString("5f0a5f6e-7f24-4f4f-a426-bb534ee726bd");
+    repository.save(
+        AuditEvent.newEvent(
+            "checkout-redesign",
+            AuditEventType.APPROVAL_REQUESTED,
+            "test-operator",
+            new AuditEventDetails.ApprovalRequestedDetails(
+                approvalId,
+                "test-operator",
+                Set.of(RiskReason.LARGE_PRODUCTION_ROLLOUT_INCREASE),
+                "Roll out to approved tenants."),
+            occurredAt));
+    repository.save(
+        AuditEvent.newEvent(
+            "checkout-redesign",
+            AuditEventType.APPROVAL_APPROVED,
+            "test-approver",
+            new AuditEventDetails.ApprovalApprovedDetails(
+                approvalId, "test-operator", "test-approver"),
+            occurredAt));
+
+    assertThat(repository.findByFlagKey("checkout-redesign"))
+        .extracting(AuditEvent::details)
+        .containsExactly(
+            new AuditEventDetails.ApprovalRequestedDetails(
+                approvalId,
+                "test-operator",
+                Set.of(RiskReason.LARGE_PRODUCTION_ROLLOUT_INCREASE),
+                "Roll out to approved tenants."),
+            new AuditEventDetails.ApprovalApprovedDetails(
+                approvalId, "test-operator", "test-approver"));
+  }
+
+  @Test
   void flywayCreatesNonNullActorColumnWithoutDefault() {
     Map<String, Object> column =
         jdbcClient
@@ -147,5 +185,24 @@ class AuditEventRepositoryIntegrationTest extends PostgreSqlIntegrationTest {
 
     assertThat(column).containsEntry("is_nullable", "NO");
     assertThat(column).containsEntry("column_default", null);
+  }
+
+  @Test
+  void auditEventTypeConstraintAcceptsApprovalEvents() {
+    repository.save(
+        AuditEvent.newEvent(
+            "checkout-redesign",
+            AuditEventType.APPROVAL_USED,
+            "test-operator",
+            new AuditEventDetails.ApprovalUsedDetails(
+                UUID.fromString("5f0a5f6e-7f24-4f4f-a426-bb534ee726bd"),
+                "test-operator",
+                "test-approver"),
+            Instant.parse("2026-05-05T00:00:00Z")));
+
+    assertThat(repository.findByFlagKey("checkout-redesign"))
+        .singleElement()
+        .extracting(AuditEvent::eventType)
+        .isEqualTo(AuditEventType.APPROVAL_USED);
   }
 }

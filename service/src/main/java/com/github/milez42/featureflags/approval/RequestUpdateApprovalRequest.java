@@ -1,16 +1,18 @@
-package com.github.milez42.featureflags.flags;
+package com.github.milez42.featureflags.approval;
 
+import com.github.milez42.featureflags.flags.Environment;
+import com.github.milez42.featureflags.flags.FeatureFlagStatus;
+import com.github.milez42.featureflags.flags.FeatureFlagUpdateProposal;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.Set;
-import java.util.UUID;
 
-@Schema(description = "Request to partially update a feature flag.")
-public record UpdateFeatureFlagRequest(
-    @Schema(description = "Updated flag status.", example = "DISABLED") FeatureFlagStatus status,
+@Schema(description = "Request approval for a proposed feature flag update.")
+public record RequestUpdateApprovalRequest(
+    @Schema(description = "Proposed flag status.", example = "ENABLED") FeatureFlagStatus status,
     @Schema(
             description =
                 "Replacement target environments. Omit or send null to preserve the current"
@@ -18,7 +20,8 @@ public record UpdateFeatureFlagRequest(
             nullable = true,
             example = "[\"production\"]")
         Set<Environment> targetEnvironments,
-    @Schema(description = "Updated kill switch state.", example = "true") Boolean killSwitchActive,
+    @Schema(description = "Proposed kill switch state.", example = "false")
+        Boolean killSwitchActive,
     @Schema(
             description =
                 "Replacement tenant allowlist. Omit or send null to preserve the current value;"
@@ -27,17 +30,11 @@ public record UpdateFeatureFlagRequest(
             example = "[\"tenant-a\", \"tenant-b\"]")
         @Size(max = 1000)
         Set<@NotBlank @Size(max = 255) String> tenantAllowlist,
-    @Schema(description = "Updated percentage rollout from 0 to 100.", example = "50")
+    @Schema(description = "Proposed percentage rollout from 0 to 100.", example = "50")
         @Min(0)
         @Max(100)
         Integer rolloutPercentage,
     @Schema(description = "Business reason for enabling production access without an allowlist.")
         @Size(max = 1000)
-        String reason,
-    @Schema(
-            description =
-                "Approval id required only for high-risk updates that are not terminally blocked.",
-            nullable = true,
-            example = "5f0a5f6e-7f24-4f4f-a426-bb534ee726bd")
-        UUID approvalId)
+        String reason)
     implements FeatureFlagUpdateProposal {}

@@ -21,6 +21,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
   private static final String FLAG_READER = "FLAG_READER";
   private static final String FLAG_OPERATOR = "FLAG_OPERATOR";
+  private static final String FLAG_APPROVER = "FLAG_APPROVER";
 
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -47,6 +48,14 @@ public class SecurityConfig {
                     .hasAnyRole(FLAG_READER, FLAG_OPERATOR)
                     .requestMatchers(HttpMethod.POST, "/api/flags/*/validate-change")
                     .hasAnyRole(FLAG_READER, FLAG_OPERATOR)
+                    .requestMatchers(HttpMethod.POST, "/api/flags/*/approval-requests")
+                    .hasRole(FLAG_OPERATOR)
+                    .requestMatchers(HttpMethod.POST, "/api/flags/*/approval-requests/*/approve")
+                    .hasRole(FLAG_APPROVER)
+                    .requestMatchers(HttpMethod.POST, "/api/flags/*/approval-requests/*/reject")
+                    .hasRole(FLAG_APPROVER)
+                    .requestMatchers(HttpMethod.GET, "/api/flags/*/approval-requests/*")
+                    .hasAnyRole(FLAG_OPERATOR, FLAG_APPROVER)
                     .requestMatchers(HttpMethod.POST, "/api/flags")
                     .hasRole(FLAG_OPERATOR)
                     .requestMatchers(HttpMethod.PATCH, "/api/flags/*")
@@ -91,7 +100,12 @@ public class SecurityConfig {
             .password(passwordEncoder.encode(properties.operatorPassword()))
             .roles(FLAG_OPERATOR)
             .build();
+    UserDetails approver =
+        User.withUsername(properties.approverUsername())
+            .password(passwordEncoder.encode(properties.approverPassword()))
+            .roles(FLAG_APPROVER)
+            .build();
 
-    return new InMemoryUserDetailsManager(reader, operator);
+    return new InMemoryUserDetailsManager(reader, operator, approver);
   }
 }

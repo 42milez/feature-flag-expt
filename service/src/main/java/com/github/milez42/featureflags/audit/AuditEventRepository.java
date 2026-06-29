@@ -91,6 +91,14 @@ public class AuditEventRepository {
             objectMapper.readValue(detailsJson, AuditEventDetails.KillSwitchEnabledDetails.class);
         case KILL_SWITCH_DISABLED ->
             objectMapper.readValue(detailsJson, AuditEventDetails.KillSwitchDisabledDetails.class);
+        case APPROVAL_REQUESTED ->
+            objectMapper.readValue(detailsJson, AuditEventDetails.ApprovalRequestedDetails.class);
+        case APPROVAL_APPROVED ->
+            objectMapper.readValue(detailsJson, AuditEventDetails.ApprovalApprovedDetails.class);
+        case APPROVAL_REJECTED ->
+            objectMapper.readValue(detailsJson, AuditEventDetails.ApprovalRejectedDetails.class);
+        case APPROVAL_USED ->
+            objectMapper.readValue(detailsJson, AuditEventDetails.ApprovalUsedDetails.class);
       };
     } catch (JacksonException ex) {
       throw new IllegalStateException("Failed to deserialize audit event details", ex);

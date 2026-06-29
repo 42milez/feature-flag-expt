@@ -12,6 +12,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.github.milez42.featureflags.approval.ApprovalRequestResponse;
+import com.github.milez42.featureflags.approval.RequestUpdateApprovalRequest;
+import com.github.milez42.featureflags.approval.UpdateApprovalController;
+import com.github.milez42.featureflags.approval.UpdateApprovalService;
+import com.github.milez42.featureflags.approval.UpdateApprovalStatus;
 import com.github.milez42.featureflags.flags.CreateFeatureFlagRequest;
 import com.github.milez42.featureflags.flags.EvaluateFeatureFlagRequest;
 import com.github.milez42.featureflags.flags.EvaluateFeatureFlagResponse;
@@ -30,8 +35,10 @@ import com.github.milez42.featureflags.preview.EvaluationPreviewRequest;
 import com.github.milez42.featureflags.preview.EvaluationPreviewResponse;
 import com.github.milez42.featureflags.preview.EvaluationPreviewService;
 import com.github.milez42.featureflags.preview.EvaluationPreviewSummary;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,6 +67,8 @@ class SecurityBoundaryIntegrationTest {
   private static final String READER_PASSWORD = "test-reader-password";
   private static final String OPERATOR_USERNAME = "test-operator";
   private static final String OPERATOR_PASSWORD = "test-operator-password";
+  private static final String APPROVER_USERNAME = "test-approver";
+  private static final String APPROVER_PASSWORD = "test-approver-password";
 
   @Autowired private WebApplicationContext webApplicationContext;
 
@@ -69,6 +78,8 @@ class SecurityBoundaryIntegrationTest {
 
   @Autowired private RolloutPolicyValidationService rolloutPolicyValidationService;
 
+  @Autowired private UpdateApprovalService updateApprovalService;
+
   private MockMvc mockMvc;
 
   @BeforeEach
@@ -76,6 +87,7 @@ class SecurityBoundaryIntegrationTest {
     reset(featureFlagService);
     reset(evaluationPreviewService);
     reset(rolloutPolicyValidationService);
+    reset(updateApprovalService);
     mockMvc =
         MockMvcBuilders.webAppContextSetup(webApplicationContext).apply(springSecurity()).build();
   }
@@ -174,6 +186,32 @@ class SecurityBoundaryIntegrationTest {
                     }
                     """))
         .andExpect(status().isForbidden());
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/approval-requests")
+                .with(readerCredentials())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "rolloutPercentage": 80
+                    }
+                    """))
+        .andExpect(status().isForbidden());
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/approval-requests/%s/approve"
+                    .formatted(approvalId()))
+                .with(readerCredentials()))
+        .andExpect(status().isForbidden());
+
+    mockMvc
+        .perform(
+            get("/api/flags/checkout-redesign/approval-requests/%s".formatted(approvalId()))
+                .with(readerCredentials()))
+        .andExpect(status().isForbidden());
   }
 
   @Test
@@ -181,6 +219,11 @@ class SecurityBoundaryIntegrationTest {
     when(featureFlagService.create(any(CreateFeatureFlagRequest.class))).thenReturn(flagResponse());
     when(featureFlagService.update(any(String.class), any(UpdateFeatureFlagRequest.class)))
         .thenReturn(flagResponse());
+    when(updateApprovalService.requestApproval(
+            any(String.class), any(RequestUpdateApprovalRequest.class)))
+        .thenReturn(approvalResponse(UpdateApprovalStatus.PENDING));
+    when(updateApprovalService.get(any(String.class), any(UUID.class)))
+        .thenReturn(approvalResponse(UpdateApprovalStatus.PENDING));
 
     mockMvc
         .perform(
@@ -210,6 +253,70 @@ class SecurityBoundaryIntegrationTest {
                       "rolloutPercentage": 50
                     }
                     """))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/approval-requests")
+                .with(operatorCredentials())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "rolloutPercentage": 80
+                    }
+                    """))
+        .andExpect(status().isCreated());
+
+    mockMvc
+        .perform(
+            get("/api/flags/checkout-redesign/approval-requests/%s".formatted(approvalId()))
+                .with(operatorCredentials()))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void operatorCannotApproveOrRejectApprovalRequests() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/approval-requests/%s/approve"
+                    .formatted(approvalId()))
+                .with(operatorCredentials()))
+        .andExpect(status().isForbidden());
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/approval-requests/%s/reject".formatted(approvalId()))
+                .with(operatorCredentials()))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void approverCanDecideAndReadApprovalRequests() throws Exception {
+    when(updateApprovalService.approve(any(String.class), any(UUID.class)))
+        .thenReturn(approvalResponse(UpdateApprovalStatus.APPROVED));
+    when(updateApprovalService.reject(any(String.class), any(UUID.class)))
+        .thenReturn(approvalResponse(UpdateApprovalStatus.REJECTED));
+    when(updateApprovalService.get(any(String.class), any(UUID.class)))
+        .thenReturn(approvalResponse(UpdateApprovalStatus.APPROVED));
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/approval-requests/%s/approve"
+                    .formatted(approvalId()))
+                .with(approverCredentials()))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/approval-requests/%s/reject".formatted(approvalId()))
+                .with(approverCredentials()))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(
+            get("/api/flags/checkout-redesign/approval-requests/%s".formatted(approvalId()))
+                .with(approverCredentials()))
         .andExpect(status().isOk());
   }
 
@@ -275,6 +382,26 @@ class SecurityBoundaryIntegrationTest {
         "checkout-redesign", FeatureFlagStatus.ENABLED, Set.of("production"), false, Set.of(), 25);
   }
 
+  private ApprovalRequestResponse approvalResponse(UpdateApprovalStatus status) {
+    return new ApprovalRequestResponse(
+        approvalId(),
+        "checkout-redesign",
+        OPERATOR_USERNAME,
+        status == UpdateApprovalStatus.PENDING ? null : APPROVER_USERNAME,
+        status,
+        null,
+        null,
+        Set.of(),
+        null,
+        Instant.EPOCH,
+        null,
+        null);
+  }
+
+  private static UUID approvalId() {
+    return UUID.fromString("5f0a5f6e-7f24-4f4f-a426-bb534ee726bd");
+  }
+
   private static RequestPostProcessor readerCredentials() {
     return httpBasic(READER_USERNAME, READER_PASSWORD);
   }
@@ -283,10 +410,15 @@ class SecurityBoundaryIntegrationTest {
     return httpBasic(OPERATOR_USERNAME, OPERATOR_PASSWORD);
   }
 
+  private static RequestPostProcessor approverCredentials() {
+    return httpBasic(APPROVER_USERNAME, APPROVER_PASSWORD);
+  }
+
   @Configuration
   @EnableAutoConfiguration
   @Import({
     FeatureFlagController.class,
+    UpdateApprovalController.class,
     EvaluationPreviewController.class,
     RolloutPolicyController.class,
     OpenApiConfig.class,
@@ -306,6 +438,11 @@ class SecurityBoundaryIntegrationTest {
     @Bean
     RolloutPolicyValidationService rolloutPolicyValidationService() {
       return mock(RolloutPolicyValidationService.class);
+    }
+
+    @Bean
+    UpdateApprovalService updateApprovalService() {
+      return mock(UpdateApprovalService.class);
     }
   }
 }

@@ -1,5 +1,7 @@
 package com.github.milez42.featureflags.flags;
 
+import com.github.milez42.featureflags.approval.InvalidApprovalForUpdateException;
+import com.github.milez42.featureflags.approval.UpdateApprovalService;
 import com.github.milez42.featureflags.audit.AuditEventDetails;
 import com.github.milez42.featureflags.audit.AuditEventResponse;
 import com.github.milez42.featureflags.audit.AuditEventService;
@@ -13,7 +15,6 @@ import com.github.milez42.featureflags.policy.RolloutPolicyValidator;
 import com.github.milez42.featureflags.policy.RolloutPolicyViolationException;
 import com.github.milez42.featureflags.policy.RolloutRiskClassifier;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -32,6 +33,8 @@ public class FeatureFlagService {
   private final FeatureFlagEvaluator evaluator;
   private final RolloutPolicyValidator rolloutPolicyValidator;
   private final RolloutRiskClassifier rolloutRiskClassifier;
+  private final UpdateApprovalService updateApprovalService;
+  private final FeatureFlagUpdateResolver updateResolver;
   private final AuditEventService auditEventService;
   private final FeatureFlagMetrics metrics;
 
@@ -40,12 +43,16 @@ public class FeatureFlagService {
       FeatureFlagEvaluator evaluator,
       RolloutPolicyValidator rolloutPolicyValidator,
       RolloutRiskClassifier rolloutRiskClassifier,
+      UpdateApprovalService updateApprovalService,
+      FeatureFlagUpdateResolver updateResolver,
       AuditEventService auditEventService,
       FeatureFlagMetrics metrics) {
     this.repository = repository;
     this.evaluator = evaluator;
     this.rolloutPolicyValidator = rolloutPolicyValidator;
     this.rolloutRiskClassifier = rolloutRiskClassifier;
+    this.updateApprovalService = updateApprovalService;
+    this.updateResolver = updateResolver;
     this.auditEventService = auditEventService;
     this.metrics = metrics;
   }
@@ -61,9 +68,9 @@ public class FeatureFlagService {
         FeatureFlagEntity.create(
             flagKey,
             request.status(),
-            targetEnvironments(request.targetEnvironments()),
+            updateResolver.targetEnvironments(request.targetEnvironments()),
             request.killSwitchActive(),
-            tenantAllowlist(request.tenantAllowlist()),
+            updateResolver.tenantAllowlist(request.tenantAllowlist()),
             request.rolloutPercentage());
 
     RolloutPolicyValidationResult policyResult =
@@ -114,33 +121,36 @@ public class FeatureFlagService {
   @Transactional
   public FeatureFlagResponse update(String flagKey, UpdateFeatureFlagRequest request) {
     FeatureFlagEntity existing = findEntity(flagKey);
-    FeatureFlagEntity updated =
-        new FeatureFlagEntity(
-            existing.flagKey(),
-            request.status() == null ? existing.status() : request.status(),
-            request.targetEnvironments() == null
-                ? existing.targetEnvironments()
-                : targetEnvironments(request.targetEnvironments()),
-            request.killSwitchActive() == null
-                ? existing.killSwitchActive()
-                : request.killSwitchActive(),
-            request.tenantAllowlist() == null
-                ? existing.tenantAllowlist()
-                : tenantAllowlist(request.tenantAllowlist()),
-            request.rolloutPercentage() == null
-                ? existing.rolloutPercentage()
-                : request.rolloutPercentage());
-
     FeatureFlag currentFlag = toDomain(existing);
-    FeatureFlag proposedFlag = toDomain(updated);
+    FeatureFlag proposedFlag = updateResolver.resolve(currentFlag, request);
+    FeatureFlagEntity updated = toEntity(proposedFlag);
     RiskAssessment risk = rolloutRiskClassifier.classify(currentFlag, proposedFlag);
+    ApprovalState approvalState =
+        risk.requiresApproval()
+            ? updateApprovalService.approvalStateForUpdate(
+                existing.flagKey(), auditActor(), currentFlag, proposedFlag, request.approvalId())
+            : new ApprovalState.NotRequired();
     RolloutPolicyValidationResult policyResult =
         rolloutPolicyValidator.validate(
             currentFlag,
             proposedFlag,
-            new RolloutPolicyContext(risk, approvalState(risk), request.reason()));
+            new RolloutPolicyContext(risk, approvalState, request.reason()));
     if (!policyResult.allowed()) {
       throw new RolloutPolicyViolationException(policyResult);
+    }
+    if (risk.requiresApproval()) {
+      try {
+        updateApprovalService.consumeVerifiedApprovalForUpdate(
+            existing.flagKey(), auditActor(), currentFlag, proposedFlag, request.approvalId());
+      } catch (InvalidApprovalForUpdateException ex) {
+        RolloutPolicyValidationResult invalidApprovalResult =
+            rolloutPolicyValidator.validate(
+                currentFlag,
+                proposedFlag,
+                new RolloutPolicyContext(
+                    risk, new ApprovalState.RequiredButMissing(), request.reason()));
+        throw new RolloutPolicyViolationException(invalidApprovalResult);
+      }
     }
 
     FeatureFlagEntity saved = repository.save(updated);
@@ -181,12 +191,6 @@ public class FeatureFlagService {
     return new FeatureFlag(flagKey, FeatureFlagStatus.DISABLED, Set.of(), true, Set.of(), 0);
   }
 
-  private ApprovalState approvalState(RiskAssessment risk) {
-    return risk.requiresApproval()
-        ? new ApprovalState.RequiredButMissing()
-        : new ApprovalState.NotRequired();
-  }
-
   private FeatureFlag toDomain(FeatureFlagEntity entity) {
     return new FeatureFlag(
         entity.flagKey(),
@@ -199,6 +203,20 @@ public class FeatureFlagService {
             .map(TenantAllowlistEntity::tenantId)
             .collect(Collectors.toCollection(LinkedHashSet::new)),
         entity.rolloutPercentage());
+  }
+
+  private FeatureFlagEntity toEntity(FeatureFlag flag) {
+    return new FeatureFlagEntity(
+        flag.flagKey(),
+        flag.status(),
+        flag.targetEnvironments().stream()
+            .map(TargetEnvironmentEntity::new)
+            .collect(Collectors.toCollection(LinkedHashSet::new)),
+        flag.killSwitchActive(),
+        flag.tenantAllowlist().stream()
+            .map(TenantAllowlistEntity::new)
+            .collect(Collectors.toCollection(LinkedHashSet::new)),
+        flag.rolloutPercentage());
   }
 
   private FeatureFlagResponse toResponse(FeatureFlagEntity entity) {
@@ -342,32 +360,6 @@ public class FeatureFlagService {
         .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
-  private Set<TargetEnvironmentEntity> targetEnvironments(Set<Environment> values) {
-    if (values == null) {
-      return Set.of();
-    }
-    return values.stream()
-        .map(env -> new TargetEnvironmentEntity(env.value()))
-        .sorted(Comparator.comparing(TargetEnvironmentEntity::environment))
-        .collect(Collectors.toCollection(LinkedHashSet::new));
-  }
-
-  private Set<TenantAllowlistEntity> tenantAllowlist(Set<String> values) {
-    return normalizeSet(values).stream()
-        .map(TenantAllowlistEntity::new)
-        .collect(Collectors.toCollection(LinkedHashSet::new));
-  }
-
-  private Set<String> normalizeSet(Set<String> values) {
-    if (values == null) {
-      return Set.of();
-    }
-    return values.stream()
-        .map(value -> normalizeRequired(value, "collection value"))
-        .sorted()
-        .collect(Collectors.toCollection(LinkedHashSet::new));
-  }
-
   private String normalizeRequired(String value, String fieldName) {
     Objects.requireNonNull(value, fieldName + " must not be null");
     String normalized = value.trim();
@@ -383,5 +375,9 @@ public class FeatureFlagService {
     }
     String normalized = value.trim();
     return normalized.isBlank() ? null : normalized;
+  }
+
+  private String auditActor() {
+    return auditEventService.currentActor();
   }
 }

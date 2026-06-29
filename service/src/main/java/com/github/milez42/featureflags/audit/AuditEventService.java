@@ -31,4 +31,8 @@ public class AuditEventService {
   public List<AuditEvent> findByFlagKey(String flagKey) {
     return repository.findByFlagKey(flagKey);
   }
+
+  public String currentActor() {
+    return currentActorProvider.currentActor();
+  }
 }

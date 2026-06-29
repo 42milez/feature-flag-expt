@@ -9,6 +9,8 @@ servers:
 tags:
 - name: Rollout Policy
   description: Validate proposed feature flag changes.
+- name: Update Approvals
+  description: High-risk feature flag update approval APIs.
 - name: Feature Flags
   description: "Feature flag management, evaluation, and audit APIs."
 - name: Feature Flag Preview
@@ -137,6 +139,143 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+  /api/flags/{flagKey}/approval-requests:
+    post:
+      tags:
+      - Update Approvals
+      summary: Request approval for a feature flag update
+      operationId: requestApproval
+      parameters:
+      - name: flagKey
+        in: path
+        description: Feature flag key.
+        required: true
+        schema:
+          type: string
+          maxLength: 200
+          minLength: 1
+        example: checkout-redesign
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestUpdateApprovalRequest"
+        required: true
+      responses:
+        "201":
+          description: Approval request created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApprovalRequestResponse"
+        "400":
+          description: Invalid request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Feature flag not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: Rollout policy violation
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RolloutPolicyValidationResponse"
+  /api/flags/{flagKey}/approval-requests/{approvalId}/reject:
+    post:
+      tags:
+      - Update Approvals
+      summary: Reject a feature flag update approval request
+      operationId: reject
+      parameters:
+      - name: flagKey
+        in: path
+        required: true
+        schema:
+          type: string
+          maxLength: 200
+          minLength: 1
+      - name: approvalId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: Approval request rejected
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApprovalRequestResponse"
+        "403":
+          description: Approver role required
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApprovalRequestResponse"
+        "404":
+          description: Approval request not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApprovalRequestResponse"
+        "409":
+          description: Approval request already decided
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApprovalRequestResponse"
+  /api/flags/{flagKey}/approval-requests/{approvalId}/approve:
+    post:
+      tags:
+      - Update Approvals
+      summary: Approve a feature flag update approval request
+      operationId: approve
+      parameters:
+      - name: flagKey
+        in: path
+        required: true
+        schema:
+          type: string
+          maxLength: 200
+          minLength: 1
+      - name: approvalId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: Approval request approved
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApprovalRequestResponse"
+        "403":
+          description: Approver role required
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApprovalRequestResponse"
+        "404":
+          description: Approval request not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApprovalRequestResponse"
+        "409":
+          description: Approval request already decided
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApprovalRequestResponse"
   /api/evaluate:
     post:
       tags:
@@ -274,6 +413,45 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+  /api/flags/{flagKey}/approval-requests/{approvalId}:
+    get:
+      tags:
+      - Update Approvals
+      summary: Get a feature flag update approval request
+      operationId: get_1
+      parameters:
+      - name: flagKey
+        in: path
+        required: true
+        schema:
+          type: string
+          maxLength: 200
+          minLength: 1
+      - name: approvalId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: Approval request found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApprovalRequestResponse"
+        "403":
+          description: Reader is not allowed by route security
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApprovalRequestResponse"
+        "404":
+          description: Approval request not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApprovalRequestResponse"
 components:
   schemas:
     CreateFeatureFlagRequest:
@@ -657,6 +835,132 @@ components:
           format: int32
           description: Samples whose enabled value changed.
           example: 1
+    RequestUpdateApprovalRequest:
+      type: object
+      description: Request approval for a proposed feature flag update.
+      properties:
+        status:
+          type: string
+          description: Proposed flag status.
+          enum:
+          - ENABLED
+          - DISABLED
+          example: ENABLED
+        targetEnvironments:
+          type:
+          - array
+          - "null"
+          description: Replacement target environments. Omit or send null to preserve
+            the current value; send an empty array to clear target environments.
+          example:
+          - production
+          items:
+            type: string
+            enum:
+            - development
+            - staging
+            - production
+          uniqueItems: true
+        killSwitchActive:
+          type: boolean
+          description: Proposed kill switch state.
+          example: false
+        tenantAllowlist:
+          type:
+          - array
+          - "null"
+          description: Replacement tenant allowlist. Omit or send null to preserve
+            the current value; send an empty array to clear the allowlist.
+          example:
+          - tenant-a
+          - tenant-b
+          items:
+            type: string
+            maxLength: 255
+            minLength: 1
+          maxItems: 1000
+          minItems: 0
+          uniqueItems: true
+        rolloutPercentage:
+          type: integer
+          format: int32
+          description: Proposed percentage rollout from 0 to 100.
+          example: 50
+          maximum: 100
+          minimum: 0
+        reason:
+          type: string
+          description: Business reason for enabling production access without an allowlist.
+          maxLength: 1000
+          minLength: 0
+    ApprovalRequestResponse:
+      type: object
+      description: Feature flag update approval workflow state.
+      properties:
+        approvalId:
+          type: string
+          format: uuid
+        flagKey:
+          type: string
+        requester:
+          type: string
+        approver:
+          type: string
+        status:
+          type: string
+          enum:
+          - PENDING
+          - APPROVED
+          - REJECTED
+          - USED
+        currentSnapshot:
+          $ref: "#/components/schemas/FeatureFlag"
+        proposedSnapshot:
+          $ref: "#/components/schemas/FeatureFlag"
+        riskReasons:
+          type: array
+          items:
+            type: string
+            enum:
+            - PRODUCTION_EXPOSURE_EXPANDED
+            - LARGE_PRODUCTION_ROLLOUT_INCREASE
+          uniqueItems: true
+        reason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        decidedAt:
+          type: string
+          format: date-time
+        usedAt:
+          type: string
+          format: date-time
+    FeatureFlag:
+      type: object
+      properties:
+        flagKey:
+          type: string
+        status:
+          type: string
+          enum:
+          - ENABLED
+          - DISABLED
+        targetEnvironments:
+          type: array
+          items:
+            type: string
+          uniqueItems: true
+        killSwitchActive:
+          type: boolean
+        tenantAllowlist:
+          type: array
+          items:
+            type: string
+          uniqueItems: true
+        rolloutPercentage:
+          type: integer
+          format: int32
     EvaluateFeatureFlagRequest:
       type: object
       description: Request to evaluate a feature flag for a context.
@@ -774,6 +1078,14 @@ components:
           description: Business reason for enabling production access without an allowlist.
           maxLength: 1000
           minLength: 0
+        approvalId:
+          type:
+          - string
+          - "null"
+          format: uuid
+          description: Approval id required only for high-risk updates that are not
+            terminally blocked.
+          example: 5f0a5f6e-7f24-4f4f-a426-bb534ee726bd
     AuditEventResponse:
       type: object
       description: Audit event emitted when a feature flag changes.
@@ -799,6 +1111,10 @@ components:
           - TENANT_ALLOWLIST_CHANGED
           - KILL_SWITCH_ENABLED
           - KILL_SWITCH_DISABLED
+          - APPROVAL_REQUESTED
+          - APPROVAL_APPROVED
+          - APPROVAL_REJECTED
+          - APPROVAL_USED
           example: ROLLOUT_PERCENTAGE_CHANGED
         actor:
           type: string
