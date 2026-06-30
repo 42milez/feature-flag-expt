@@ -11,9 +11,13 @@ public record LocalSecurityProperties(
     @NotBlank String readerUsername,
     @NotBlank String readerPassword,
     @NotBlank String operatorUsername,
-    @NotBlank String operatorPassword) {
-  @AssertTrue(message = "readerUsername and operatorUsername must be different")
+    @NotBlank String operatorPassword,
+    @NotBlank String approverUsername,
+    @NotBlank String approverPassword) {
+  @AssertTrue(message = "readerUsername, operatorUsername, and approverUsername must be different")
   public boolean isDistinctUsernames() {
-    return !readerUsername.equals(operatorUsername);
+    return !readerUsername.equals(operatorUsername)
+        && !readerUsername.equals(approverUsername)
+        && !operatorUsername.equals(approverUsername);
   }
 }

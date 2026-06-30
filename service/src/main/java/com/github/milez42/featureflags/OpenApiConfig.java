@@ -51,6 +51,7 @@ public class OpenApiConfig {
       setPropertyMinLength(schemas, "EvaluateFeatureFlagRequest", "flagKey");
       setPropertyMinLength(schemas, "EvaluateFeatureFlagRequest", "environment");
       setArrayItemMinLength(schemas, "UpdateFeatureFlagRequest", "tenantAllowlist");
+      setArrayItemMinLength(schemas, "RequestUpdateApprovalRequest", "tenantAllowlist");
     };
   }
 

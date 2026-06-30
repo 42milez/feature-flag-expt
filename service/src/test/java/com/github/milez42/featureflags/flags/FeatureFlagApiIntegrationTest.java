@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.github.milez42.featureflags.approval.ApprovalRequestResponse;
 import com.github.milez42.featureflags.audit.AuditEvent;
 import com.github.milez42.featureflags.audit.AuditEventDetails;
 import com.github.milez42.featureflags.audit.AuditEventRepository;
@@ -38,6 +39,8 @@ import tools.jackson.databind.ObjectMapper;
 class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
   private static final String OPERATOR_USERNAME = "test-operator";
   private static final String OPERATOR_PASSWORD = "test-operator-password";
+  private static final String APPROVER_USERNAME = "test-approver";
+  private static final String APPROVER_PASSWORD = "test-approver-password";
 
   // Spring Test injects these beans from the application context after JUnit creates the test
   // instance. Field injection keeps integration tests concise when they need several framework
@@ -57,6 +60,7 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
   @BeforeEach
   void setUp() {
     jdbcClient.sql("delete from audit_events").update();
+    jdbcClient.sql("delete from feature_flag_update_approvals").update();
     repository.deleteAll();
     mockMvc =
         MockMvcBuilders.webAppContextSetup(webApplicationContext)
@@ -609,6 +613,111 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
     assertThat(auditEventRepository.findByFlagKey("checkout-redesign"))
         .extracting(AuditEvent::eventType)
         .containsExactly(AuditEventType.FLAG_CREATED);
+  }
+
+  @Test
+  void approvedHighRiskUpdateSucceedsAndConsumesApproval() throws Exception {
+    createFlag("checkout-redesign", "ENABLED", Set.of("production"), false, Set.of("tenant-a"), 0);
+
+    ApprovalRequestResponse approval =
+        approvalRequestResponse(
+            mockMvc
+                .perform(
+                    post("/api/flags/checkout-redesign/approval-requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                            """
+                            {
+                              "rolloutPercentage": 80
+                            }
+                            """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.flagKey").value("checkout-redesign"))
+                .andExpect(jsonPath("$.requester").value(OPERATOR_USERNAME))
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andReturn());
+
+    mockMvc
+        .perform(
+            patch("/api/flags/checkout-redesign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        Map.of("rolloutPercentage", 80, "approvalId", approval.approvalId()))))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(
+            jsonPath("$.violations[*].code", containsInAnyOrder("HIGH_RISK_REQUIRES_APPROVAL")));
+
+    bareMockMvc()
+        .perform(
+            post("/api/flags/checkout-redesign/approval-requests/%s/approve"
+                    .formatted(approval.approvalId()))
+                .with(httpBasic(APPROVER_USERNAME, APPROVER_PASSWORD)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("APPROVED"))
+        .andExpect(jsonPath("$.approver").value(APPROVER_USERNAME));
+
+    mockMvc
+        .perform(
+            patch("/api/flags/checkout-redesign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        Map.of("rolloutPercentage", 80, "approvalId", approval.approvalId()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.rolloutPercentage").value(80));
+
+    mockMvc
+        .perform(
+            patch("/api/flags/checkout-redesign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        Map.of(
+                            "tenantAllowlist",
+                            Set.of(),
+                            "reason",
+                            "Open the rollout after the approved change.",
+                            "approvalId",
+                            approval.approvalId()))))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(
+            jsonPath("$.violations[*].code", containsInAnyOrder("HIGH_RISK_REQUIRES_APPROVAL")));
+
+    assertThat(auditEventRepository.findByFlagKey("checkout-redesign"))
+        .extracting(AuditEvent::eventType)
+        .containsExactly(
+            AuditEventType.FLAG_CREATED,
+            AuditEventType.APPROVAL_REQUESTED,
+            AuditEventType.APPROVAL_APPROVED,
+            AuditEventType.APPROVAL_USED,
+            AuditEventType.ROLLOUT_PERCENTAGE_CHANGED);
+  }
+
+  @Test
+  void directFullProductionApprovalRequestReturnsUnprocessableContent() throws Exception {
+    createFlag("checkout-redesign", "ENABLED", Set.of("production"), false, Set.of("tenant-a"), 0);
+
+    mockMvc
+        .perform(
+            post("/api/flags/checkout-redesign/approval-requests")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "rolloutPercentage": 100
+                    }
+                    """))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(jsonPath("$.flagKey").value("checkout-redesign"))
+        .andExpect(jsonPath("$.violations[*].code", containsInAnyOrder("FULL_PRODUCTION_ROLLOUT")));
+
+    Integer approvalCount =
+        jdbcClient
+            .sql("select count(*) from feature_flag_update_approvals")
+            .query(Integer.class)
+            .single();
+    assertThat(approvalCount).isZero();
   }
 
   @Test
@@ -1463,6 +1572,17 @@ class FeatureFlagApiIntegrationTest extends PostgreSqlIntegrationTest {
               assertThat(sample).contains(expectedLabels);
               assertThat(sample).endsWith(" " + value);
             });
+  }
+
+  private ApprovalRequestResponse approvalRequestResponse(MvcResult result) throws Exception {
+    return objectMapper.readValue(
+        result.getResponse().getContentAsString(), ApprovalRequestResponse.class);
+  }
+
+  private MockMvc bareMockMvc() {
+    return MockMvcBuilders.webAppContextSetup(webApplicationContext)
+        .apply(springSecurity())
+        .build();
   }
 
   /** Creates a checkout flag with production targeting and an inactive kill switch. */

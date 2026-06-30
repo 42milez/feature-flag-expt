@@ -1,7 +1,9 @@
 package com.github.milez42.featureflags.audit;
 
 import com.github.milez42.featureflags.flags.FeatureFlagStatus;
+import com.github.milez42.featureflags.policy.RiskReason;
 import java.util.Set;
+import java.util.UUID;
 
 public sealed interface AuditEventDetails
     permits AuditEventDetails.FlagCreatedDetails,
@@ -11,7 +13,11 @@ public sealed interface AuditEventDetails
         AuditEventDetails.TargetEnvironmentsChangedDetails,
         AuditEventDetails.TenantAllowlistChangedDetails,
         AuditEventDetails.KillSwitchEnabledDetails,
-        AuditEventDetails.KillSwitchDisabledDetails {
+        AuditEventDetails.KillSwitchDisabledDetails,
+        AuditEventDetails.ApprovalRequestedDetails,
+        AuditEventDetails.ApprovalApprovedDetails,
+        AuditEventDetails.ApprovalRejectedDetails,
+        AuditEventDetails.ApprovalUsedDetails {
   record FlagCreatedDetails(
       FeatureFlagStatus status,
       int rolloutPercentage,
@@ -39,5 +45,18 @@ public sealed interface AuditEventDetails
       implements AuditEventDetails {}
 
   record KillSwitchDisabledDetails(String field, boolean oldValue, boolean newValue)
+      implements AuditEventDetails {}
+
+  record ApprovalRequestedDetails(
+      UUID approvalId, String requester, Set<RiskReason> riskReasons, String reason)
+      implements AuditEventDetails {}
+
+  record ApprovalApprovedDetails(UUID approvalId, String requester, String approver)
+      implements AuditEventDetails {}
+
+  record ApprovalRejectedDetails(UUID approvalId, String requester, String approver)
+      implements AuditEventDetails {}
+
+  record ApprovalUsedDetails(UUID approvalId, String requester, String approver)
       implements AuditEventDetails {}
 }
