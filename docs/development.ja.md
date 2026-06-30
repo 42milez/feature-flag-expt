@@ -85,6 +85,8 @@ docker compose down --remove-orphans
 | `FEATURE_FLAGS_SECURITY_READER_PASSWORD` | `featureflags-reader` |
 | `FEATURE_FLAGS_SECURITY_OPERATOR_USERNAME` | `featureflags-operator` |
 | `FEATURE_FLAGS_SECURITY_OPERATOR_PASSWORD` | `featureflags-operator` |
+| `FEATURE_FLAGS_SECURITY_APPROVER_USERNAME` | `featureflags-approver` |
+| `FEATURE_FLAGS_SECURITY_APPROVER_PASSWORD` | `featureflags-approver` |
 
 ## kind で実行する
 
