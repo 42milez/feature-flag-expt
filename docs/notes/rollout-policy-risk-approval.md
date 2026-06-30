@@ -1,109 +1,103 @@
 # Rollout Policy: Risk Classification and Approval Verification
 
-This note captures the rationale and evolving thinking behind high-risk rollout
-classification and approval verification. It complements the current
-`RolloutPolicyValidationRequest` API, where `highRisk` and `approvalGranted` are
-temporary caller-supplied policy context fields. Unlike an ADR, this document may be
-updated as the approval workflow evolves.
+This note records the implemented server-side rollout risk classification and
+update approval workflow. It complements the rollout policy validator,
+validation-preview API, update API, and update approval endpoints.
 
 ## Philosophy: Policy Inputs Must Be Verifiable
 
-Rollout policy should depend on facts the server can verify, not only on booleans the
-caller controls.
+Rollout policy depends on facts the server can verify. Clients may describe a
+proposed flag change and provide a business `reason`, but they do not decide
+whether the change is high risk or whether approval is satisfied.
 
-The current request shape is useful while the project lacks flag metadata,
-change-request state, actor identity, and an approval workflow. It lets the policy
-validator model the intended rule:
+The server derives risk from the resolved current flag state and the proposed
+state, verifies any referenced approval against durable approval records, and
+enforces the result again on the write path before persisting a flag update.
 
-```
-high-risk change + no approval = policy violation
-```
+## Risk Classification
 
-That shape should not become the long-term trust boundary. Client-supplied policy
-context is only a placeholder until the server has durable sources of truth.
+The rollout risk classifier compares the complete resolved current flag state
+with the proposed state. A proposed update is high risk when it expands
+production exposure in a way that needs human review, such as increasing a
+production rollout percentage or opening production access without a tenant
+allowlist.
 
-## Current Create Enforcement Mitigation
+Existing hard-block rules remain independent from approval. A direct `0 -> 100%`
+production rollout and production access without a required `reason` remain
+policy violations rather than approvable changes. Approval can satisfy the
+high-risk review requirement only after terminal validation blockers have been
+handled.
 
-Flag creation now enforces rollout policy before persistence. The create request
-accepts `reason` so callers can provide business context when enabling production
-access without a tenant allowlist, but it does not accept `highRisk` or
-`approvalGranted` while those values remain caller-controlled placeholders.
+Create requests are still validated from a synthetic non-serving baseline:
+disabled, no target environments, kill switch active, empty tenant allowlist,
+and 0% rollout. The approval workflow is update-only; there is no create
+approval flow.
 
-Create validation uses the shared rollout policy semantics from a synthetic
-non-serving baseline: disabled, no target environments, kill switch active, empty
-tenant allowlist, and 0% rollout. As a result, a direct 0% to 100% production
-rollout configuration is rejected even when the requested flag is disabled or
-kill-switched. Tests that need otherwise-invalid historical or precondition states
-seed those states directly instead of routing setup through `POST /api/flags`.
+## Approval Scope and Binding
 
-Server-derived risk classification and server-verified approval state remain
-follow-up work.
+An update approval is bound to:
 
-## Why highRisk Should Be Derived Server-Side
+- the flag key;
+- the requesting actor;
+- a structural snapshot of the complete resolved current flag state;
+- a structural snapshot of the complete proposed flag state.
 
-`highRisk` decides whether additional approval requirements apply. If a caller can
-set this value directly, the caller can suppress approval requirements by sending
-`false`.
+The structural snapshots are the freshness comparison inputs. The request
+`reason` and classified risk reasons are stored for review, audit, and display
+context, but they are not part of the approval freshness comparison. Changing
+the proposed flag state requires a new approval; changing only review context
+does not make an otherwise identical approval stale.
 
-The field also does not prove that the risk assessment considered the relevant
-business and operational inputs. Prefer deriving risk from server-side state such as:
+Only the requester may use an approval on an update. This prevents another
+operator from reusing a valid approval id for a different actor's update.
 
-- Flag criticality metadata and owning service tier.
-- Production exposure and whether the proposed change expands access.
-- Rollout size, especially large jumps or full production rollouts.
-- Tenant impact, including large customers or sensitive cohorts.
-- Actor permissions and whether the actor owns the affected surface.
-- Release freezes, incident state, or other operational constraints.
-- Change-request risk classification once change requests exist.
+Invalid approval ids collapse to the same fail-closed behavior as a missing
+approval. Callers receive the policy violation for a high-risk update that still
+requires approval, rather than a distinct signal that would let clients probe
+approval identifiers.
 
-## Why approvalGranted Should Be Verified Server-Side
+## Approval Decisions
 
-`approvalGranted` is also a temporary placeholder. A caller-controlled boolean can
-bypass high-risk approval policy by sending `true`.
+Approval decisions require the approver role. The requester cannot approve or
+reject their own request, even if they also have approver credentials.
 
-Even when sent honestly, a boolean does not prove:
+Approval status reads are available to the requester or to an approver. Other
+operators cannot inspect approvals they did not request.
 
-- Who approved the change.
-- Whether the approver had permission to approve it.
-- Whether the approval belongs to this exact proposed change.
-- Whether the approval is still valid.
-- Whether the approval is captured in audit history.
+Approvals are single-use. Consuming an approval marks it used under optimistic
+locking so concurrent update attempts cannot reuse the same approved record.
 
-The server must also verify that the calling actor is allowed to use the referenced
-approval, so an approval identifier cannot be reused by another actor as an IDOR
-bypass.
+The current workflow does not expire approvals. Stale approvals are rejected
+only when their structural snapshots no longer match the current and proposed
+flag states.
 
-Prefer a `changeRequestId` or `approvalId` that the server can verify against approval
-state, approver permissions, calling-actor binding, expiry, proposal identity, and
-audit records.
+## Audit Behavior
 
-## Migration Path
+The workflow writes audit events for these approval lifecycle moments:
 
-Move from caller-supplied booleans to server-verified policy context in stages:
+- approval requested;
+- approval approved;
+- approval rejected;
+- approval used by a flag update.
 
-```
-Caller-supplied booleans
-  |
-  +- add flag metadata and actor identity
-  |
-  +- introduce change requests and approval records
-  |
-  +- derive risk and verify approval on the server
-```
+Flag update audit events still record the authenticated actor that performed
+the update. Approval audit details retain the requester, approver when present,
+approval id, and review context needed to reconstruct the decision path.
 
-The endpoint can keep accepting proposed flag changes, but the risk and approval
-facts should come from durable server-side state. This keeps preview and validation
-useful for clients while preventing alternate clients from bypassing rollout controls.
+## Validation Preview
 
-When this becomes implementation work, prefer a typed approval context over raw
-booleans or unverified identifiers so states such as approval required, approval not
-required, and verified approval are explicit at the policy boundary.
+Validation preview classifies rollout risk for the proposed change and returns
+the same policy semantics used by the update path. It does not verify approval
+ids, persist flags, write audit events, or consume approvals.
 
-## Relationship to Rollout Policy Enforcement
+This keeps preview useful for client UX while preserving the write path as the
+final enforcement point.
 
-Validation endpoints are a UX convenience, not the final enforcement point. The
-write path must continue to enforce rollout policy before persisting changes.
+## Known Limitations
 
-Once risk classification and approval verification are server-backed, both the
-validation endpoint and the write path should use the same policy context builder so
-the previewed decision and the enforced decision stay aligned.
+- There is no create approval workflow.
+- A direct `0 -> 100%` production rollout remains non-approvable.
+- Approvals do not expire by time.
+- The local API keeps CSRF disabled for stateless JSON clients. HTTP Basic is
+  still CSRF-sensitive in browser contexts, so production browser access should
+  re-enable CSRF protection or replace Basic authentication.

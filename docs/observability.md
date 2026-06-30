@@ -226,9 +226,9 @@ relabeling rules that read them. They are not access control.
 Because `/actuator/prometheus` requires HTTP Basic authentication, Prometheus
 must receive scrape credentials through its own configuration or secret
 management path. The Kubernetes annotations do not provide those credentials.
-Metrics access control intentionally remains separate from the API
-reader/operator split so future management-port isolation, network-policy,
-mTLS, or workload-identity-backed gateway controls can replace it cleanly.
+Metrics access control intentionally remains separate from the application API
+role split so future management-port isolation, network-policy, mTLS, or
+workload-identity-backed gateway controls can replace it cleanly.
 
 ## Alerting
 
@@ -286,14 +286,14 @@ availability, recent evaluation traffic, and basic JVM/process health signals.
 
 This phase keeps Actuator on port `8080` and adds a minimal Spring Security
 boundary: health endpoints and API documentation are public, while application
-APIs require local reader/operator roles and Prometheus metrics require any
-authenticated configured user. Production environments should still add stronger
-controls before exposing the app outside the cluster.
+APIs require local reader/operator/approver roles and Prometheus metrics require
+any authenticated configured user. Production environments should still add
+stronger controls before exposing the app outside the cluster.
 
 For application APIs, acceptable controls include:
 
 - OIDC or another production-appropriate authentication method for application
-  APIs, mapped to the existing reader/operator authorities.
+  APIs, mapped to the existing reader/operator/approver authorities.
 
 For Actuator and Prometheus access, acceptable controls include:
 

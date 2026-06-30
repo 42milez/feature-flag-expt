@@ -41,9 +41,9 @@ reviewed in one place.
   Spring Security boundary, while Kotlin is used only at read-oriented API
   boundaries where immutable DTOs are a good fit.
   ([ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md))
-- **Fail-closed security boundary** — local HTTP Basic reader/operator roles
-  expose only probes and API docs publicly, classify known `/api/**` routes by
-  role, and deny unclassified API routes by default.
+- **Fail-closed security boundary** — local HTTP Basic reader/operator/approver
+  roles expose only probes and API docs publicly, classify known `/api/**`
+  routes by role, and deny unclassified API routes by default.
   ([ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md))
 - **Kubernetes deployment** — Kustomize `base` and `dev` overlays deploy to
   kind and align the workload with the Pod Security Standards
@@ -96,27 +96,29 @@ that roadmap's Phase 2, produced by one AI agent and reviewed by another before 
 
 ## Architecture
 
-The flag domain, evaluator, persistence, and audit behavior are implemented in
-Java. Kotlin is limited to read-oriented API boundaries such as preview and
-rollout-policy validation, where null-safe types and default values express
-DTOs concisely. The preview API models proposed changes, per-sample
-before/after diffs, and summaries with nested Kotlin request/response DTOs, and
-reuses the Java `FeatureFlagEvaluator`. The rollout-policy validation API uses
-a Kotlin controller/service layer to assemble the current flag and proposed
-change, then validates them with the Java `RolloutPolicyValidator`. The
-validation response DTO is a Java record because it is shared by the validation
-API and the policy-violation response from PATCH updates.
+The flag domain, evaluator, persistence, update approval workflow, and audit
+behavior are implemented in Java. Kotlin is limited to read-oriented API
+boundaries such as preview and rollout-policy validation, where null-safe types
+and default values express DTOs concisely. The preview API models proposed
+changes, per-sample before/after diffs, and summaries with nested Kotlin
+request/response DTOs, and reuses the Java `FeatureFlagEvaluator`. The
+rollout-policy validation API uses a Kotlin controller/service layer to
+assemble the current flag and proposed change, then validates them with the
+Java `RolloutPolicyValidator`. The validation response DTO is a Java record
+because it is shared by the validation API and the policy-violation response
+from PATCH updates.
 
 ```mermaid
 flowchart LR
     Client([Client<br/>e.g. curl])
 
     subgraph Sec["Spring Security · HTTP Basic"]
-        Auth{"reader / operator role"}
+        Auth{"reader / operator / approver role"}
     end
 
     subgraph API["REST API · /api"]
         FlagCtl["Feature Flag &amp; Evaluate<br/><b>Java</b>"]
+        ApprovalCtl["Update Approval<br/><b>Java</b>"]
         PreviewCtl["Preview<br/><b>Kotlin</b>"]
         PolicyCtl["Rollout Policy<br/><b>Kotlin</b>"]
     end
@@ -124,19 +126,22 @@ flowchart LR
     subgraph Core["Domain &amp; Services · Java"]
         Eval["Feature Flag Evaluator<br/>(shared)"]
         Svc["Feature Flag Service"]
+        ApprovalSvc["Update Approval Service"]
         Policy["Rollout Policy Validator<br/>(shared)"]
         Audit["Audit Event Service"]
     end
 
     Repo[["Spring Data JDBC"]]
-    DB[("PostgreSQL<br/>flags · audit_events")]
+    DB[("PostgreSQL<br/>flags · audit_events · update_approvals")]
 
     Client --> Auth
-    Auth --> FlagCtl & PreviewCtl & PolicyCtl
+    Auth --> FlagCtl & ApprovalCtl & PreviewCtl & PolicyCtl
     FlagCtl --> Svc & Eval
+    ApprovalCtl --> ApprovalSvc
     PreviewCtl --> Eval
     PolicyCtl --> Policy
-    Svc --> Policy & Audit & Repo
+    Svc --> Policy & ApprovalSvc & Audit & Repo
+    ApprovalSvc --> Policy & Audit & Repo
     Audit --> Repo
     Repo --> DB
 ```
@@ -248,6 +253,10 @@ docker compose down --remove-orphans
 | `POST` | `/api/flags` | operator | Create a flag (rollout policy enforced) | Java |
 | `GET` | `/api/flags/{flagKey}` | reader / operator | Get a flag | Java |
 | `PATCH` | `/api/flags/{flagKey}` | operator | Update a flag (rollout policy enforced) | Java |
+| `POST` | `/api/flags/{flagKey}/approval-requests` | operator | Request approval for a high-risk update | Java |
+| `GET` | `/api/flags/{flagKey}/approval-requests/{approvalId}` | operator / approver | Get an approval request | Java |
+| `POST` | `/api/flags/{flagKey}/approval-requests/{approvalId}/approve` | approver | Approve an update request | Java |
+| `POST` | `/api/flags/{flagKey}/approval-requests/{approvalId}/reject` | approver | Reject an update request | Java |
 | `POST` | `/api/evaluate` | reader / operator | Evaluate a flag for a context | Java |
 | `GET` | `/api/flags/{flagKey}/audit-events` | reader / operator | List audit events (oldest first) | Java |
 | `POST` | `/api/flags/{flagKey}/preview` | reader / operator | Preview a proposed change (diff, no write) | Kotlin |
@@ -316,11 +325,12 @@ can fail when new CVEs are published, even without application code changes.
 
 ### Security
 
-API access uses two local HTTP Basic users: a **reader** for read-style
-operations and an **operator** for create and update operations. Prometheus
-metrics require any configured user; Swagger UI and OpenAPI docs stay public so
-the portfolio can be explored locally. Audit events record the authenticated
-principal as `actor`.
+API access uses three local HTTP Basic users: a **reader** for read-style
+operations, an **operator** for create, update, approval-request creation, and
+requester-owned approval reads, and an **approver** for approval decisions and
+approval status reads. Prometheus metrics require any configured user; Swagger
+UI and OpenAPI docs stay public so the portfolio can be explored locally. Audit
+events record the authenticated principal as `actor`.
 
 <details>
 <summary>Security model scope and evolution</summary>
