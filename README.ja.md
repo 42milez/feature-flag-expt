@@ -133,6 +133,34 @@ flowchart TD
 
 Docker Compose でアプリケーションを起動し、このあとの手順で基本的な動作を確認していきます。ローカル開発の詳しい手順については [docs/development.ja.md](docs/development.ja.md) を参照してください。
 
+以下の手順はこの流れに沿って進みます。operator と reader は異なる場面で操作し、状態を変える呼び出しはそれぞれ監査イベントを残します。
+
+```mermaid
+sequenceDiagram
+    actor Op as operator
+    actor Rd as reader
+    participant API as Feature Flag API
+    participant DB as PostgreSQL · flags / audit_events
+
+    Op->>API: POST /api/flags — create, 25% rollout
+    API->>DB: persist flag + FLAG_CREATED audit
+    API-->>Op: 201 Created
+
+    Rd->>API: POST /api/evaluate — tenant-a
+    API-->>Rd: true · TENANT_ALLOWLIST_MATCH
+    Rd->>API: POST /api/evaluate — tenant-c
+    API-->>Rd: true · ROLLOUT_MATCH (bucket 23)
+
+    Op->>API: PATCH — enable kill switch
+    API->>DB: update flag + KILL_SWITCH_ENABLED audit
+    API-->>Op: 200 OK
+
+    Rd->>API: POST /api/evaluate — tenant-a
+    API-->>Rd: false · KILL_SWITCH_ACTIVE
+    Rd->>API: GET /audit-events
+    API-->>Rd: FLAG_CREATED, KILL_SWITCH_ENABLED
+```
+
 **1. ローカルの Compose スタックを起動する**
 
 ```bash
@@ -173,9 +201,74 @@ curl -u featureflags-reader:featureflags-reader \
   "reason": "TENANT_ALLOWLIST_MATCH", "bucket": null }
 ```
 
-`enabled` と `reason` により、呼び出し側はフラグ設定の内部構造を知らずに機能を切り替えられます。全エンドポイントは **`http://localhost:8080/swagger-ui.html`** で対話的に確認できます。
+```bash
+# production + tenant-c の文脈で評価（許可リスト外、25% ロールアウト）
+curl -u featureflags-reader:featureflags-reader \
+  -H 'Content-Type: application/json' \
+  -d '{"flagKey":"checkout-redesign","environment":"production","tenantId":"tenant-c"}' \
+  http://localhost:8080/api/evaluate
+```
 
-**3. ローカルスタックを停止する**
+```jsonc
+// 200 OK — tenant-c は許可リスト外だが、決定的バケット 23 が 25 未満なので有効。
+{ "flagKey": "checkout-redesign", "enabled": true,
+  "reason": "ROLLOUT_MATCH", "bucket": 23 }
+```
+
+`enabled`、`reason`、`bucket` により、呼び出し側はフラグ設定の内部構造を知らずに機能を切り替えられます。評価理由はメトリクスや構造化ログにも残るため、許可リスト、キルスイッチ、段階的ロールアウトのどれで判定されたかを運用時に追跡できます。
+
+**3. 緊急キルスイッチを作動させ、監査証跡を確認する**
+
+状態変更はすべてアクター付きで記録されます。ここではキルスイッチを作動させ、評価が一括で無効になる様子と、その操作が監査証跡に残る様子を確認します。
+
+```bash
+# 緊急停止: キルスイッチを有効化（operator ロール、PATCH）
+curl -u featureflags-operator:featureflags-operator -X PATCH \
+  -H 'Content-Type: application/json' \
+  -d '{"killSwitchActive":true}' \
+  http://localhost:8080/api/flags/checkout-redesign
+```
+
+```jsonc
+// 200 OK — killSwitchActive が true に。他フィールドは部分更新で保持される。
+{ "flagKey": "checkout-redesign", "status": "ENABLED",
+  "targetEnvironments": ["production"], "killSwitchActive": true,
+  "tenantAllowlist": ["tenant-a"], "rolloutPercentage": 25 }
+```
+
+```bash
+# 許可リスト内の tenant-a を再評価（reader ロール）
+curl -u featureflags-reader:featureflags-reader \
+  -H 'Content-Type: application/json' \
+  -d '{"flagKey":"checkout-redesign","environment":"production","tenantId":"tenant-a"}' \
+  http://localhost:8080/api/evaluate
+```
+
+```jsonc
+// 200 OK — 許可リストより前にキルスイッチを評価するため、許可リスト内の tenant-a でも無効になる。
+{ "flagKey": "checkout-redesign", "enabled": false,
+  "reason": "KILL_SWITCH_ACTIVE", "bucket": null }
+```
+
+```bash
+# 監査証跡を確認（reader ロール、古い順）
+curl -u featureflags-reader:featureflags-reader \
+  http://localhost:8080/api/flags/checkout-redesign/audit-events
+```
+
+```jsonc
+// 200 OK — すべての変更が認証済みアクター付きで記録される。details は eventType ごとに形が変わる。
+[ { "id": 1, "flagKey": "checkout-redesign", "eventType": "FLAG_CREATED",
+    "actor": "featureflags-operator", "details": { /* ... */ }, "occurredAt": "2026-..." },
+  { "id": 2, "flagKey": "checkout-redesign", "eventType": "KILL_SWITCH_ENABLED",
+    "actor": "featureflags-operator",
+    "details": { "field": "killSwitchActive", "oldValue": false, "newValue": true },
+    "occurredAt": "2026-..." } ]
+```
+
+`actor` はリクエストボディではなく認証済みプリンシパルから記録されるため、証跡を偽装できません。本番露出の拡大や、本番ロールアウトを 50 ポイント以上引き上げるような高リスク変更は、代わりに承認ワークフロー（operator が依頼し、approver が判断）を通ります。全エンドポイントは **`http://localhost:8080/swagger-ui.html`** で対話的に確認できます。
+
+**4. ローカルスタックを停止する**
 
 ```bash
 docker compose down --remove-orphans

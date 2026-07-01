@@ -185,6 +185,35 @@ Start the application with Docker Compose. See
 [docs/development.md](docs/development.md) for prerequisites and detailed
 development steps.
 
+The walk-through below follows this path: operator and reader act at different
+points, and each state-changing call leaves an audit event.
+
+```mermaid
+sequenceDiagram
+    actor Op as operator
+    actor Rd as reader
+    participant API as Feature Flag API
+    participant DB as PostgreSQL · flags / audit_events
+
+    Op->>API: POST /api/flags — create, 25% rollout
+    API->>DB: persist flag + FLAG_CREATED audit
+    API-->>Op: 201 Created
+
+    Rd->>API: POST /api/evaluate — tenant-a
+    API-->>Rd: true · TENANT_ALLOWLIST_MATCH
+    Rd->>API: POST /api/evaluate — tenant-c
+    API-->>Rd: true · ROLLOUT_MATCH (bucket 23)
+
+    Op->>API: PATCH — enable kill switch
+    API->>DB: update flag + KILL_SWITCH_ENABLED audit
+    API-->>Op: 200 OK
+
+    Rd->>API: POST /api/evaluate — tenant-a
+    API-->>Rd: false · KILL_SWITCH_ACTIVE
+    Rd->>API: GET /audit-events
+    API-->>Rd: FLAG_CREATED, KILL_SWITCH_ENABLED
+```
+
 **1. Start the local Compose stack**
 
 ```bash
@@ -226,11 +255,84 @@ curl -u featureflags-reader:featureflags-reader \
   "reason": "TENANT_ALLOWLIST_MATCH", "bucket": null }
 ```
 
-The `enabled` and `reason` fields let a caller switch behavior without knowing
-the internal structure of the flag configuration. Browse every endpoint
-interactively at **`http://localhost:8080/swagger-ui.html`**.
+```bash
+# Evaluate for production + tenant-c (outside the allowlist, inside the 25% rollout)
+curl -u featureflags-reader:featureflags-reader \
+  -H 'Content-Type: application/json' \
+  -d '{"flagKey":"checkout-redesign","environment":"production","tenantId":"tenant-c"}' \
+  http://localhost:8080/api/evaluate
+```
 
-**3. Stop the local stack**
+```jsonc
+// 200 OK — tenant-c is not allowlisted, but its deterministic bucket 23 is
+// lower than 25, so the percentage rollout enables it.
+{ "flagKey": "checkout-redesign", "enabled": true,
+  "reason": "ROLLOUT_MATCH", "bucket": 23 }
+```
+
+The `enabled`, `reason`, and `bucket` fields let a caller switch behavior
+without knowing the internal structure of the flag configuration. Evaluation
+reasons are also emitted to metrics and structured logs, so operators can trace
+whether a decision came from the allowlist, kill switch, or gradual rollout.
+
+**3. Trigger the emergency kill switch, then read the audit trail**
+
+Every state change is attributed and recorded. Flip the kill switch, watch it
+override evaluation, and see the same action land in the audit trail.
+
+```bash
+# Emergency stop: enable the kill switch (operator role, PATCH)
+curl -u featureflags-operator:featureflags-operator -X PATCH \
+  -H 'Content-Type: application/json' \
+  -d '{"killSwitchActive":true}' \
+  http://localhost:8080/api/flags/checkout-redesign
+```
+
+```jsonc
+// 200 OK — killSwitchActive is now true; other fields are preserved by the partial update.
+{ "flagKey": "checkout-redesign", "status": "ENABLED",
+  "targetEnvironments": ["production"], "killSwitchActive": true,
+  "tenantAllowlist": ["tenant-a"], "rolloutPercentage": 25 }
+```
+
+```bash
+# Re-evaluate the allowlisted tenant-a (reader role)
+curl -u featureflags-reader:featureflags-reader \
+  -H 'Content-Type: application/json' \
+  -d '{"flagKey":"checkout-redesign","environment":"production","tenantId":"tenant-a"}' \
+  http://localhost:8080/api/evaluate
+```
+
+```jsonc
+// 200 OK — the kill switch is checked before the allowlist, so even allowlisted
+// tenant-a is turned off.
+{ "flagKey": "checkout-redesign", "enabled": false,
+  "reason": "KILL_SWITCH_ACTIVE", "bucket": null }
+```
+
+```bash
+# Inspect the audit trail (reader role, oldest first)
+curl -u featureflags-reader:featureflags-reader \
+  http://localhost:8080/api/flags/checkout-redesign/audit-events
+```
+
+```jsonc
+// 200 OK — every change is recorded with the authenticated actor; details vary by eventType.
+[ { "id": 1, "flagKey": "checkout-redesign", "eventType": "FLAG_CREATED",
+    "actor": "featureflags-operator", "details": { /* ... */ }, "occurredAt": "2026-..." },
+  { "id": 2, "flagKey": "checkout-redesign", "eventType": "KILL_SWITCH_ENABLED",
+    "actor": "featureflags-operator",
+    "details": { "field": "killSwitchActive", "oldValue": false, "newValue": true },
+    "occurredAt": "2026-..." } ]
+```
+
+The `actor` is taken from the authenticated principal, not the request body, so
+the trail cannot be forged. Higher-risk changes — expanding production exposure
+or raising a production rollout by 50 points or more — go through the approval
+workflow instead (an operator requests, an approver decides). Browse every
+endpoint interactively at **`http://localhost:8080/swagger-ui.html`**.
+
+**4. Stop the local stack**
 
 ```bash
 docker compose down --remove-orphans
