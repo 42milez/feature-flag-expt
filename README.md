@@ -121,14 +121,14 @@ flowchart LR
     end
 
     Repo[["Spring Data JDBC"]]
-    DB[("PostgreSQL<br/>flags · audit_events · update_approvals")]
+    DB[("PostgreSQL<br/>feature_flags · audit_events · feature_flag_update_approvals")]
 
     Client --> Auth
     Auth --> FlagCtl & ApprovalCtl & PreviewCtl & PolicyCtl
     FlagCtl --> Svc & Eval
     ApprovalCtl --> ApprovalSvc
-    PreviewCtl --> Eval
-    PolicyCtl --> Policy
+    PreviewCtl --> Svc & Eval
+    PolicyCtl --> Svc & Policy
     Svc --> Policy & ApprovalSvc & Audit & Repo
     ApprovalSvc --> Policy & Audit & Repo
     Audit --> Repo
