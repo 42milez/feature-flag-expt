@@ -11,7 +11,9 @@
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-kind-326CE5)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-プロダクト開発チームが基盤の複雑性を意識せず、機能開発という本質的な価値創造に集中できるようにする社内開発者向けプラットフォームを想定し、Spring Boot 製フィーチャーフラグサービスを題材にしたポートフォリオです。フィーチャーフラグ、承認ワークフロー、段階的ロールアウトを組み合わせ、プロダクトチームが「まず作り、価値を確かめながら安全に広げる」探索型のリリースを回せるようにすることを狙いとしています。具体的には、環境ごとのターゲティング、緊急停止用のキルスイッチ、テナント単位の許可リスト、決定的な割合ロールアウト、高リスク変更の承認ワークフロー、監査イベントを扱います。アプリケーション、コンテナイメージ定義、Kubernetes マニフェスト、オブザーバビリティ、CI 品質ゲートを 1 つのリポジトリにまとめ、プロダクト開発を支えるプラットフォームの構成要素をまとめてレビューできるようにしています。
+プロダクト開発チームが基盤の複雑性を意識せず、機能開発という本質的な価値創造に集中できるようにする社内開発者向けプラットフォームを想定し、Spring Boot 製フィーチャーフラグサービスを題材にしたポートフォリオです。フィーチャーフラグ、承認ワークフロー、段階的ロールアウトを組み合わせ、プロダクトチームが「まず作り、価値を確かめながら安全に広げる」探索型のリリースを回せるようにすることを狙いとしています。具体的には、環境ごとのターゲティング、緊急停止用のキルスイッチ、テナント単位の許可リスト、決定的な割合ロールアウト、高リスク変更の承認ワークフロー、監査イベントを扱います。
+
+こうした機能を実装するアプリケーションに加え、コンテナイメージ定義、Kubernetes マニフェスト、オブザーバビリティ、CI 品質ゲートを 1 つのリポジトリにまとめ、プロダクト開発を支えるプラットフォームの構成要素をまとめてレビューできるようにしています。
 
 ## 目次
 
@@ -29,7 +31,7 @@
 ## このプロジェクトの重点領域
 
 - **アプリケーション設計** — 永続化されるフラグのドメイン、評価ロジック、高リスク変更の更新承認ワークフロー、Spring Data JDBC のトランザクションフロー、監査イベントの記録、Micrometer の計装、Spring Security の境界は Java が担当し、Kotlin は immutable DTO が合う読み取り中心の API 境界に限定しています。([ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md))
-- **Kubernetes デプロイ** — Kustomize の `base` と `dev` オーバーレイを kind にデプロイし、Pod Security Standards の [restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) プロファイルに沿う Pod として実行しています。([ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md))
+- **Kubernetes マニフェストとデプロイ** — Kustomize の `base` と `dev` オーバーレイを kind にデプロイし、Pod Security Standards の [restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) プロファイルに沿う Pod として実行しています。([ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md))
 - **オブザーバビリティ** — Actuator/Micrometer のメトリクス、ECS JSON の構造化ログ、`promtool` テスト付きの Prometheus アラートルール、Grafana ダッシュボードで、ローカル環境でも挙動を追えるようにしています。([ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md))
 - **CI 品質ゲート** — フォーマット、Error Prone、ユニットテストと Testcontainers テスト、JaCoCo/Codacy カバレッジ、Kubernetes マニフェストのレンダリング検証、OpenAPI 差分検出、Trivy スキャンを変更ごとに実行します。
 - **AI エージェントを活用した開発ワークフロー** — AI エージェントは計画、設計、実装、レビューを支援し、最終的なマージ判断は変更内容を精査した上でリポジトリオーナーが行います。
