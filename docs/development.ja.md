@@ -220,12 +220,18 @@ curl -u featureflags-operator:featureflags-operator \
 }
 ```
 
+以降の手順では、手順 5 のレスポンスで実際に返った `approvalId` を使います。次の値は例なので、実行時は自分のレスポンスに含まれる値に置き換えてください。
+
+```bash
+APPROVAL_ID='5f0a5f6e-7f24-4f4f-a426-bb534ee726bd'
+```
+
 **6. 別ユーザーの approver が承認する**
 
 ```bash
-# approver が手順 2 の approvalId を承認する（依頼者は自分の依頼を承認できない）
+# approver が手順 5 で返った approvalId を承認する（依頼者は自分の依頼を承認できない）
 curl -u featureflags-approver:featureflags-approver -X POST \
-  http://localhost:8080/api/flags/checkout-redesign/approval-requests/5f0a5f6e-7f24-4f4f-a426-bb534ee726bd/approve
+  "http://localhost:8080/api/flags/checkout-redesign/approval-requests/${APPROVAL_ID}/approve"
 ```
 
 ```jsonc
@@ -243,10 +249,10 @@ curl -u featureflags-approver:featureflags-approver -X POST \
 **7. operator が承認付きで変更を再適用する**
 
 ```bash
-# 同じ operator・同じ変更案に、今度は approvalId を付与する
+# 同じ operator・同じ変更案に、今度は手順 5 で返った approvalId を付与する
 curl -u featureflags-operator:featureflags-operator -X PATCH \
   -H 'Content-Type: application/json' \
-  -d '{"rolloutPercentage":80,"approvalId":"5f0a5f6e-7f24-4f4f-a426-bb534ee726bd"}' \
+  -d "{\"rolloutPercentage\":80,\"approvalId\":\"${APPROVAL_ID}\"}" \
   http://localhost:8080/api/flags/checkout-redesign
 ```
 
