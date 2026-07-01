@@ -25,7 +25,7 @@ tools. See the official
 [kind installation](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)
 and [Kubernetes tools](https://kubernetes.io/docs/tasks/tools/) docs.
 
-### Host JVM development
+### Direct JVM development on the host
 
 Requires JDK 25. [Eclipse Temurin 25](https://adoptium.net/temurin/releases/?version=25)
 is recommended to match CI. This path is needed for host-side tests, `bootRun`,
@@ -93,7 +93,7 @@ Kubernetes/kind path, see [Running on kind](#running-on-kind).
 **3. Stop the local stack**
 
 ```bash
-docker compose down --remove-orphans
+docker compose down
 ```
 
 ## Approval workflow walkthrough
@@ -231,9 +231,10 @@ continue to run with Testcontainers. For details, see
 
 ## JVM inner loop
 
-Use the [Host JVM development prerequisites](#host-jvm-development) for direct
-JVM development. With that host toolchain installed, start only the local
-Compose database and run the service with `bootRun` from the host:
+Use the [direct JVM development prerequisites](#direct-jvm-development-on-the-host)
+when running the JVM on the host. With that host toolchain installed, start
+only the local Compose database and run the service with `bootRun` from the
+host:
 
 ```bash
 docker compose up -d postgres

@@ -375,23 +375,23 @@ has a runnable example. Browse every endpoint interactively at
 **4. Stop the local stack**
 
 ```bash
-docker compose down --remove-orphans
+docker compose down
 ```
 
 ## API Overview
 
 | Method | Path | Role | Purpose | Impl |
 |---|---|---|---|---|
-| `POST` | `/api/flags` | operator | Create a flag (rollout policy enforced) | Java |
+| `POST` | `/api/flags` | operator | Create a flag | Java |
 | `GET` | `/api/flags/{flagKey}` | reader / operator | Get a flag | Java |
-| `PATCH` | `/api/flags/{flagKey}` | operator | Update a flag (rollout policy enforced) | Java |
+| `PATCH` | `/api/flags/{flagKey}` | operator | Update a flag | Java |
 | `POST` | `/api/flags/{flagKey}/approval-requests` | operator | Request approval for a high-risk update | Java |
 | `GET` | `/api/flags/{flagKey}/approval-requests/{approvalId}` | operator / approver | Get an approval request | Java |
 | `POST` | `/api/flags/{flagKey}/approval-requests/{approvalId}/approve` | approver | Approve an update request | Java |
 | `POST` | `/api/flags/{flagKey}/approval-requests/{approvalId}/reject` | approver | Reject an update request | Java |
 | `POST` | `/api/evaluate` | reader / operator | Evaluate a flag for a context | Java |
-| `GET` | `/api/flags/{flagKey}/audit-events` | reader / operator | List audit events (oldest first) | Java |
-| `POST` | `/api/flags/{flagKey}/preview` | reader / operator | Preview a proposed change (diff, no write) | Kotlin |
+| `GET` | `/api/flags/{flagKey}/audit-events` | reader / operator | List audit events | Java |
+| `POST` | `/api/flags/{flagKey}/preview` | reader / operator | Preview a proposed change | Kotlin |
 | `POST` | `/api/flags/{flagKey}/validate-change` | reader / operator | Validate a proposed change against rollout policy | Kotlin |
 
 **Operational endpoints**
@@ -399,7 +399,7 @@ docker compose down --remove-orphans
 | Path | Access |
 |---|---|
 | `/actuator/health` (`/liveness`, `/readiness`) | Public (probes) |
-| `/actuator/prometheus` | Authenticated (any local user) |
+| `/actuator/prometheus` | Authenticated |
 | `/swagger-ui.html`, `/v3/api-docs(.yaml)` | Public |
 | any other `/api/**` | Denied (fail closed) |
 
@@ -410,11 +410,9 @@ The raw OpenAPI spec is served at `/v3/api-docs` (JSON) and `/v3/api-docs.yaml`
 
 Significant decisions are recorded as
 [Architecture Decision Records](docs/decisions/README.md) in MADR v4 format.
-Highlights:
+Representative ADRs are listed below.
 
 - [ADR-0002](docs/decisions/0002-use-spring-data-jdbc-instead-of-jpa.md) — Spring Data JDBC instead of JPA/Hibernate
-- [ADR-0005](docs/decisions/0005-separate-domain-records-from-persistence-entities.md) — Separate domain records from persistence entities
-- [ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md) — Kotlin for the evaluation preview API
 - [ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md) — kind for local Kubernetes and CI validation
 - [ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md) — HTTP Basic for the local security boundary
 
@@ -422,8 +420,8 @@ See the [full index](docs/decisions/README.md) for all records.
 
 ## Deployment & Operations
 
-Local configuration values, kind commands, and host development workflows live
-in [docs/development.md](docs/development.md).
+Detailed local run and development instructions live in
+[docs/development.md](docs/development.md).
 
 ### Continuous Integration
 
@@ -457,12 +455,17 @@ can fail when new CVEs are published, even without application code changes.
 
 ### Security
 
-API access uses three local HTTP Basic users: a **reader** for read-style
-operations, an **operator** for create, update, approval-request creation, and
-requester-owned approval reads, and an **approver** for approval decisions and
-approval status reads. Prometheus metrics require any configured user; Swagger
-UI and OpenAPI docs stay public so the portfolio can be explored locally. Audit
-events record the authenticated principal as `actor`.
+API access uses three local HTTP Basic users:
+
+| User | Role / permissions |
+| --- | --- |
+| **reader** | Read-style operations |
+| **operator** | Create, update, approval-request creation, and requester-owned approval reads |
+| **approver** | Approval decisions and approval status reads |
+
+Prometheus metrics require any configured user; Swagger UI and OpenAPI docs stay
+public so the portfolio can be explored locally. Audit events record the
+authenticated principal as `actor`.
 
 <details>
 <summary>Security model scope and evolution</summary>
@@ -493,9 +496,10 @@ The workload aligns with the Pod Security Standards [restricted](https://kuberne
 
 The kind and Kustomize workflow validates the declarative deployment path and
 smoke-tests startup behavior; it is not a complete production cluster security
-model. In real production traffic, Kubernetes endpoint removal can still race
-with SIGTERM delivery, so a rollout could add a short `preStop` delay if the
-platform needs extra endpoint-propagation time.
+model. Under real production traffic, Kubernetes endpoint removal and SIGTERM
+delivery can still race. If the platform needs extra time for endpoint removal
+to propagate, consider environment-specific mitigations, such as a short
+`preStop` wait.
 
 </details>
 
@@ -522,47 +526,48 @@ require HTTP Basic credentials from any configured user. See
 logging, Prometheus and Grafana artifacts, sample traffic commands, and the
 manual refresh steps after changing rules or dashboards.
 
-The committed alert rules and tests are intentionally alerting-ready local
-artifacts, not a production Alertmanager, PagerDuty, or Grafana provisioning
-stack (see
+The observability stack is intentionally scoped to a self-contained local
+setup, without a production delivery stack or cluster-level log collection (see
 [ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md)).
-The overlay deliberately stops at stdout/stderr logs and a small
-Prometheus/Grafana stack; it does not install cluster-level log collection. A
-production deployment would select log collection, routing, retention, and
-access-control middleware based on the target platform.
+A production deployment would add its own log collection, retention, and
+access-control middleware.
 
 ## Development & Setup
 
 Full local setup instructions live in [docs/development.md](docs/development.md):
 prerequisites, the detailed Compose quick start, environment variables, kind
-deployment, host JVM development, static analysis, tests, and Repomix review
-packs.
+deployment, direct JVM development on the host, static analysis, tests, and
+Repomix review packs.
 
 ## Repository Layout
 
 ```text
 .
-├── service/                            # Spring Boot service (Java + Kotlin)
+├── service/                                 # Spring Boot service (Java + Kotlin)
 │   └── src/main/.../featureflags/
-│       ├── flags/                      # Flag domain, evaluator, persistence (Java)
-│       ├── audit/                      # Audit events (Java)
-│       ├── approval/                   # Update approval workflow (Java)
-│       ├── policy/                     # Rollout policy: validator Java, API/service Kotlin
-│       ├── preview/                    # Preview API (Kotlin)
+│       ├── flags/                           # Flag domain, evaluator, persistence (Java + Kotlin)
+│       ├── audit/                           # Audit events (Java)
+│       ├── approval/                        # Update approval workflow (Java)
+│       ├── policy/                          # Rollout policy: validator Java, API Kotlin
+│       ├── preview/                         # Preview API (Kotlin)
+│       ├── observability/                   # Prometheus metrics (Java)
+│       ├── error/                           # Global error handling (Java)
 │       └── SecurityConfig, ...
 ├── deploy/
-│   ├── k8s/base/                       # App Deployment + Service
-│   ├── k8s/overlays/dev/               # kind: in-cluster PostgreSQL, local config
-│   ├── k8s/overlays/dev-observability/ # Prometheus + Grafana + alert rules
+│   ├── k8s/base/                            # App (Deployment + Service) + platform (Namespace)
+│   ├── k8s/overlays/dev/                    # kind: in-cluster PostgreSQL, local config
+│   ├── k8s/overlays/dev-observability/      # Prometheus + Grafana + alert rules
 │   └── kind/cluster.yaml
-├── compose.yaml                        # Local Docker Compose app + PostgreSQL runtime
+├── compose.yaml                             # Local Docker Compose app + PostgreSQL runtime
 ├── docs/
-│   ├── decisions/                      # ADRs (MADR v4)
-│   ├── development.md                  # Local run and development reference (English)
-│   ├── development.ja.md               # Local run and development reference (Japanese)
+│   ├── decisions/                           # ADRs
+│   ├── development.md                       # Local run and development reference (English)
+│   ├── development.ja.md                    # Local run and development reference (Japanese)
 │   ├── observability.md
-│   └── openapi.yaml                    # Committed OpenAPI snapshot
-├── scripts/                            # Shell equivalents of the kind/k8s Gradle tasks
-├── .github/workflows/                  # CI · image scan · kind smoke test
-└── build-logic/                        # Gradle convention plugins
+│   ├── runtime-safety.md                    # JVM runtime safety baseline
+│   ├── openapi.yaml                         # OpenAPI snapshot
+│   └── notes/, issues/, plans/, references/ # Design and implementation working notes
+├── scripts/                                 # Shell equivalents of the kind/k8s Gradle tasks
+├── .github/workflows/                       # CI · image scan · kind smoke test
+└── build-logic/                             # Gradle convention plugins
 ```
