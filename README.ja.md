@@ -29,28 +29,27 @@
 
 ## このプロジェクトの重点領域
 
-- **JVM サービス設計** — 永続化されるフラグのドメイン、評価ロジック、Spring Data JDBC のトランザクションフロー、監査イベントの記録、Micrometer の計装、Spring Security の境界は Java が担当し、Kotlin は immutable DTO が合う読み取り中心の API 境界に限定しています。([ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md))
-- **フェイルクローズなセキュリティ境界** — ローカル HTTP Basic の reader/operator/approver ロールで、プローブと API ドキュメントだけを公開し、既知の `/api/**` ルートはロール別に許可し、未分類の API ルートは既定で拒否します。([ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md))
+- **アプリケーション設計** — 永続化されるフラグのドメイン、評価ロジック、Spring Data JDBC のトランザクションフロー、監査イベントの記録、Micrometer の計装、Spring Security の境界は Java が担当し、Kotlin は immutable DTO が合う読み取り中心の API 境界に限定しています。([ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md))
 - **Kubernetes デプロイ** — Kustomize の `base` と `dev` オーバーレイを kind にデプロイし、Pod Security Standards の [restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) プロファイルに沿う Pod として実行しています。([ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md))
 - **オブザーバビリティ** — Actuator/Micrometer のメトリクス、ECS JSON の構造化ログ、`promtool` テスト付きの Prometheus アラートルール、Grafana ダッシュボードで、ローカル環境でも挙動を追えるようにしています。([ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md))
-- **CI 品質ゲート** — フォーマット、Error Prone、ユニットテストと Testcontainers テスト、JaCoCo/Codacy カバレッジ、Kubernetes マニフェストのレンダリング検証、OpenAPI 差分検出、`promtool`、Trivy スキャンを変更ごとに実行します。
+- **CI 品質ゲート** — フォーマット、Error Prone、ユニットテストと Testcontainers テスト、JaCoCo/Codacy カバレッジ、Kubernetes マニフェストのレンダリング検証、OpenAPI 差分検出、Trivy スキャンを変更ごとに実行します。
 - **AI エージェントを活用した開発ワークフロー** — AI エージェントは計画、設計、実装、レビューを支援し、最終的なマージ判断は変更内容を精査した上でリポジトリオーナーが行います。
 
 ## 開発アプローチ
 
-このリポジトリは、人間が主導する AI エージェント活用ワークフローで開発しています。プロダクトとしての意図を定義し、設計判断や実装内容をレビューし、マージを承認するのはオーナーです。AI エージェントは計画、設計、実装、レビューを支援する開発パートナーとして使用しています。
+このリポジトリは、AI エージェントを活用したワークフローで開発しています。プロダクトとしての意図を定義し、設計判断や実装内容をレビューし、マージを承認するのはオーナーです。AI エージェントは計画、設計、実装、レビューを支援する開発パートナーとして使用しています。
 
-典型的な流れは次のとおりです。小さな機能や明確な修正では、ロードマップの作成を省略し、設計や実装から始めます。
+典型的な流れは次のとおりです（小さな機能や明確な修正ではロードマップの作成を省略して設計や実装から始めます）。
 
-1. オーナーが作りたい機能を伝え、AI エージェントがその内容を複数の実装フェーズに整理したロードマップ（Markdown）を作成します。
-2. オーナーがロードマップを承認したら、AI エージェントがフェーズごとの設計書（Markdown）を作成します。
-3. オーナーが設計を承認したら、その設計書をもとに AI エージェントが実装します。
-4. オーナーが実装をレビューします。
-5. 問題があれば AI エージェントに修正を依頼し、なければマージします。
+1. オーナーが作りたい機能を伝え、AI エージェントがその内容を複数の実装フェーズに整理したロードマップ（Markdown）を作成します
+2. オーナーがロードマップを承認したら、AI エージェントがフェーズごとの設計書を作成します
+3. オーナーが設計を承認したら、その設計書をもとに AI エージェントが実装します
+4. オーナーが実装をレビューします
+5. 問題があれば AI エージェントに修正を依頼し、なければマージします
 
-1〜4 の各段階では、AI エージェント同士のピアレビューも行います。たとえば Codex が設計、実装を行い、Claude Code がレビューします。主なレビュー観点は、2026 年時点のモダンなプラクティスに沿っていること、設計と実装がセキュアであること、明らかなオーバーエンジニアリングの兆候がないことです。AI によるレビューは判断材料の一つであり、オーナーによる最終判断の代わりではありません。
+1〜4 の各段階では、AI エージェント同士のピアレビューも行います。たとえば Codex が設計、実装を行い、Claude Code がレビューします。AI によるレビューは判断材料の一つであり、オーナーによる最終判断の代わりではありません。
 
-この流れの実例は [docs/plans/](docs/plans/README.md) にコミットしています。過去に実施したコードベースのリファインメントをレビューしやすいフェーズに整理したロードマップと、AI エージェントが作成し別のエージェントがレビューしてから実装に進んだ、ロードマップの Phase 2 の設計書です。
+この流れの実例は [docs/plans/](docs/plans/README.md) にコミットしています。過去に実施したコードベースの改善をレビューしやすいフェーズに整理したロードマップと、AI エージェントが作成し別のエージェントがレビューしてから実装に進んだ、ロードマップの Phase 2 の設計書です。
 
 ## アーキテクチャ
 
@@ -119,10 +118,10 @@ flowchart TD
 
 | 領域 | 技術 |
 |---|---|
-| 言語 | Java 25（ツールチェーン）、Kotlin 2.3 |
+| 言語 | Java 25、Kotlin 2.3 |
 | フレームワーク | Spring Boot 4.1 — Web MVC、Security、Validation、Actuator |
 | 永続化 | Spring Data JDBC + PostgreSQL、Flyway マイグレーション |
-| API ドキュメント | springdoc-openapi 3.0（コードファースト）、コミット済み OpenAPI スナップショット |
+| API ドキュメント | springdoc-openapi 3.0、コミット済み OpenAPI スナップショット |
 | オブザーバビリティ | Micrometer + Prometheus、ECS JSON ログ、Grafana |
 | ビルド | multi-stage Docker build 内の Gradle → distroless `java25` イメージ |
 | 品質 | Spotless（google-java-format、ktfmt）、Error Prone、JaCoCo、Codacy |
