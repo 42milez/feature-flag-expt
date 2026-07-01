@@ -368,7 +368,7 @@ The `actor` is taken from the authenticated principal, not the request body, so
 the trail cannot be forged. Higher-risk changes — expanding production exposure
 or raising a production rollout by 50 points or more — go through the approval
 workflow instead (an operator requests, an approver decides); the
-[approval workflow walkthrough](docs/development.md#approval-workflow-walkthrough)
+[approval workflow walkthrough](docs/development.md#quick-start-full)
 has a runnable example. Browse every endpoint interactively at
 **`http://localhost:8080/swagger-ui.html`**.
 
