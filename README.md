@@ -41,17 +41,14 @@ that support product development can be reviewed in one place.
   approval workflow for high-risk changes, Spring Data JDBC transaction flow,
   audit recording, Micrometer metrics, and Spring Security boundary, while
   Kotlin is used only at read-oriented API boundaries where immutable DTOs are a
-  good fit.
-  ([ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md))
+  good fit ([ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md)).
 - **Kubernetes deployment** — Kustomize `base` and `dev` overlays deploy to
   kind and align the workload with the Pod Security Standards
   [restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted)
-  profile.
-  ([ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md))
+  profile ([ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md)).
 - **Observability** — Actuator/Micrometer metrics, ECS JSON structured logs,
   committed Prometheus alert rules with `promtool` tests, and a Grafana
-  dashboard make the local system inspectable.
-  ([ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md))
+  dashboard make the local system inspectable ([ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md)).
 - **CI quality gates** — formatting, Error Prone, unit and Testcontainers
   tests, JaCoCo/Codacy coverage, Kubernetes render validation, OpenAPI drift
   detection, and Trivy scanning run on each change.
@@ -66,7 +63,7 @@ the roadmap step may be skipped and the work may begin with design or
 implementation).
 
 1. The owner describes the desired capability, and an AI agent drafts a roadmap
-   (Markdown) organized into implementation phases.
+   organized into implementation phases.
 2. Once the owner approves the roadmap, an AI agent writes a design document for
    each phase.
 3. After the owner approves the design, an AI agent implements the change from
