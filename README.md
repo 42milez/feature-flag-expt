@@ -11,17 +11,16 @@ English | [日本語](README.ja.md)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-kind-326CE5)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A portfolio project built around a Spring Boot feature-flag platform service —
-an internal developer platform that lets product teams focus on building value
-instead of the complexity of the underlying infrastructure. By combining
-feature flags, an approval workflow, and gradual rollouts, it aims to let
-product teams run exploratory releases: build first, then expand safely while
-validating value. Concretely it covers environment targeting, emergency kill
-switches, tenant allowlists, deterministic percentage rollouts, an approval
-workflow for high-risk changes, and audit events. The repository keeps the
-application, container image definition, Kubernetes manifests, observability
-assets, and CI quality gates together so the platform components that support
-product development can be reviewed in one place.
+A portfolio project that takes the feature-flag foundation of an internal
+developer platform as its subject, built as a Spring Boot service. It combines
+flag evaluation, an approval workflow, and gradual rollouts, implemented as a
+foundation intended to support releases that ship features in small increments
+and expand them over time. Concretely it covers environment targeting,
+emergency kill switches, tenant allowlists, deterministic percentage rollouts,
+an approval workflow for high-risk changes, and audit events. The repository
+keeps the application, container image definition, Kubernetes manifests,
+observability assets, and CI quality gates together so the platform components
+that support product development can be reviewed in one place.
 
 ## Table of Contents
 
