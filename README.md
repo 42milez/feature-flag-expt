@@ -101,27 +101,27 @@ from PATCH updates.
 flowchart LR
     Client([Client<br/>e.g. curl])
 
-    subgraph Sec["Spring Security · HTTP Basic"]
+    subgraph Sec["Spring Security (HTTP Basic)"]
         Auth{"reader / operator / approver role"}
     end
 
-    subgraph API["REST API · /api"]
-        FlagCtl["Feature Flag &amp; Evaluate<br/><b>Java</b>"]
-        ApprovalCtl["Update Approval<br/><b>Java</b>"]
-        PreviewCtl["Preview<br/><b>Kotlin</b>"]
-        PolicyCtl["Rollout Policy<br/><b>Kotlin</b>"]
+    subgraph API["REST API: /api"]
+        FlagCtl["Feature Flag & Evaluate<br/><b>(Java)</b>"]
+        ApprovalCtl["Update Approval<br/><b>(Java)</b>"]
+        PreviewCtl["Preview<br/><b>(Kotlin)</b>"]
+        PolicyCtl["Rollout Policy<br/><b>(Kotlin)</b>"]
     end
 
-    subgraph Core["Domain &amp; Services · Java"]
-        Eval["Feature Flag Evaluator<br/>(shared)"]
+    subgraph Core["Domain & Services (Java)"]
+        Eval["Feature Flag Evaluator<br/>(Java)"]
         Svc["Feature Flag Service"]
         ApprovalSvc["Update Approval Service"]
-        Policy["Rollout Policy Validator<br/>(shared)"]
+        Policy["Rollout Policy Validator<br/>(Java)"]
         Audit["Audit Event Service"]
     end
 
     Repo[["Spring Data JDBC"]]
-    DB[("PostgreSQL<br/>feature_flags · audit_events · feature_flag_update_approvals")]
+    DB[("PostgreSQL<br/>feature_flags, audit_events, feature_flag_update_approvals")]
 
     Client --> Auth
     Auth --> FlagCtl & ApprovalCtl & PreviewCtl & PolicyCtl
@@ -141,18 +141,18 @@ the result `reason`:
 ```mermaid
 flowchart TD
     Start(["evaluate(flag, context)"]) --> S{status == DISABLED?}
-    S -- yes --> R1[/false · FLAG_DISABLED/]
+    S -- yes --> R1[/false / FLAG_DISABLED/]
     S -- no --> E{environment targeted?}
-    E -- no --> R2[/false · ENVIRONMENT_NOT_TARGETED/]
+    E -- no --> R2[/false / ENVIRONMENT_NOT_TARGETED/]
     E -- yes --> K{kill switch active?}
-    K -- yes --> R3[/false · KILL_SWITCH_ACTIVE/]
+    K -- yes --> R3[/false / KILL_SWITCH_ACTIVE/]
     K -- no --> A{tenant in allowlist?}
-    A -- yes --> R4[/true · TENANT_ALLOWLIST_MATCH/]
+    A -- yes --> R4[/true / TENANT_ALLOWLIST_MATCH/]
     A -- no --> I{tenant or user id has text?}
-    I -- no --> R5[/false · ROLLOUT_MISS/]
+    I -- no --> R5[/false / ROLLOUT_MISS/]
     I -- yes --> B{"bucket(flagKey, rolloutIdentity) &lt; rolloutPercentage?"}
-    B -- yes --> R6[/true · ROLLOUT_MATCH/]
-    B -- no --> R7[/false · ROLLOUT_MISS/]
+    B -- yes --> R6[/true / ROLLOUT_MATCH/]
+    B -- no --> R7[/false / ROLLOUT_MISS/]
 ```
 
 > `bucket` reads the first four bytes of `SHA-256(flagKey + ":" + rolloutIdentity)`
@@ -200,16 +200,16 @@ sequenceDiagram
     API-->>Op: 201 Created
 
     Rd->>API: POST /api/evaluate — tenant-a
-    API-->>Rd: true · TENANT_ALLOWLIST_MATCH
+    API-->>Rd: true / TENANT_ALLOWLIST_MATCH
     Rd->>API: POST /api/evaluate — tenant-c
-    API-->>Rd: true · ROLLOUT_MATCH (bucket 23)
+    API-->>Rd: true / ROLLOUT_MATCH (bucket 23)
 
     Op->>API: PATCH — enable kill switch
     API->>DB: update flag + KILL_SWITCH_ENABLED audit
     API-->>Op: 200 OK
 
     Rd->>API: POST /api/evaluate — tenant-a
-    API-->>Rd: false · KILL_SWITCH_ACTIVE
+    API-->>Rd: false / KILL_SWITCH_ACTIVE
     Rd->>API: GET /audit-events
     API-->>Rd: FLAG_CREATED, KILL_SWITCH_ENABLED
 ```
