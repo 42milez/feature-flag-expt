@@ -131,7 +131,7 @@ flowchart TD
 
 ## クイックスタート
 
-Docker Compose でフラグを作成・評価します。ホスト側に JDK をインストールする必要はありません。事前準備、ポート競合の注意、kind、ホスト JVM 開発の手順は [docs/development.ja.md](docs/development.ja.md) を参照してください。
+Docker Compose でアプリケーションを起動し、このあとの手順で基本的な動作を確認していきます。ローカル開発の詳しい手順については [docs/development.ja.md](docs/development.ja.md) を参照してください。
 
 **1. ローカルの Compose スタックを起動する**
 
@@ -139,7 +139,7 @@ Docker Compose でフラグを作成・評価します。ホスト側に JDK を
 docker compose up --build -d
 ```
 
-Compose は Spring Boot の jar 生成を含めてサービスイメージをビルドし、アプリと PostgreSQL を起動します。
+Compose は Spring Boot の jar 生成を含めてイメージをビルドし、アプリケーションと PostgreSQL を起動します。
 
 **2. フラグを作成し、評価する**
 

@@ -181,9 +181,9 @@ Exact version numbers are managed in [`gradle/libs.versions.toml`](gradle/libs.v
 
 ## Quick Start
 
-Create and evaluate a flag with Docker Compose; a host JDK is not required.
-See [docs/development.md](docs/development.md) for prerequisites, port-conflict
-notes, kind, and host JVM workflows.
+Start the application with Docker Compose. See
+[docs/development.md](docs/development.md) for prerequisites and detailed
+development steps.
 
 **1. Start the local Compose stack**
 
