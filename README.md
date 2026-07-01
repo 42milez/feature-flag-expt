@@ -11,14 +11,17 @@ English | [日本語](README.ja.md)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-kind-326CE5)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A portfolio project built around a Spring Boot feature-flag platform service:
-the kind of internal developer platform component that helps product teams
-release changes safely through environment targeting, emergency kill switches,
-tenant allowlists, deterministic percentage rollouts, and audit events. The
-repository keeps the application, container image definition, Kubernetes
-manifests, observability assets, and CI quality gates together so the
-operational platform components that support product development can be
-reviewed in one place.
+A portfolio project built around a Spring Boot feature-flag platform service —
+an internal developer platform that lets product teams focus on building value
+instead of the complexity of the underlying infrastructure. By combining
+feature flags, an approval workflow, and gradual rollouts, it aims to let
+product teams run exploratory releases: build first, then expand safely while
+validating value. Concretely it covers environment targeting, emergency kill
+switches, tenant allowlists, deterministic percentage rollouts, an approval
+workflow for high-risk changes, and audit events. The repository keeps the
+application, container image definition, Kubernetes manifests, observability
+assets, and CI quality gates together so the platform components that support
+product development can be reviewed in one place.
 
 ## Table of Contents
 
@@ -35,10 +38,11 @@ reviewed in one place.
 
 ## Project Focus Areas
 
-- **Application design** — Java owns the persisted flag domain, evaluator,
-  Spring Data JDBC transaction flow, audit recording, Micrometer metrics, and
-  Spring Security boundary, while Kotlin is used only at read-oriented API
-  boundaries where immutable DTOs are a good fit.
+- **Application design** — Java owns the persisted flag domain, evaluator, the
+  approval workflow for high-risk changes, Spring Data JDBC transaction flow,
+  audit recording, Micrometer metrics, and Spring Security boundary, while
+  Kotlin is used only at read-oriented API boundaries where immutable DTOs are a
+  good fit.
   ([ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md))
 - **Kubernetes deployment** — Kustomize `base` and `dev` overlays deploy to
   kind and align the workload with the Pod Security Standards
