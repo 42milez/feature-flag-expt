@@ -114,20 +114,20 @@ flowchart TD
 
 ## 技術スタック
 
-| 領域 | 技術 |
-|---|---|
-| 言語 | Java 25、Kotlin 2.3 |
-| フレームワーク | Spring Boot 4.1 — Web MVC、Security、Validation、Actuator |
-| 永続化 | Spring Data JDBC + PostgreSQL、Flyway マイグレーション |
-| API ドキュメント | springdoc-openapi 3.0、コミット済み OpenAPI スナップショット |
-| オブザーバビリティ | Micrometer + Prometheus、ECS JSON ログ、Grafana |
-| ビルド | multi-stage Docker build 内の Gradle → distroless `java25` イメージ |
-| 品質 | Spotless（google-java-format、ktfmt）、Error Prone、JaCoCo、Codacy |
-| テスト | JUnit、MockK、Testcontainers（PostgreSQL）、Spring Security Test |
-| デプロイ | Docker（distroless、非 root）、Kubernetes + Kustomize、kind |
-| CI | GitHub Actions、Trivy、promtool |
+| 領域 | 主要技術 | 補足 |
+|---|---|---|
+| 言語 | Java 25 / Kotlin 2.3 | — |
+| フレームワーク | Spring Boot 4.1 | Web MVC・Security・Validation・Actuator |
+| 永続化 | Spring Data JDBC + PostgreSQL 16 | Flyway マイグレーション |
+| API ドキュメント | springdoc-openapi 3.0 | コミット済み OpenAPI スナップショット |
+| ビルド | Gradle（multi-stage Docker build） | distroless・非 root の `java25` イメージ |
+| デプロイ | Kubernetes + Kustomize | kind クラスター |
+| テスト | JUnit・MockK・Testcontainers（PostgreSQL） | Spring Security Test |
+| 品質 | Spotless（google-java-format / ktfmt）・Error Prone | JaCoCo・Codacy |
+| CI | GitHub Actions | Trivy・promtool |
+| オブザーバビリティ | Micrometer + Prometheus | ECS JSON ログ・Grafana |
 
-正確なパッチバージョンは [`gradle/libs.versions.toml`](gradle/libs.versions.toml) で管理しています。
+厳密なバージョン番号は [`gradle/libs.versions.toml`](gradle/libs.versions.toml) で管理しています。
 
 ## クイックスタート
 

@@ -164,20 +164,20 @@ flowchart TD
 
 ## Tech Stack
 
-| Area | Technology |
-|---|---|
-| Language | Java 25, Kotlin 2.3 |
-| Framework | Spring Boot 4.1 — Web MVC, Security, Validation, Actuator |
-| Persistence | Spring Data JDBC + PostgreSQL, Flyway migrations |
-| API docs | springdoc-openapi 3.0, committed OpenAPI snapshot |
-| Observability | Micrometer + Prometheus, ECS JSON logging, Grafana |
-| Build | Gradle inside a multi-stage Docker build → distroless `java25` image |
-| Quality | Spotless (google-java-format, ktfmt), Error Prone, JaCoCo, Codacy |
-| Test | JUnit, MockK, Testcontainers (PostgreSQL), Spring Security Test |
-| Deploy | Docker (distroless, non-root), Kubernetes + Kustomize, kind |
-| CI | GitHub Actions, Trivy, promtool |
+| Area | Core | Notes |
+|---|---|---|
+| Language | Java 25 / Kotlin 2.3 | — |
+| Framework | Spring Boot 4.1 | Web MVC · Security · Validation · Actuator |
+| Persistence | Spring Data JDBC + PostgreSQL 16 | Flyway migrations |
+| API docs | springdoc-openapi 3.0 | committed OpenAPI snapshot |
+| Build | Gradle (multi-stage Docker build) | distroless, non-root `java25` image |
+| Deploy | Kubernetes + Kustomize | kind cluster |
+| Test | JUnit · MockK · Testcontainers (PostgreSQL) | Spring Security Test |
+| Quality | Spotless (google-java-format / ktfmt) · Error Prone | JaCoCo · Codacy |
+| CI | GitHub Actions | Trivy · promtool |
+| Observability | Micrometer + Prometheus | ECS JSON logging · Grafana |
 
-Exact patch versions are managed in [`gradle/libs.versions.toml`](gradle/libs.versions.toml).
+Exact version numbers are managed in [`gradle/libs.versions.toml`](gradle/libs.versions.toml).
 
 ## Quick Start
 
