@@ -172,7 +172,7 @@ flowchart TD
 | API docs | springdoc-openapi 3.0 | committed OpenAPI snapshot |
 | Build | Gradle (multi-stage Docker build) | distroless, non-root `java25` image |
 | Deploy | Kubernetes + Kustomize | kind cluster |
-| Test | JUnit · MockK · Testcontainers (PostgreSQL) | Spring Security Test |
+| Test | JUnit · Mockito・MockK · Testcontainers (PostgreSQL) | Spring Security Test |
 | Quality | Spotless (google-java-format / ktfmt) · Error Prone | JaCoCo · Codacy |
 | CI | GitHub Actions | Trivy · promtool |
 | Observability | Micrometer + Prometheus | ECS JSON logging · Grafana |
@@ -367,8 +367,10 @@ curl -u featureflags-reader:featureflags-reader \
 The `actor` is taken from the authenticated principal, not the request body, so
 the trail cannot be forged. Higher-risk changes — expanding production exposure
 or raising a production rollout by 50 points or more — go through the approval
-workflow instead (an operator requests, an approver decides). Browse every
-endpoint interactively at **`http://localhost:8080/swagger-ui.html`**.
+workflow instead (an operator requests, an approver decides); the
+[approval workflow walkthrough](docs/development.md#approval-workflow-walkthrough)
+has a runnable example. Browse every endpoint interactively at
+**`http://localhost:8080/swagger-ui.html`**.
 
 **4. Stop the local stack**
 

@@ -96,6 +96,92 @@ Kubernetes/kind path, see [Running on kind](#running-on-kind).
 docker compose down --remove-orphans
 ```
 
+## Approval workflow walkthrough
+
+High-risk changes fail closed until an approver signs off. This continues from
+the `checkout-redesign` flag created above (production, `tenant-a` allowlist,
+25% rollout), so keep the stack running (run it before the stop step). Raising
+its production rollout from 25% to 80% is a +55 point jump, which the risk
+classifier flags as high risk. Credentials for the `approver` user are in
+[Configuration](#configuration).
+
+**1. A high-risk change is rejected without approval**
+
+```bash
+# operator raises the rollout directly — no approval attached
+curl -u featureflags-operator:featureflags-operator -X PATCH \
+  -H 'Content-Type: application/json' \
+  -d '{"rolloutPercentage":80}' \
+  http://localhost:8080/api/flags/checkout-redesign
+```
+
+```jsonc
+// 422 Unprocessable Entity — the change is blocked until it is approved.
+{ "flagKey": "checkout-redesign", "allowed": false,
+  "violations": [ { "code": "HIGH_RISK_REQUIRES_APPROVAL",
+                    "message": "High-risk changes require approval before rollout.",
+                    "severity": "ERROR" } ] }
+```
+
+**2. The operator requests approval**
+
+```bash
+# operator opens an approval request describing the same proposed change
+curl -u featureflags-operator:featureflags-operator \
+  -H 'Content-Type: application/json' \
+  -d '{"rolloutPercentage":80}' \
+  http://localhost:8080/api/flags/checkout-redesign/approval-requests
+```
+
+```jsonc
+// 201 Created — a PENDING request captures who asked, the risk, and before/after snapshots.
+{ "approvalId": "5f0a5f6e-7f24-4f4f-a426-bb534ee726bd",
+  "flagKey": "checkout-redesign", "requester": "featureflags-operator",
+  "approver": null, "status": "PENDING",
+  "riskReasons": ["LARGE_PRODUCTION_ROLLOUT_INCREASE"],
+  "currentSnapshot": { /* rolloutPercentage: 25, ... */ },
+  "proposedSnapshot": { /* rolloutPercentage: 80, ... */ } }
+```
+
+**3. A different approver approves it**
+
+```bash
+# approver acts on the request id from step 2 (a requester cannot approve their own)
+curl -u featureflags-approver:featureflags-approver -X POST \
+  http://localhost:8080/api/flags/checkout-redesign/approval-requests/5f0a5f6e-7f24-4f4f-a426-bb534ee726bd/approve
+```
+
+```jsonc
+// 200 OK — the request is now APPROVED and attributed to the approver.
+{ "approvalId": "5f0a5f6e-7f24-4f4f-a426-bb534ee726bd",
+  "flagKey": "checkout-redesign", "requester": "featureflags-operator",
+  "approver": "featureflags-approver", "status": "APPROVED", ... }
+```
+
+**4. The operator re-applies the change with the approval**
+
+```bash
+# same operator, same proposed change, now carrying the approvalId
+curl -u featureflags-operator:featureflags-operator -X PATCH \
+  -H 'Content-Type: application/json' \
+  -d '{"rolloutPercentage":80,"approvalId":"5f0a5f6e-7f24-4f4f-a426-bb534ee726bd"}' \
+  http://localhost:8080/api/flags/checkout-redesign
+```
+
+```jsonc
+// 200 OK — the rollout is applied and the approval is consumed (single use).
+{ "flagKey": "checkout-redesign", "status": "ENABLED",
+  "targetEnvironments": ["production"], "killSwitchActive": false,
+  "tenantAllowlist": ["tenant-a"], "rolloutPercentage": 80 }
+```
+
+The approval is bound to one proposed change and one requester: it is verified
+against the recorded before/after snapshots, cannot be approved by its own
+requester, and is consumed on first use. The audit trail for the flag now also
+lists `APPROVAL_REQUESTED`, `APPROVAL_APPROVED`, `APPROVAL_USED`, and
+`ROLLOUT_PERCENTAGE_CHANGED`. See the
+[README API overview](../README.md#api-overview) for the full endpoint list.
+
 ## Configuration
 
 The service requires PostgreSQL to start. The Compose Quick Start wires the app

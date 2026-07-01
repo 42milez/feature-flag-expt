@@ -72,6 +72,82 @@ curl -u featureflags-reader:featureflags-reader \
 docker compose down --remove-orphans
 ```
 
+## 承認ワークフローの手順
+
+高リスク変更は、承認されるまで fail-closed で拒否されます。ここでは上で作成した `checkout-redesign` フラグ（production 対象、`tenant-a` 許可リスト、25% ロールアウト）を使うので、スタックは起動したままにしてください（停止手順の前に実行します）。本番ロールアウトを 25% から 80% へ引き上げる +55 ポイントの変更は、リスク分類器が高リスクと判定します。`approver` ユーザーの認証情報は [設定](#設定) にあります。
+
+**1. 承認なしの高リスク変更は拒否される**
+
+```bash
+# operator が承認を付けずに直接ロールアウトを引き上げる
+curl -u featureflags-operator:featureflags-operator -X PATCH \
+  -H 'Content-Type: application/json' \
+  -d '{"rolloutPercentage":80}' \
+  http://localhost:8080/api/flags/checkout-redesign
+```
+
+```jsonc
+// 422 Unprocessable Entity — 承認されるまで変更はブロックされる。
+{ "flagKey": "checkout-redesign", "allowed": false,
+  "violations": [ { "code": "HIGH_RISK_REQUIRES_APPROVAL",
+                    "message": "High-risk changes require approval before rollout.",
+                    "severity": "ERROR" } ] }
+```
+
+**2. operator が承認を依頼する**
+
+```bash
+# operator が同じ変更案を記述した承認リクエストを作成する
+curl -u featureflags-operator:featureflags-operator \
+  -H 'Content-Type: application/json' \
+  -d '{"rolloutPercentage":80}' \
+  http://localhost:8080/api/flags/checkout-redesign/approval-requests
+```
+
+```jsonc
+// 201 Created — PENDING の依頼に、依頼者・リスク・before/after スナップショットが記録される。
+{ "approvalId": "5f0a5f6e-7f24-4f4f-a426-bb534ee726bd",
+  "flagKey": "checkout-redesign", "requester": "featureflags-operator",
+  "approver": null, "status": "PENDING",
+  "riskReasons": ["LARGE_PRODUCTION_ROLLOUT_INCREASE"],
+  "currentSnapshot": { /* rolloutPercentage: 25, ... */ },
+  "proposedSnapshot": { /* rolloutPercentage: 80, ... */ } }
+```
+
+**3. 別ユーザーの approver が承認する**
+
+```bash
+# approver が手順 2 の approvalId を承認する（依頼者は自分の依頼を承認できない）
+curl -u featureflags-approver:featureflags-approver -X POST \
+  http://localhost:8080/api/flags/checkout-redesign/approval-requests/5f0a5f6e-7f24-4f4f-a426-bb534ee726bd/approve
+```
+
+```jsonc
+// 200 OK — 依頼は APPROVED になり、approver が記録される。
+{ "approvalId": "5f0a5f6e-7f24-4f4f-a426-bb534ee726bd",
+  "flagKey": "checkout-redesign", "requester": "featureflags-operator",
+  "approver": "featureflags-approver", "status": "APPROVED", ... }
+```
+
+**4. operator が承認付きで変更を再適用する**
+
+```bash
+# 同じ operator・同じ変更案に、今度は approvalId を付与する
+curl -u featureflags-operator:featureflags-operator -X PATCH \
+  -H 'Content-Type: application/json' \
+  -d '{"rolloutPercentage":80,"approvalId":"5f0a5f6e-7f24-4f4f-a426-bb534ee726bd"}' \
+  http://localhost:8080/api/flags/checkout-redesign
+```
+
+```jsonc
+// 200 OK — ロールアウトが適用され、承認は 1 回限りで消費される。
+{ "flagKey": "checkout-redesign", "status": "ENABLED",
+  "targetEnvironments": ["production"], "killSwitchActive": false,
+  "tenantAllowlist": ["tenant-a"], "rolloutPercentage": 80 }
+```
+
+承認は 1 つの変更案と 1 人の依頼者に紐づきます。記録された before/after スナップショットと照合され、依頼者自身は承認できず、初回使用時に消費されます。このフラグの監査証跡には、さらに `APPROVAL_REQUESTED`、`APPROVAL_APPROVED`、`APPROVAL_USED`、`ROLLOUT_PERCENTAGE_CHANGED` が並びます。全エンドポイントの一覧は [README の API 一覧](../README.ja.md#api-一覧) を参照してください。
+
 ## 設定
 
 サービスの起動には PostgreSQL が必要です。Compose クイックスタートでは、アプリコンテナが `postgres` サービスに自動的に接続されます。ホストから JVM を直接実行する場合、以下の既定値で `localhost:5432` の PostgreSQL に接続します。別のデータベースを使う場合やユーザー名・パスワードを変更する場合は、対応する環境変数を上書きしてください。

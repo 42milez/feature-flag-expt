@@ -122,7 +122,7 @@ flowchart TD
 | API ドキュメント | springdoc-openapi 3.0 | コミット済み OpenAPI スナップショット |
 | ビルド | Gradle（multi-stage Docker build） | distroless・非 root の `java25` イメージ |
 | デプロイ | Kubernetes + Kustomize | kind クラスター |
-| テスト | JUnit・MockK・Testcontainers（PostgreSQL） | Spring Security Test |
+| テスト | JUnit・Mockito・MockK・Testcontainers（PostgreSQL） | Spring Security Test |
 | 品質 | Spotless（google-java-format / ktfmt）・Error Prone | JaCoCo・Codacy |
 | CI | GitHub Actions | Trivy・promtool |
 | オブザーバビリティ | Micrometer + Prometheus | ECS JSON ログ・Grafana |
@@ -304,7 +304,7 @@ curl -u featureflags-reader:featureflags-reader \
 ]
 ```
 
-`actor` はリクエストボディではなく認証済みプリンシパルから記録されるため、証跡を偽装できません。本番露出の拡大や、本番ロールアウトを 50 ポイント以上引き上げるような高リスク変更は、代わりに承認ワークフロー（operator が依頼し、approver が判断）を通ります。全エンドポイントは **`http://localhost:8080/swagger-ui.html`** で対話的に確認できます。
+`actor` はリクエストボディではなく認証済みプリンシパルから記録されるため、証跡を偽装できません。本番露出の拡大や、本番ロールアウトを 50 ポイント以上引き上げるような高リスク変更は、代わりに承認ワークフロー（operator が依頼し、approver が判断）を通ります（実行可能な手順は [承認ワークフローの手順](docs/development.ja.md#承認ワークフローの手順) を参照）。全エンドポイントは **`http://localhost:8080/swagger-ui.html`** で対話的に確認できます。
 
 **4. ローカルスタックを停止する**
 
