@@ -235,9 +235,14 @@ curl -u featureflags-operator:featureflags-operator \
 
 ```jsonc
 // 201 Created
-{ "flagKey": "checkout-redesign", "status": "ENABLED",
-  "targetEnvironments": ["production"], "killSwitchActive": false,
-  "tenantAllowlist": ["tenant-a"], "rolloutPercentage": 25 }
+{
+  "flagKey": "checkout-redesign",
+  "status": "ENABLED",
+  "targetEnvironments": ["production"],
+  "killSwitchActive": false,
+  "tenantAllowlist": ["tenant-a"],
+  "rolloutPercentage": 25
+}
 ```
 
 ```bash
@@ -251,8 +256,12 @@ curl -u featureflags-reader:featureflags-reader \
 ```jsonc
 // 200 OK — tenant-a is allowlisted, so evaluation short-circuits before the
 // percentage rollout; bucket is null because rollout logic was never reached.
-{ "flagKey": "checkout-redesign", "enabled": true,
-  "reason": "TENANT_ALLOWLIST_MATCH", "bucket": null }
+{
+  "flagKey": "checkout-redesign",
+  "enabled": true,
+  "reason": "TENANT_ALLOWLIST_MATCH",
+  "bucket": null
+}
 ```
 
 ```bash
@@ -266,8 +275,12 @@ curl -u featureflags-reader:featureflags-reader \
 ```jsonc
 // 200 OK — tenant-c is not allowlisted, but its deterministic bucket 23 is
 // lower than 25, so the percentage rollout enables it.
-{ "flagKey": "checkout-redesign", "enabled": true,
-  "reason": "ROLLOUT_MATCH", "bucket": 23 }
+{
+  "flagKey": "checkout-redesign",
+  "enabled": true,
+  "reason": "ROLLOUT_MATCH",
+  "bucket": 23
+}
 ```
 
 The `enabled`, `reason`, and `bucket` fields let a caller switch behavior
@@ -290,9 +303,14 @@ curl -u featureflags-operator:featureflags-operator -X PATCH \
 
 ```jsonc
 // 200 OK — killSwitchActive is now true; other fields are preserved by the partial update.
-{ "flagKey": "checkout-redesign", "status": "ENABLED",
-  "targetEnvironments": ["production"], "killSwitchActive": true,
-  "tenantAllowlist": ["tenant-a"], "rolloutPercentage": 25 }
+{
+  "flagKey": "checkout-redesign",
+  "status": "ENABLED",
+  "targetEnvironments": ["production"],
+  "killSwitchActive": true,
+  "tenantAllowlist": ["tenant-a"],
+  "rolloutPercentage": 25
+}
 ```
 
 ```bash
@@ -306,8 +324,12 @@ curl -u featureflags-reader:featureflags-reader \
 ```jsonc
 // 200 OK — the kill switch is checked before the allowlist, so even allowlisted
 // tenant-a is turned off.
-{ "flagKey": "checkout-redesign", "enabled": false,
-  "reason": "KILL_SWITCH_ACTIVE", "bucket": null }
+{
+  "flagKey": "checkout-redesign",
+  "enabled": false,
+  "reason": "KILL_SWITCH_ACTIVE",
+  "bucket": null
+}
 ```
 
 ```bash
@@ -318,12 +340,28 @@ curl -u featureflags-reader:featureflags-reader \
 
 ```jsonc
 // 200 OK — every change is recorded with the authenticated actor; details vary by eventType.
-[ { "id": 1, "flagKey": "checkout-redesign", "eventType": "FLAG_CREATED",
-    "actor": "featureflags-operator", "details": { /* ... */ }, "occurredAt": "2026-..." },
-  { "id": 2, "flagKey": "checkout-redesign", "eventType": "KILL_SWITCH_ENABLED",
+[
+  {
+    "id": 1,
+    "flagKey": "checkout-redesign",
+    "eventType": "FLAG_CREATED",
     "actor": "featureflags-operator",
-    "details": { "field": "killSwitchActive", "oldValue": false, "newValue": true },
-    "occurredAt": "2026-..." } ]
+    "details": { /* ... */ },
+    "occurredAt": "2026-..."
+  },
+  {
+    "id": 2,
+    "flagKey": "checkout-redesign",
+    "eventType": "KILL_SWITCH_ENABLED",
+    "actor": "featureflags-operator",
+    "details": {
+      "field": "killSwitchActive",
+      "oldValue": false,
+      "newValue": true
+    },
+    "occurredAt": "2026-..."
+  }
+]
 ```
 
 The `actor` is taken from the authenticated principal, not the request body, so

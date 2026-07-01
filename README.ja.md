@@ -181,9 +181,14 @@ curl -u featureflags-operator:featureflags-operator \
 
 ```jsonc
 // 201 Created
-{ "flagKey": "checkout-redesign", "status": "ENABLED",
-  "targetEnvironments": ["production"], "killSwitchActive": false,
-  "tenantAllowlist": ["tenant-a"], "rolloutPercentage": 25 }
+{
+  "flagKey": "checkout-redesign",
+  "status": "ENABLED",
+  "targetEnvironments": ["production"],
+  "killSwitchActive": false,
+  "tenantAllowlist": ["tenant-a"],
+  "rolloutPercentage": 25
+}
 ```
 
 ```bash
@@ -197,8 +202,12 @@ curl -u featureflags-reader:featureflags-reader \
 ```jsonc
 // 200 OK — tenant-a は許可リストに含まれるため、割合ロールアウトの手前で確定する。
 // ロールアウトロジックに到達しないので bucket は null。
-{ "flagKey": "checkout-redesign", "enabled": true,
-  "reason": "TENANT_ALLOWLIST_MATCH", "bucket": null }
+{
+  "flagKey": "checkout-redesign",
+  "enabled": true,
+  "reason": "TENANT_ALLOWLIST_MATCH",
+  "bucket": null
+}
 ```
 
 ```bash
@@ -211,8 +220,12 @@ curl -u featureflags-reader:featureflags-reader \
 
 ```jsonc
 // 200 OK — tenant-c は許可リスト外だが、決定的バケット 23 が 25 未満なので有効。
-{ "flagKey": "checkout-redesign", "enabled": true,
-  "reason": "ROLLOUT_MATCH", "bucket": 23 }
+{
+  "flagKey": "checkout-redesign",
+  "enabled": true,
+  "reason": "ROLLOUT_MATCH",
+  "bucket": 23
+}
 ```
 
 `enabled`、`reason`、`bucket` により、呼び出し側はフラグ設定の内部構造を知らずに機能を切り替えられます。評価理由はメトリクスや構造化ログにも残るため、許可リスト、キルスイッチ、段階的ロールアウトのどれで判定されたかを運用時に追跡できます。
@@ -231,9 +244,14 @@ curl -u featureflags-operator:featureflags-operator -X PATCH \
 
 ```jsonc
 // 200 OK — killSwitchActive が true に。他フィールドは部分更新で保持される。
-{ "flagKey": "checkout-redesign", "status": "ENABLED",
-  "targetEnvironments": ["production"], "killSwitchActive": true,
-  "tenantAllowlist": ["tenant-a"], "rolloutPercentage": 25 }
+{
+  "flagKey": "checkout-redesign",
+  "status": "ENABLED",
+  "targetEnvironments": ["production"],
+  "killSwitchActive": true,
+  "tenantAllowlist": ["tenant-a"],
+  "rolloutPercentage": 25
+}
 ```
 
 ```bash
@@ -246,8 +264,12 @@ curl -u featureflags-reader:featureflags-reader \
 
 ```jsonc
 // 200 OK — 許可リストより前にキルスイッチを評価するため、許可リスト内の tenant-a でも無効になる。
-{ "flagKey": "checkout-redesign", "enabled": false,
-  "reason": "KILL_SWITCH_ACTIVE", "bucket": null }
+{
+  "flagKey": "checkout-redesign",
+  "enabled": false,
+  "reason": "KILL_SWITCH_ACTIVE",
+  "bucket": null
+}
 ```
 
 ```bash
@@ -258,12 +280,28 @@ curl -u featureflags-reader:featureflags-reader \
 
 ```jsonc
 // 200 OK — すべての変更が認証済みアクター付きで記録される。details は eventType ごとに形が変わる。
-[ { "id": 1, "flagKey": "checkout-redesign", "eventType": "FLAG_CREATED",
-    "actor": "featureflags-operator", "details": { /* ... */ }, "occurredAt": "2026-..." },
-  { "id": 2, "flagKey": "checkout-redesign", "eventType": "KILL_SWITCH_ENABLED",
+[
+  {
+    "id": 1,
+    "flagKey": "checkout-redesign",
+    "eventType": "FLAG_CREATED",
     "actor": "featureflags-operator",
-    "details": { "field": "killSwitchActive", "oldValue": false, "newValue": true },
-    "occurredAt": "2026-..." } ]
+    "details": { /* ... */ },
+    "occurredAt": "2026-..."
+  },
+  {
+    "id": 2,
+    "flagKey": "checkout-redesign",
+    "eventType": "KILL_SWITCH_ENABLED",
+    "actor": "featureflags-operator",
+    "details": {
+      "field": "killSwitchActive",
+      "oldValue": false,
+      "newValue": true
+    },
+    "occurredAt": "2026-..."
+  }
+]
 ```
 
 `actor` はリクエストボディではなく認証済みプリンシパルから記録されるため、証跡を偽装できません。本番露出の拡大や、本番ロールアウトを 50 ポイント以上引き上げるような高リスク変更は、代わりに承認ワークフロー（operator が依頼し、approver が判断）を通ります。全エンドポイントは **`http://localhost:8080/swagger-ui.html`** で対話的に確認できます。
