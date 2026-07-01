@@ -307,7 +307,7 @@ kind のワークフローを実行する前に、[ローカル kind / Kubernete
 
 Docker Compose は、シンプルなローカルアプリケーション実行環境としてのみ用意しています。Kubernetes マニフェスト、サービスディスカバリ、プローブ、`kubectl apply` の検証には kind を使います。Compose はアプリを `127.0.0.1:8080` にバインドするため、`k8sPortForward` と競合します。Compose と kind によるアプリ公開手順を同時に使わず、どちらか一方を選んでください。データベースに依存する統合テストは、引き続き Testcontainers で実行します。詳しくは [ADR-0009](decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md) を参照してください。
 
-## JVM の開発ループ
+## ローカルでの開発サイクル
 
 JVM をホスト上で直接実行する開発では、[ホスト上で JVM を直接実行する開発](#ホスト上で-jvm-を直接実行する開発) の前提条件を使います。ホスト側のツールチェーンをインストールしたら、ローカルの Compose データベースだけを起動し、ホストから `bootRun` でサービスを実行します。
 

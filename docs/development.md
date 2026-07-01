@@ -1,6 +1,6 @@
 # Development
 
-[English](development.md) | [日本語](development.ja.md)
+English | [日本語](development.ja.md)
 
 Full reference for running and developing locally. See the [README](../README.md)
 for the project overview, architecture, API surface, and operational rationale.
@@ -361,7 +361,7 @@ the same time; choose one or the other. Database-dependent integration tests
 continue to run with Testcontainers. For details, see
 [ADR-0009](decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md).
 
-## JVM inner loop
+## Local development cycle
 
 Use the [direct JVM development prerequisites](#direct-jvm-development-on-the-host)
 when running the JVM on the host. With that host toolchain installed, start
