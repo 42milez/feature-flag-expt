@@ -167,7 +167,7 @@ sequenceDiagram
 docker compose up --build -d
 ```
 
-Compose は Spring Boot の jar 生成を含めてイメージをビルドし、アプリケーションと PostgreSQL を起動します。
+Compose は Spring Boot の jar 生成を含めて Docker イメージをビルドし、アプリケーションと PostgreSQL を起動します。
 
 **2. フラグを作成し、評価する**
 
@@ -360,12 +360,12 @@ GitHub Actions は 3 つのワークフローを使用します。
 | ワークフロー | トリガー | 対象 |
 |---|---|---|
 | `CI` | `main` への push、プルリクエスト、手動実行 | フォーマット、Error Prone コンパイル、ユニットテスト、Testcontainers 統合テスト、JaCoCo カバレッジレポート生成、Kubernetes マニフェストのレンダリング検証、OpenAPI スナップショットの差分検出、Prometheus アラートルールの検証 |
-| `Image Vulnerability Scan` | `main` への push、プルリクエスト、毎日 18:00 UTC（03:00 JST）、手動実行 | サービスイメージのビルド確認と Trivy イメージスキャン。テストやデプロイのシグナルとは分離 |
+| `Image Vulnerability Scan` | `main` への push、プルリクエスト、毎日 18:00 UTC（03:00 JST）、手動実行 | Docker イメージのビルド確認と Trivy イメージスキャン。テストやデプロイのシグナルとは分離 |
 | `Kind Smoke Test` | 毎日 18:00 UTC（03:00 JST）、手動実行 | kind クラスターでの起動検証。デプロイ失敗時には Kubernetes の診断情報を収集 |
 
-プルリクエストの CI では、Prometheus サーバーを起動せずに `promtool` でアラートルールを検証します。イメージのワークフローはサービスイメージをローカルでビルドし、その同じイメージを Trivy でスキャンします。
+プルリクエストの CI では、Prometheus サーバーを起動せずに `promtool` でアラートルールを検証します。イメージのワークフローは Docker イメージをローカルでビルドし、その同じイメージを Trivy でスキャンします。
 
-Codacy はカバレッジの可視化、コードの問題点に関するフィードバックなどを目的として導入しています。フォーマットの基準は引き続き Spotless、コンパイル時の Java 静的解析ゲートは Error Prone、リポジトリのシークレットスキャンとビルド済みイメージの脆弱性スキャンは Trivy が担当します。
+Codacy はカバレッジの可視化、コードの問題点に関するフィードバックなどを目的として導入しています。フォーマットの基準は引き続き Spotless、コンパイル時の Java 静的解析ゲートは Error Prone、リポジトリのシークレットスキャンとビルド済み Docker イメージの脆弱性スキャンは Trivy が担当します。
 
 <details>
 <summary>脆弱性ゲートの挙動</summary>
