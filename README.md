@@ -23,7 +23,6 @@ reviewed in one place.
 ## Table of Contents
 
 - [Project Focus Areas](#project-focus-areas)
-- [Development Approach](#development-approach)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
 - [Quick Start](#quick-start)
@@ -57,34 +56,28 @@ reviewed in one place.
   implementation, and review, while the repository owner keeps the final
   merge decision grounded in the substance of the change.
 
-## Development Approach
-
-This repository is developed through an AI-agent-assisted workflow. The owner
-defines the product intent, reviews decisions and implementation details, and
-approves merges; AI agents assist with planning, design, implementation, and
-review.
+### Development Approach
 
 The typical flow is as follows (for small capabilities or clearly scoped fixes,
 the roadmap step may be skipped and the work may begin with design or
 implementation).
 
 1. The owner describes the desired capability, and an AI agent drafts a roadmap
-   (Markdown) that organizes it into multiple implementation phases.
-2. Once the owner approves the roadmap, an AI agent creates a design document
-   for each phase.
+   (Markdown) organized into implementation phases.
+2. Once the owner approves the roadmap, an AI agent writes a design document for
+   each phase.
 3. After the owner approves the design, an AI agent implements the change from
    that design.
-4. The owner reviews the implementation.
-5. If issues are found, the owner asks an AI agent to fix them; otherwise it is
-   merged.
+4. The owner reviews the implementation, asking an AI agent to fix any issues
+   before it is merged.
 
-Steps 1 through 4 also receive AI-agent peer review, for example with Codex
-handling design and implementation and Claude Code reviewing it. AI review is
-an input to the process, not a replacement for the owner's final judgment.
+Each step also receives AI-agent peer review (for example, Codex handling design
+and implementation with Claude Code reviewing it). AI review is an input to the
+process, not a replacement for the owner's final judgment.
 
-A worked example of this flow is committed under [docs/plans/](docs/plans/README.md): the roadmap
-that organized a past refinement of the codebase into reviewable phases, and the design document for
-that roadmap's Phase 2, produced by one AI agent and reviewed by another before implementation.
+A worked example is committed under [docs/plans/](docs/plans/README.md): the
+roadmap that organized a past refinement into reviewable phases, and the Phase 2
+design document that advanced to implementation after AI-agent peer review.
 
 ## Architecture
 
