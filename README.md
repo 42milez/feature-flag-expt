@@ -11,14 +11,17 @@ English | [日本語](README.ja.md)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-kind-326CE5)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A portfolio project built around a Spring Boot feature-flag platform service:
-the kind of internal developer platform component that helps product teams
-release changes safely through environment targeting, emergency kill switches,
-tenant allowlists, deterministic percentage rollouts, and audit events. The
-repository keeps the application, container image definition, Kubernetes
-manifests, observability assets, and CI quality gates together so the
-operational platform components that support product development can be
-reviewed in one place.
+A portfolio project built around a Spring Boot feature-flag platform service —
+an internal developer platform that lets product teams focus on building value
+instead of the complexity of the underlying infrastructure. By combining
+feature flags, an approval workflow, and gradual rollouts, it aims to let
+product teams run exploratory releases: build first, then expand safely while
+validating value. Concretely it covers environment targeting, emergency kill
+switches, tenant allowlists, deterministic percentage rollouts, an approval
+workflow for high-risk changes, and audit events. The repository keeps the
+application, container image definition, Kubernetes manifests, observability
+assets, and CI quality gates together so the platform components that support
+product development can be reviewed in one place.
 
 ## Table of Contents
 
@@ -35,10 +38,11 @@ reviewed in one place.
 
 ## Project Focus Areas
 
-- **Application design** — Java owns the persisted flag domain, evaluator,
-  Spring Data JDBC transaction flow, audit recording, Micrometer metrics, and
-  Spring Security boundary, while Kotlin is used only at read-oriented API
-  boundaries where immutable DTOs are a good fit.
+- **Application design** — Java owns the persisted flag domain, evaluator, the
+  approval workflow for high-risk changes, Spring Data JDBC transaction flow,
+  audit recording, Micrometer metrics, and Spring Security boundary, while
+  Kotlin is used only at read-oriented API boundaries where immutable DTOs are a
+  good fit.
   ([ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md))
 - **Kubernetes deployment** — Kustomize `base` and `dev` overlays deploy to
   kind and align the workload with the Pod Security Standards
@@ -117,14 +121,14 @@ flowchart LR
     end
 
     Repo[["Spring Data JDBC"]]
-    DB[("PostgreSQL<br/>flags · audit_events · update_approvals")]
+    DB[("PostgreSQL<br/>feature_flags · audit_events · feature_flag_update_approvals")]
 
     Client --> Auth
     Auth --> FlagCtl & ApprovalCtl & PreviewCtl & PolicyCtl
     FlagCtl --> Svc & Eval
     ApprovalCtl --> ApprovalSvc
-    PreviewCtl --> Eval
-    PolicyCtl --> Policy
+    PreviewCtl --> Svc & Eval
+    PolicyCtl --> Svc & Policy
     Svc --> Policy & ApprovalSvc & Audit & Repo
     ApprovalSvc --> Policy & Audit & Repo
     Audit --> Repo
@@ -160,26 +164,55 @@ flowchart TD
 
 ## Tech Stack
 
-| Area | Technology |
-|---|---|
-| Language | Java 25, Kotlin 2.3 |
-| Framework | Spring Boot 4.1 — Web MVC, Security, Validation, Actuator |
-| Persistence | Spring Data JDBC + PostgreSQL, Flyway migrations |
-| API docs | springdoc-openapi 3.0, committed OpenAPI snapshot |
-| Observability | Micrometer + Prometheus, ECS JSON logging, Grafana |
-| Build | Gradle inside a multi-stage Docker build → distroless `java25` image |
-| Quality | Spotless (google-java-format, ktfmt), Error Prone, JaCoCo, Codacy |
-| Test | JUnit, MockK, Testcontainers (PostgreSQL), Spring Security Test |
-| Deploy | Docker (distroless, non-root), Kubernetes + Kustomize, kind |
-| CI | GitHub Actions, Trivy, promtool |
+| Area | Core | Notes |
+|---|---|---|
+| Language | Java 25 / Kotlin 2.3 | — |
+| Framework | Spring Boot 4.1 | Web MVC · Security · Validation · Actuator |
+| Persistence | Spring Data JDBC + PostgreSQL 16 | Flyway migrations |
+| API docs | springdoc-openapi 3.0 | committed OpenAPI snapshot |
+| Build | Gradle (multi-stage Docker build) | distroless, non-root `java25` image |
+| Deploy | Kubernetes + Kustomize | kind cluster |
+| Test | JUnit · Mockito・MockK · Testcontainers (PostgreSQL) | Spring Security Test |
+| Quality | Spotless (google-java-format / ktfmt) · Error Prone | JaCoCo · Codacy |
+| CI | GitHub Actions | Trivy · promtool |
+| Observability | Micrometer + Prometheus | ECS JSON logging · Grafana |
 
-Exact patch versions are managed in [`gradle/libs.versions.toml`](gradle/libs.versions.toml).
+Exact version numbers are managed in [`gradle/libs.versions.toml`](gradle/libs.versions.toml).
 
 ## Quick Start
 
-Create and evaluate a flag with Docker Compose; a host JDK is not required.
-See [docs/development.md](docs/development.md) for prerequisites, port-conflict
-notes, kind, and host JVM workflows.
+Start the application with Docker Compose. See
+[docs/development.md](docs/development.md) for prerequisites and detailed
+development steps.
+
+The walk-through below follows this path: operator and reader act at different
+points, and each state-changing call leaves an audit event.
+
+```mermaid
+sequenceDiagram
+    actor Op as operator
+    actor Rd as reader
+    participant API as Feature Flag API
+    participant DB as PostgreSQL · flags / audit_events
+
+    Op->>API: POST /api/flags — create, 25% rollout
+    API->>DB: persist flag + FLAG_CREATED audit
+    API-->>Op: 201 Created
+
+    Rd->>API: POST /api/evaluate — tenant-a
+    API-->>Rd: true · TENANT_ALLOWLIST_MATCH
+    Rd->>API: POST /api/evaluate — tenant-c
+    API-->>Rd: true · ROLLOUT_MATCH (bucket 23)
+
+    Op->>API: PATCH — enable kill switch
+    API->>DB: update flag + KILL_SWITCH_ENABLED audit
+    API-->>Op: 200 OK
+
+    Rd->>API: POST /api/evaluate — tenant-a
+    API-->>Rd: false · KILL_SWITCH_ACTIVE
+    Rd->>API: GET /audit-events
+    API-->>Rd: FLAG_CREATED, KILL_SWITCH_ENABLED
+```
 
 **1. Start the local Compose stack**
 
@@ -202,9 +235,14 @@ curl -u featureflags-operator:featureflags-operator \
 
 ```jsonc
 // 201 Created
-{ "flagKey": "checkout-redesign", "status": "ENABLED",
-  "targetEnvironments": ["production"], "killSwitchActive": false,
-  "tenantAllowlist": ["tenant-a"], "rolloutPercentage": 25 }
+{
+  "flagKey": "checkout-redesign",
+  "status": "ENABLED",
+  "targetEnvironments": ["production"],
+  "killSwitchActive": false,
+  "tenantAllowlist": ["tenant-a"],
+  "rolloutPercentage": 25
+}
 ```
 
 ```bash
@@ -218,34 +256,142 @@ curl -u featureflags-reader:featureflags-reader \
 ```jsonc
 // 200 OK — tenant-a is allowlisted, so evaluation short-circuits before the
 // percentage rollout; bucket is null because rollout logic was never reached.
-{ "flagKey": "checkout-redesign", "enabled": true,
-  "reason": "TENANT_ALLOWLIST_MATCH", "bucket": null }
+{
+  "flagKey": "checkout-redesign",
+  "enabled": true,
+  "reason": "TENANT_ALLOWLIST_MATCH",
+  "bucket": null
+}
 ```
 
-The `enabled` and `reason` fields let a caller switch behavior without knowing
-the internal structure of the flag configuration. Browse every endpoint
-interactively at **`http://localhost:8080/swagger-ui.html`**.
+```bash
+# Evaluate for production + tenant-c (outside the allowlist, inside the 25% rollout)
+curl -u featureflags-reader:featureflags-reader \
+  -H 'Content-Type: application/json' \
+  -d '{"flagKey":"checkout-redesign","environment":"production","tenantId":"tenant-c"}' \
+  http://localhost:8080/api/evaluate
+```
 
-**3. Stop the local stack**
+```jsonc
+// 200 OK — tenant-c is not allowlisted, but its deterministic bucket 23 is
+// lower than 25, so the percentage rollout enables it.
+{
+  "flagKey": "checkout-redesign",
+  "enabled": true,
+  "reason": "ROLLOUT_MATCH",
+  "bucket": 23
+}
+```
+
+The `enabled`, `reason`, and `bucket` fields let a caller switch behavior
+without knowing the internal structure of the flag configuration. Evaluation
+reasons are also emitted to metrics and structured logs, so operators can trace
+whether a decision came from the allowlist, kill switch, or gradual rollout.
+
+**3. Trigger the emergency kill switch, then read the audit trail**
+
+Every state change is attributed and recorded. Flip the kill switch, watch it
+override evaluation, and see the same action land in the audit trail.
 
 ```bash
-docker compose down --remove-orphans
+# Emergency stop: enable the kill switch (operator role, PATCH)
+curl -u featureflags-operator:featureflags-operator -X PATCH \
+  -H 'Content-Type: application/json' \
+  -d '{"killSwitchActive":true}' \
+  http://localhost:8080/api/flags/checkout-redesign
+```
+
+```jsonc
+// 200 OK — killSwitchActive is now true; other fields are preserved by the partial update.
+{
+  "flagKey": "checkout-redesign",
+  "status": "ENABLED",
+  "targetEnvironments": ["production"],
+  "killSwitchActive": true,
+  "tenantAllowlist": ["tenant-a"],
+  "rolloutPercentage": 25
+}
+```
+
+```bash
+# Re-evaluate the allowlisted tenant-a (reader role)
+curl -u featureflags-reader:featureflags-reader \
+  -H 'Content-Type: application/json' \
+  -d '{"flagKey":"checkout-redesign","environment":"production","tenantId":"tenant-a"}' \
+  http://localhost:8080/api/evaluate
+```
+
+```jsonc
+// 200 OK — the kill switch is checked before the allowlist, so even allowlisted
+// tenant-a is turned off.
+{
+  "flagKey": "checkout-redesign",
+  "enabled": false,
+  "reason": "KILL_SWITCH_ACTIVE",
+  "bucket": null
+}
+```
+
+```bash
+# Inspect the audit trail (reader role, oldest first)
+curl -u featureflags-reader:featureflags-reader \
+  http://localhost:8080/api/flags/checkout-redesign/audit-events
+```
+
+```jsonc
+// 200 OK — every change is recorded with the authenticated actor; details vary by eventType.
+[
+  {
+    "id": 1,
+    "flagKey": "checkout-redesign",
+    "eventType": "FLAG_CREATED",
+    "actor": "featureflags-operator",
+    "details": { /* ... */ },
+    "occurredAt": "2026-..."
+  },
+  {
+    "id": 2,
+    "flagKey": "checkout-redesign",
+    "eventType": "KILL_SWITCH_ENABLED",
+    "actor": "featureflags-operator",
+    "details": {
+      "field": "killSwitchActive",
+      "oldValue": false,
+      "newValue": true
+    },
+    "occurredAt": "2026-..."
+  }
+]
+```
+
+The `actor` is taken from the authenticated principal, not the request body, so
+the trail cannot be forged. Higher-risk changes — expanding production exposure
+or raising a production rollout by 50 points or more — go through the approval
+workflow instead (an operator requests, an approver decides); the
+[approval workflow walkthrough](docs/development.md#quick-start-full)
+has a runnable example. Browse every endpoint interactively at
+**`http://localhost:8080/swagger-ui.html`**.
+
+**4. Stop the local stack**
+
+```bash
+docker compose down
 ```
 
 ## API Overview
 
 | Method | Path | Role | Purpose | Impl |
 |---|---|---|---|---|
-| `POST` | `/api/flags` | operator | Create a flag (rollout policy enforced) | Java |
+| `POST` | `/api/flags` | operator | Create a flag | Java |
 | `GET` | `/api/flags/{flagKey}` | reader / operator | Get a flag | Java |
-| `PATCH` | `/api/flags/{flagKey}` | operator | Update a flag (rollout policy enforced) | Java |
+| `PATCH` | `/api/flags/{flagKey}` | operator | Update a flag | Java |
 | `POST` | `/api/flags/{flagKey}/approval-requests` | operator | Request approval for a high-risk update | Java |
 | `GET` | `/api/flags/{flagKey}/approval-requests/{approvalId}` | operator / approver | Get an approval request | Java |
 | `POST` | `/api/flags/{flagKey}/approval-requests/{approvalId}/approve` | approver | Approve an update request | Java |
 | `POST` | `/api/flags/{flagKey}/approval-requests/{approvalId}/reject` | approver | Reject an update request | Java |
 | `POST` | `/api/evaluate` | reader / operator | Evaluate a flag for a context | Java |
-| `GET` | `/api/flags/{flagKey}/audit-events` | reader / operator | List audit events (oldest first) | Java |
-| `POST` | `/api/flags/{flagKey}/preview` | reader / operator | Preview a proposed change (diff, no write) | Kotlin |
+| `GET` | `/api/flags/{flagKey}/audit-events` | reader / operator | List audit events | Java |
+| `POST` | `/api/flags/{flagKey}/preview` | reader / operator | Preview a proposed change | Kotlin |
 | `POST` | `/api/flags/{flagKey}/validate-change` | reader / operator | Validate a proposed change against rollout policy | Kotlin |
 
 **Operational endpoints**
@@ -253,7 +399,7 @@ docker compose down --remove-orphans
 | Path | Access |
 |---|---|
 | `/actuator/health` (`/liveness`, `/readiness`) | Public (probes) |
-| `/actuator/prometheus` | Authenticated (any local user) |
+| `/actuator/prometheus` | Authenticated |
 | `/swagger-ui.html`, `/v3/api-docs(.yaml)` | Public |
 | any other `/api/**` | Denied (fail closed) |
 
@@ -264,11 +410,9 @@ The raw OpenAPI spec is served at `/v3/api-docs` (JSON) and `/v3/api-docs.yaml`
 
 Significant decisions are recorded as
 [Architecture Decision Records](docs/decisions/README.md) in MADR v4 format.
-Highlights:
+Representative ADRs are listed below.
 
 - [ADR-0002](docs/decisions/0002-use-spring-data-jdbc-instead-of-jpa.md) — Spring Data JDBC instead of JPA/Hibernate
-- [ADR-0005](docs/decisions/0005-separate-domain-records-from-persistence-entities.md) — Separate domain records from persistence entities
-- [ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md) — Kotlin for the evaluation preview API
 - [ADR-0009](docs/decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md) — kind for local Kubernetes and CI validation
 - [ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md) — HTTP Basic for the local security boundary
 
@@ -276,8 +420,8 @@ See the [full index](docs/decisions/README.md) for all records.
 
 ## Deployment & Operations
 
-Local configuration values, kind commands, and host development workflows live
-in [docs/development.md](docs/development.md).
+Detailed local run and development instructions live in
+[docs/development.md](docs/development.md).
 
 ### Continuous Integration
 
@@ -311,12 +455,17 @@ can fail when new CVEs are published, even without application code changes.
 
 ### Security
 
-API access uses three local HTTP Basic users: a **reader** for read-style
-operations, an **operator** for create, update, approval-request creation, and
-requester-owned approval reads, and an **approver** for approval decisions and
-approval status reads. Prometheus metrics require any configured user; Swagger
-UI and OpenAPI docs stay public so the portfolio can be explored locally. Audit
-events record the authenticated principal as `actor`.
+API access uses three local HTTP Basic users:
+
+| User | Role / permissions |
+| --- | --- |
+| **reader** | Read-style operations |
+| **operator** | Create, update, approval-request creation, and requester-owned approval reads |
+| **approver** | Approval decisions and approval status reads |
+
+Prometheus metrics require any configured user; Swagger UI and OpenAPI docs stay
+public so the portfolio can be explored locally. Audit events record the
+authenticated principal as `actor`.
 
 <details>
 <summary>Security model scope and evolution</summary>
@@ -347,9 +496,10 @@ The workload aligns with the Pod Security Standards [restricted](https://kuberne
 
 The kind and Kustomize workflow validates the declarative deployment path and
 smoke-tests startup behavior; it is not a complete production cluster security
-model. In real production traffic, Kubernetes endpoint removal can still race
-with SIGTERM delivery, so a rollout could add a short `preStop` delay if the
-platform needs extra endpoint-propagation time.
+model. Under real production traffic, Kubernetes endpoint removal and SIGTERM
+delivery can still race. If the platform needs extra time for endpoint removal
+to propagate, consider environment-specific mitigations, such as a short
+`preStop` wait.
 
 </details>
 
@@ -376,47 +526,48 @@ require HTTP Basic credentials from any configured user. See
 logging, Prometheus and Grafana artifacts, sample traffic commands, and the
 manual refresh steps after changing rules or dashboards.
 
-The committed alert rules and tests are intentionally alerting-ready local
-artifacts, not a production Alertmanager, PagerDuty, or Grafana provisioning
-stack (see
+The observability stack is intentionally scoped to a self-contained local
+setup, without a production delivery stack or cluster-level log collection (see
 [ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md)).
-The overlay deliberately stops at stdout/stderr logs and a small
-Prometheus/Grafana stack; it does not install cluster-level log collection. A
-production deployment would select log collection, routing, retention, and
-access-control middleware based on the target platform.
+A production deployment would add its own log collection, retention, and
+access-control middleware.
 
 ## Development & Setup
 
 Full local setup instructions live in [docs/development.md](docs/development.md):
 prerequisites, the detailed Compose quick start, environment variables, kind
-deployment, host JVM development, static analysis, tests, and Repomix review
-packs.
+deployment, direct JVM development on the host, static analysis, tests, and
+Repomix review packs.
 
 ## Repository Layout
 
 ```text
 .
-├── service/                            # Spring Boot service (Java + Kotlin)
+├── service/                                 # Spring Boot service (Java + Kotlin)
 │   └── src/main/.../featureflags/
-│       ├── flags/                      # Flag domain, evaluator, persistence (Java)
-│       ├── audit/                      # Audit events (Java)
-│       ├── approval/                   # Update approval workflow (Java)
-│       ├── policy/                     # Rollout policy: validator Java, API/service Kotlin
-│       ├── preview/                    # Preview API (Kotlin)
+│       ├── flags/                           # Flag domain, evaluator, persistence (Java + Kotlin)
+│       ├── audit/                           # Audit events (Java)
+│       ├── approval/                        # Update approval workflow (Java)
+│       ├── policy/                          # Rollout policy: validator Java, API Kotlin
+│       ├── preview/                         # Preview API (Kotlin)
+│       ├── observability/                   # Prometheus metrics (Java)
+│       ├── error/                           # Global error handling (Java)
 │       └── SecurityConfig, ...
 ├── deploy/
-│   ├── k8s/base/                       # App Deployment + Service
-│   ├── k8s/overlays/dev/               # kind: in-cluster PostgreSQL, local config
-│   ├── k8s/overlays/dev-observability/ # Prometheus + Grafana + alert rules
+│   ├── k8s/base/                            # App (Deployment + Service) + platform (Namespace)
+│   ├── k8s/overlays/dev/                    # kind: in-cluster PostgreSQL, local config
+│   ├── k8s/overlays/dev-observability/      # Prometheus + Grafana + alert rules
 │   └── kind/cluster.yaml
-├── compose.yaml                        # Local Docker Compose app + PostgreSQL runtime
+├── compose.yaml                             # Local Docker Compose app + PostgreSQL runtime
 ├── docs/
-│   ├── decisions/                      # ADRs (MADR v4)
-│   ├── development.md                  # Local run and development reference (English)
-│   ├── development.ja.md               # Local run and development reference (Japanese)
+│   ├── decisions/                           # ADRs
+│   ├── development.md                       # Local run and development reference (English)
+│   ├── development.ja.md                    # Local run and development reference (Japanese)
 │   ├── observability.md
-│   └── openapi.yaml                    # Committed OpenAPI snapshot
-├── scripts/                            # Shell equivalents of the kind/k8s Gradle tasks
-├── .github/workflows/                  # CI · image scan · kind smoke test
-└── build-logic/                        # Gradle convention plugins
+│   ├── runtime-safety.md                    # JVM runtime safety baseline
+│   ├── openapi.yaml                         # OpenAPI snapshot
+│   └── notes/, issues/, plans/, references/ # Design and implementation working notes
+├── scripts/                                 # Shell equivalents of the kind/k8s Gradle tasks
+├── .github/workflows/                       # CI · image scan · kind smoke test
+└── build-logic/                             # Gradle convention plugins
 ```

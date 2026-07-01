@@ -16,13 +16,13 @@
 
 `docker` に加えて `kind` と `kubectl` が必要です。kind へのデプロイ手順と、ローカルの Prometheus/Grafana 検証コマンドはこれらのツールに依存します。公式の [kind インストール手順](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) と [Kubernetes tools](https://kubernetes.io/docs/tasks/tools/) のドキュメントを参照してください。
 
-### ホスト JVM 開発
+### ホスト上で JVM を直接実行する開発
 
 JDK 25 が必要です。CI と揃えるため、[Eclipse Temurin 25](https://adoptium.net/temurin/releases/?version=25) を推奨します。この方法は、ホスト側でのテスト、`bootRun`、OpenAPI 生成、Gradle の補助タスクに必要です。一部の Gradle タスクがシェルスクリプトや Unix ツールを呼び出すため、このプロジェクトは macOS、Linux、または WSL 上の Windows を対象にしています。
 
 ## クイックスタート（フル）
 
-3 ステップでフラグを作成し、評価します。この手順では [Docker のみのクイックスタート](#docker-のみのクイックスタート) の前提条件を使います。ホスト側の JDK は不要です。
+フラグの作成から緊急停止、承認ワークフローまでを一連の手順として実行します。この手順では [Docker のみのクイックスタート](#docker-のみのクイックスタート) の前提条件を使います。ホスト側の JDK は不要です。
 
 **1. ローカルの Compose スタックを起動する**
 
@@ -30,7 +30,7 @@ JDK 25 が必要です。CI と揃えるため、[Eclipse Temurin 25](https://ad
 docker compose up --build -d
 ```
 
-Compose は Spring Boot の jar 生成を含めてサービスイメージをビルドし、アプリと PostgreSQL を起動します。アプリは `127.0.0.1:8080`、PostgreSQL は `127.0.0.1:5432` にバインドされるため、どちらのポートもローカルマシンからのみ到達できます。データベースには名前付きボリュームがなく、クイックスタート用の破棄可能な状態として扱います。ポート `8080` は `k8sPortForward` と競合し、ポート `5432` は同じ loopback ポートにバインドされた既存のローカル PostgreSQL と競合するため、Compose と kind のポートフォワード手順は別々に実行してください。
+Compose は Spring Boot の jar 生成を含めて Docker イメージをビルドし、アプリと PostgreSQL を起動します。アプリは `127.0.0.1:8080`、PostgreSQL は `127.0.0.1:5432` にバインドされるため、どちらのポートもローカルマシンからのみ到達できます。データベースには名前付きボリュームがなく、クイックスタート用の破棄可能な状態として扱います。ポート `8080` は `k8sPortForward` と競合し、ポート `5432` は同じ loopback ポートにバインドされた既存のローカル PostgreSQL と競合するため、Compose と kind のポートフォワード手順は別々に実行してください。
 
 **2. フラグを作成し、評価する**
 
@@ -44,9 +44,18 @@ curl -u featureflags-operator:featureflags-operator \
 
 ```jsonc
 // 201 Created
-{ "flagKey": "checkout-redesign", "status": "ENABLED",
-  "targetEnvironments": ["production"], "killSwitchActive": false,
-  "tenantAllowlist": ["tenant-a"], "rolloutPercentage": 25 }
+{
+  "flagKey": "checkout-redesign",
+  "status": "ENABLED",
+  "targetEnvironments": [
+    "production"
+  ],
+  "killSwitchActive": false,
+  "tenantAllowlist": [
+    "tenant-a"
+  ],
+  "rolloutPercentage": 25
+}
 ```
 
 ```bash
@@ -60,16 +69,209 @@ curl -u featureflags-reader:featureflags-reader \
 ```jsonc
 // 200 OK — tenant-a は許可リストに含まれるため、割合ロールアウトの手前で確定する。
 // ロールアウトロジックに到達しないので bucket は null。
-{ "flagKey": "checkout-redesign", "enabled": true,
-  "reason": "TENANT_ALLOWLIST_MATCH", "bucket": null }
+{
+  "flagKey": "checkout-redesign",
+  "enabled": true,
+  "reason": "TENANT_ALLOWLIST_MATCH",
+  "bucket": null
+}
 ```
 
 `enabled` と `reason` により、呼び出し側はフラグ設定の内部構造を知らずに機能を切り替えられます。全エンドポイントは **`http://localhost:8080/swagger-ui.html`** で対話的に確認できます。Kubernetes/kind の手順は [kind で実行する](#kind-で実行する) を参照してください。
 
-**3. ローカルスタックを停止する**
+**3. 緊急キルスイッチを作動させ、監査証跡を確認する**
+
+状態変更はすべてアクター付きで記録されます。ここではキルスイッチを作動させ、評価が一括で無効になる様子と、その操作が監査証跡に残る様子を確認します。
 
 ```bash
-docker compose down --remove-orphans
+# 緊急停止: キルスイッチを有効化（operator ロール、PATCH）
+curl -u featureflags-operator:featureflags-operator -X PATCH \
+  -H 'Content-Type: application/json' \
+  -d '{"killSwitchActive":true}' \
+  http://localhost:8080/api/flags/checkout-redesign
+```
+
+```jsonc
+// 200 OK — killSwitchActive が true に。他フィールドは部分更新で保持される。
+{
+  "flagKey": "checkout-redesign",
+  "status": "ENABLED",
+  "targetEnvironments": [
+    "production"
+  ],
+  "killSwitchActive": true,
+  "tenantAllowlist": [
+    "tenant-a"
+  ],
+  "rolloutPercentage": 25
+}
+```
+
+```bash
+# 許可リスト内の tenant-a を再評価（reader ロール）
+curl -u featureflags-reader:featureflags-reader \
+  -H 'Content-Type: application/json' \
+  -d '{"flagKey":"checkout-redesign","environment":"production","tenantId":"tenant-a"}' \
+  http://localhost:8080/api/evaluate
+```
+
+```jsonc
+// 200 OK — 許可リストより前にキルスイッチを評価するため、許可リスト内の tenant-a でも無効になる。
+{
+  "flagKey": "checkout-redesign",
+  "enabled": false,
+  "reason": "KILL_SWITCH_ACTIVE",
+  "bucket": null
+}
+```
+
+```bash
+# 監査証跡を確認（reader ロール、古い順）
+curl -u featureflags-reader:featureflags-reader \
+  http://localhost:8080/api/flags/checkout-redesign/audit-events
+```
+
+```jsonc
+// 200 OK — すべての変更が認証済みアクター付きで記録される。details は eventType ごとに形が変わる。
+[
+  {
+    "id": 1,
+    "flagKey": "checkout-redesign",
+    "eventType": "FLAG_CREATED",
+    "actor": "featureflags-operator",
+    "details": {
+      /* ... */
+    },
+    "occurredAt": "2026-..."
+  },
+  {
+    "id": 2,
+    "flagKey": "checkout-redesign",
+    "eventType": "KILL_SWITCH_ENABLED",
+    "actor": "featureflags-operator",
+    "details": {
+      "field": "killSwitchActive",
+      "oldValue": false,
+      "newValue": true
+    },
+    "occurredAt": "2026-..."
+  }
+]
+```
+
+`actor` はリクエストボディではなく認証済みプリンシパルから記録されるため、証跡を偽装できません。本番露出の拡大や、本番ロールアウトを 50 ポイント以上引き上げるような高リスク変更は、代わりに承認ワークフロー（operator が依頼し、approver が判断）を通ります。次の手順でその流れを実行します。
+
+**承認ワークフローの手順**
+
+高リスク変更は、承認されるまで fail-closed で拒否されます。ここでは上で作成した `checkout-redesign` フラグ（production 対象、`tenant-a` 許可リスト、25% ロールアウト。手順 3 でキルスイッチは有効化済み）を使います。本番ロールアウトを 25% から 80% へ引き上げる +55 ポイントの変更は、リスク分類器が高リスクと判定します。`approver` ユーザーの認証情報は [設定](#設定) にあります。
+
+**4. 承認なしの高リスク変更は拒否される**
+
+```bash
+# operator が承認を付けずに直接ロールアウトを引き上げる
+curl -u featureflags-operator:featureflags-operator -X PATCH \
+  -H 'Content-Type: application/json' \
+  -d '{"rolloutPercentage":80}' \
+  http://localhost:8080/api/flags/checkout-redesign
+```
+
+```jsonc
+// 422 Unprocessable Entity — 承認されるまで変更はブロックされる。
+{
+  "flagKey": "checkout-redesign",
+  "allowed": false,
+  "violations": [
+    {
+      "code": "HIGH_RISK_REQUIRES_APPROVAL",
+      "message": "High-risk changes require approval before rollout.",
+      "severity": "ERROR"
+    }
+  ]
+}
+```
+
+**5. operator が承認を依頼する**
+
+```bash
+# operator が同じ変更案を記述した承認リクエストを作成する
+curl -u featureflags-operator:featureflags-operator \
+  -H 'Content-Type: application/json' \
+  -d '{"rolloutPercentage":80}' \
+  http://localhost:8080/api/flags/checkout-redesign/approval-requests
+```
+
+```jsonc
+// 201 Created — PENDING の依頼に、依頼者・リスク・before/after スナップショットが記録される。
+{
+  "approvalId": "5f0a5f6e-7f24-4f4f-a426-bb534ee726bd",
+  "flagKey": "checkout-redesign",
+  "requester": "featureflags-operator",
+  "approver": null,
+  "status": "PENDING",
+  "riskReasons": [
+    "LARGE_PRODUCTION_ROLLOUT_INCREASE"
+  ],
+  "currentSnapshot": {
+    /* rolloutPercentage: 25, ... */
+  },
+  "proposedSnapshot": {
+    /* rolloutPercentage: 80, ... */
+  }
+}
+```
+
+**6. 別ユーザーの approver が承認する**
+
+```bash
+# approver が手順 2 の approvalId を承認する（依頼者は自分の依頼を承認できない）
+curl -u featureflags-approver:featureflags-approver -X POST \
+  http://localhost:8080/api/flags/checkout-redesign/approval-requests/5f0a5f6e-7f24-4f4f-a426-bb534ee726bd/approve
+```
+
+```jsonc
+// 200 OK — 依頼は APPROVED になり、approver が記録される。
+{
+  "approvalId": "5f0a5f6e-7f24-4f4f-a426-bb534ee726bd",
+  "flagKey": "checkout-redesign",
+  "requester": "featureflags-operator",
+  "approver": "featureflags-approver",
+  "status": "APPROVED"
+  // 他のレスポンスフィールドは省略。
+}
+```
+
+**7. operator が承認付きで変更を再適用する**
+
+```bash
+# 同じ operator・同じ変更案に、今度は approvalId を付与する
+curl -u featureflags-operator:featureflags-operator -X PATCH \
+  -H 'Content-Type: application/json' \
+  -d '{"rolloutPercentage":80,"approvalId":"5f0a5f6e-7f24-4f4f-a426-bb534ee726bd"}' \
+  http://localhost:8080/api/flags/checkout-redesign
+```
+
+```jsonc
+// 200 OK — ロールアウトが適用され、承認は 1 回限りで消費される。
+{
+  "flagKey": "checkout-redesign",
+  "status": "ENABLED",
+  "targetEnvironments": [
+    "production"
+  ],
+  "killSwitchActive": true,
+  "tenantAllowlist": [
+    "tenant-a"
+  ],
+  "rolloutPercentage": 80
+}
+```
+
+承認は 1 つの変更案と 1 人の依頼者に紐づきます。記録された before/after スナップショットと照合され、依頼者自身は承認できず、初回使用時に消費されます。このフラグの監査証跡には、さらに `APPROVAL_REQUESTED`、`APPROVAL_APPROVED`、`APPROVAL_USED`、`ROLLOUT_PERCENTAGE_CHANGED` が並びます。全エンドポイントの一覧は [README の API 一覧](../README.ja.md#api-一覧) を参照してください。
+
+**8. ローカルスタックを停止する**
+
+```bash
+docker compose down
 ```
 
 ## 設定
@@ -105,9 +307,9 @@ kind のワークフローを実行する前に、[ローカル kind / Kubernete
 
 Docker Compose は、シンプルなローカルアプリケーション実行環境としてのみ用意しています。Kubernetes マニフェスト、サービスディスカバリ、プローブ、`kubectl apply` の検証には kind を使います。Compose はアプリを `127.0.0.1:8080` にバインドするため、`k8sPortForward` と競合します。Compose と kind によるアプリ公開手順を同時に使わず、どちらか一方を選んでください。データベースに依存する統合テストは、引き続き Testcontainers で実行します。詳しくは [ADR-0009](decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md) を参照してください。
 
-## JVM の開発ループ
+## ローカルでの開発サイクル
 
-JVM を直接使った開発では、[ホスト JVM 開発](#ホスト-jvm-開発) の前提条件を使います。ホスト側のツールチェーンをインストールしたら、ローカルの Compose データベースだけを起動し、ホストから `bootRun` でサービスを実行します。
+JVM をホスト上で直接実行する開発では、[ホスト上で JVM を直接実行する開発](#ホスト上で-jvm-を直接実行する開発) の前提条件を使います。ホスト側のツールチェーンをインストールしたら、ローカルの Compose データベースだけを起動し、ホストから `bootRun` でサービスを実行します。
 
 ```bash
 docker compose up -d postgres

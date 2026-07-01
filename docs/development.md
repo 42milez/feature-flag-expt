@@ -1,6 +1,6 @@
 # Development
 
-[English](development.md) | [日本語](development.ja.md)
+English | [日本語](development.ja.md)
 
 Full reference for running and developing locally. See the [README](../README.md)
 for the project overview, architecture, API surface, and operational rationale.
@@ -25,7 +25,7 @@ tools. See the official
 [kind installation](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)
 and [Kubernetes tools](https://kubernetes.io/docs/tasks/tools/) docs.
 
-### Host JVM development
+### Direct JVM development on the host
 
 Requires JDK 25. [Eclipse Temurin 25](https://adoptium.net/temurin/releases/?version=25)
 is recommended to match CI. This path is needed for host-side tests, `bootRun`,
@@ -35,7 +35,8 @@ tools.
 
 ## Quick Start (full)
 
-Create and evaluate a flag in three steps. Use the
+Walk through creating a flag, the emergency kill switch, and the approval
+workflow as one continuous sequence. Use the
 [Docker-only Quick Start prerequisites](#docker-only-quick-start); a host JDK is
 not required for this path.
 
@@ -65,9 +66,18 @@ curl -u featureflags-operator:featureflags-operator \
 
 ```jsonc
 // 201 Created
-{ "flagKey": "checkout-redesign", "status": "ENABLED",
-  "targetEnvironments": ["production"], "killSwitchActive": false,
-  "tenantAllowlist": ["tenant-a"], "rolloutPercentage": 25 }
+{
+  "flagKey": "checkout-redesign",
+  "status": "ENABLED",
+  "targetEnvironments": [
+    "production"
+  ],
+  "killSwitchActive": false,
+  "tenantAllowlist": [
+    "tenant-a"
+  ],
+  "rolloutPercentage": 25
+}
 ```
 
 ```bash
@@ -81,8 +91,12 @@ curl -u featureflags-reader:featureflags-reader \
 ```jsonc
 // 200 OK — tenant-a is allowlisted, so evaluation short-circuits before the
 // percentage rollout; bucket is null because rollout logic was never reached.
-{ "flagKey": "checkout-redesign", "enabled": true,
-  "reason": "TENANT_ALLOWLIST_MATCH", "bucket": null }
+{
+  "flagKey": "checkout-redesign",
+  "enabled": true,
+  "reason": "TENANT_ALLOWLIST_MATCH",
+  "bucket": null
+}
 ```
 
 The `enabled` and `reason` fields let a caller switch behavior without knowing
@@ -90,10 +104,214 @@ the internal structure of the flag configuration. Browse every endpoint
 interactively at **`http://localhost:8080/swagger-ui.html`**. For the
 Kubernetes/kind path, see [Running on kind](#running-on-kind).
 
-**3. Stop the local stack**
+**3. Trigger the emergency kill switch, then read the audit trail**
+
+Every state change is attributed and recorded. Flip the kill switch, watch it
+override evaluation, and see the same action land in the audit trail.
 
 ```bash
-docker compose down --remove-orphans
+# Emergency stop: enable the kill switch (operator role, PATCH)
+curl -u featureflags-operator:featureflags-operator -X PATCH \
+  -H 'Content-Type: application/json' \
+  -d '{"killSwitchActive":true}' \
+  http://localhost:8080/api/flags/checkout-redesign
+```
+
+```jsonc
+// 200 OK — killSwitchActive is now true; other fields are preserved by the partial update.
+{
+  "flagKey": "checkout-redesign",
+  "status": "ENABLED",
+  "targetEnvironments": [
+    "production"
+  ],
+  "killSwitchActive": true,
+  "tenantAllowlist": [
+    "tenant-a"
+  ],
+  "rolloutPercentage": 25
+}
+```
+
+```bash
+# Re-evaluate the allowlisted tenant-a (reader role)
+curl -u featureflags-reader:featureflags-reader \
+  -H 'Content-Type: application/json' \
+  -d '{"flagKey":"checkout-redesign","environment":"production","tenantId":"tenant-a"}' \
+  http://localhost:8080/api/evaluate
+```
+
+```jsonc
+// 200 OK — the kill switch is checked before the allowlist, so even allowlisted tenant-a is turned off.
+{
+  "flagKey": "checkout-redesign",
+  "enabled": false,
+  "reason": "KILL_SWITCH_ACTIVE",
+  "bucket": null
+}
+```
+
+```bash
+# Inspect the audit trail (reader role, oldest first)
+curl -u featureflags-reader:featureflags-reader \
+  http://localhost:8080/api/flags/checkout-redesign/audit-events
+```
+
+```jsonc
+// 200 OK — every change is recorded with the authenticated actor; details vary by eventType.
+[
+  {
+    "id": 1,
+    "flagKey": "checkout-redesign",
+    "eventType": "FLAG_CREATED",
+    "actor": "featureflags-operator",
+    "details": {
+      /* ... */
+    },
+    "occurredAt": "2026-..."
+  },
+  {
+    "id": 2,
+    "flagKey": "checkout-redesign",
+    "eventType": "KILL_SWITCH_ENABLED",
+    "actor": "featureflags-operator",
+    "details": {
+      "field": "killSwitchActive",
+      "oldValue": false,
+      "newValue": true
+    },
+    "occurredAt": "2026-..."
+  }
+]
+```
+
+The `actor` is taken from the authenticated principal, not the request body, so
+the trail cannot be forged. Higher-risk changes — expanding production exposure
+or raising a production rollout by 50 points or more — go through the approval
+workflow instead (an operator requests, an approver decides). The next steps run
+that flow.
+
+**Approval workflow walkthrough**
+
+High-risk changes fail closed until an approver signs off. This continues from
+the `checkout-redesign` flag created above (production, `tenant-a` allowlist,
+25% rollout; the kill switch is now active from step 3). Raising its production
+rollout from 25% to 80% is a +55 point jump, which the risk classifier flags as
+high risk. Credentials for the `approver` user are in
+[Configuration](#configuration).
+
+**4. A high-risk change is rejected without approval**
+
+```bash
+# operator raises the rollout directly — no approval attached
+curl -u featureflags-operator:featureflags-operator -X PATCH \
+  -H 'Content-Type: application/json' \
+  -d '{"rolloutPercentage":80}' \
+  http://localhost:8080/api/flags/checkout-redesign
+```
+
+```jsonc
+// 422 Unprocessable Entity — the change is blocked until it is approved.
+{
+  "flagKey": "checkout-redesign",
+  "allowed": false,
+  "violations": [
+    {
+      "code": "HIGH_RISK_REQUIRES_APPROVAL",
+      "message": "High-risk changes require approval before rollout.",
+      "severity": "ERROR"
+    }
+  ]
+}
+```
+
+**5. The operator requests approval**
+
+```bash
+# operator opens an approval request describing the same proposed change
+curl -u featureflags-operator:featureflags-operator \
+  -H 'Content-Type: application/json' \
+  -d '{"rolloutPercentage":80}' \
+  http://localhost:8080/api/flags/checkout-redesign/approval-requests
+```
+
+```jsonc
+// 201 Created — a PENDING request captures who asked, the risk, and before/after snapshots.
+{
+  "approvalId": "5f0a5f6e-7f24-4f4f-a426-bb534ee726bd",
+  "flagKey": "checkout-redesign",
+  "requester": "featureflags-operator",
+  "approver": null,
+  "status": "PENDING",
+  "riskReasons": [
+    "LARGE_PRODUCTION_ROLLOUT_INCREASE"
+  ],
+  "currentSnapshot": {
+    /* rolloutPercentage: 25, ... */
+  },
+  "proposedSnapshot": {
+    /* rolloutPercentage: 80, ... */
+  }
+}
+```
+
+**6. A different approver approves it**
+
+```bash
+# approver acts on the request id from step 2 (a requester cannot approve their own)
+curl -u featureflags-approver:featureflags-approver -X POST \
+  http://localhost:8080/api/flags/checkout-redesign/approval-requests/5f0a5f6e-7f24-4f4f-a426-bb534ee726bd/approve
+```
+
+```jsonc
+// 200 OK — the request is now APPROVED and attributed to the approver.
+{
+  "approvalId": "5f0a5f6e-7f24-4f4f-a426-bb534ee726bd",
+  "flagKey": "checkout-redesign",
+  "requester": "featureflags-operator",
+  "approver": "featureflags-approver",
+  "status": "APPROVED"
+  // Other response fields omitted.
+}
+```
+
+**7. The operator re-applies the change with the approval**
+
+```bash
+# same operator, same proposed change, now carrying the approvalId
+curl -u featureflags-operator:featureflags-operator -X PATCH \
+  -H 'Content-Type: application/json' \
+  -d '{"rolloutPercentage":80,"approvalId":"5f0a5f6e-7f24-4f4f-a426-bb534ee726bd"}' \
+  http://localhost:8080/api/flags/checkout-redesign
+```
+
+```jsonc
+// 200 OK — the rollout is applied and the approval is consumed (single use).
+{
+  "flagKey": "checkout-redesign",
+  "status": "ENABLED",
+  "targetEnvironments": [
+    "production"
+  ],
+  "killSwitchActive": true,
+  "tenantAllowlist": [
+    "tenant-a"
+  ],
+  "rolloutPercentage": 80
+}
+```
+
+The approval is bound to one proposed change and one requester: it is verified
+against the recorded before/after snapshots, cannot be approved by its own
+requester, and is consumed on first use. The audit trail for the flag now also
+lists `APPROVAL_REQUESTED`, `APPROVAL_APPROVED`, `APPROVAL_USED`, and
+`ROLLOUT_PERCENTAGE_CHANGED`. See the
+[README API overview](../README.md#api-overview) for the full endpoint list.
+
+**8. Stop the local stack**
+
+```bash
+docker compose down
 ```
 
 ## Configuration
@@ -143,11 +361,12 @@ the same time; choose one or the other. Database-dependent integration tests
 continue to run with Testcontainers. For details, see
 [ADR-0009](decisions/0009-use-kind-for-local-kubernetes-development-and-ci-validation.md).
 
-## JVM inner loop
+## Local development cycle
 
-Use the [Host JVM development prerequisites](#host-jvm-development) for direct
-JVM development. With that host toolchain installed, start only the local
-Compose database and run the service with `bootRun` from the host:
+Use the [direct JVM development prerequisites](#direct-jvm-development-on-the-host)
+when running the JVM on the host. With that host toolchain installed, start
+only the local Compose database and run the service with `bootRun` from the
+host:
 
 ```bash
 docker compose up -d postgres
