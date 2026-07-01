@@ -36,15 +36,11 @@ reviewed in one place.
 
 ## Project Focus Areas
 
-- **JVM service design** — Java owns the persisted flag domain, evaluator,
+- **Application design** — Java owns the persisted flag domain, evaluator,
   Spring Data JDBC transaction flow, audit recording, Micrometer metrics, and
   Spring Security boundary, while Kotlin is used only at read-oriented API
   boundaries where immutable DTOs are a good fit.
   ([ADR-0008](docs/decisions/0008-use-kotlin-for-evaluation-preview-api.md))
-- **Fail-closed security boundary** — local HTTP Basic reader/operator/approver
-  roles expose only probes and API docs publicly, classify known `/api/**`
-  routes by role, and deny unclassified API routes by default.
-  ([ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md))
 - **Kubernetes deployment** — Kustomize `base` and `dev` overlays deploy to
   kind and align the workload with the Pod Security Standards
   [restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted)
@@ -56,27 +52,26 @@ reviewed in one place.
   ([ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md))
 - **CI quality gates** — formatting, Error Prone, unit and Testcontainers
   tests, JaCoCo/Codacy coverage, Kubernetes render validation, OpenAPI drift
-  detection, `promtool`, and Trivy scanning run on each change.
+  detection, and Trivy scanning run on each change.
 - **AI-agent development workflow** — AI agents support planning, design,
   implementation, and review, while the repository owner keeps the final
   merge decision grounded in the substance of the change.
 
 ## Development Approach
 
-This repository is developed through a human-directed AI-agent workflow. The
-owner defines the product intent, reviews decisions and implementation details,
-and approves merges; AI agents assist with planning, design, implementation,
-and review.
+This repository is developed through an AI-agent-assisted workflow. The owner
+defines the product intent, reviews decisions and implementation details, and
+approves merges; AI agents assist with planning, design, implementation, and
+review.
 
-The typical flow is:
-
-For small capabilities or clearly scoped fixes, the roadmap step may be skipped
-and the work may begin with design or implementation.
+The typical flow is as follows (for small capabilities or clearly scoped fixes,
+the roadmap step may be skipped and the work may begin with design or
+implementation).
 
 1. The owner describes the desired capability, and an AI agent drafts a roadmap
    (Markdown) that organizes it into multiple implementation phases.
 2. Once the owner approves the roadmap, an AI agent creates a design document
-   (Markdown) for each phase.
+   for each phase.
 3. After the owner approves the design, an AI agent implements the change from
    that design.
 4. The owner reviews the implementation.
@@ -84,11 +79,8 @@ and the work may begin with design or implementation.
    merged.
 
 Steps 1 through 4 also receive AI-agent peer review, for example with Codex
-handling design or implementation and Claude Code reviewing it. The
-main review lenses are whether the work follows modern 2026-era practices, is
-secure in design and implementation, and avoids obvious over-engineering. AI
-review is an input to the process, not a replacement for the owner's final
-judgment.
+handling design and implementation and Claude Code reviewing it. AI review is
+an input to the process, not a replacement for the owner's final judgment.
 
 A worked example of this flow is committed under [docs/plans/](docs/plans/README.md): the roadmap
 that organized a past refinement of the codebase into reviewable phases, and the design document for
@@ -177,10 +169,10 @@ flowchart TD
 
 | Area | Technology |
 |---|---|
-| Language | Java 25 (toolchain), Kotlin 2.3 |
+| Language | Java 25, Kotlin 2.3 |
 | Framework | Spring Boot 4.1 — Web MVC, Security, Validation, Actuator |
 | Persistence | Spring Data JDBC + PostgreSQL, Flyway migrations |
-| API docs | springdoc-openapi 3.0 (code-first), committed OpenAPI snapshot |
+| API docs | springdoc-openapi 3.0, committed OpenAPI snapshot |
 | Observability | Micrometer + Prometheus, ECS JSON logging, Grafana |
 | Build | Gradle inside a multi-stage Docker build → distroless `java25` image |
 | Quality | Spotless (google-java-format, ktfmt), Error Prone, JaCoCo, Codacy |
