@@ -7,7 +7,7 @@
 [![Codacy Badge](https://app.codacy.com/project/badge/Coverage/cebc85936bb24ea4987c0ee569ca7c7d)](https://app.codacy.com?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
 ![Java](https://img.shields.io/badge/Java-25-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0-6DB33F)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-kind-326CE5)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -113,14 +113,14 @@ flowchart TD
     B -- no --> R7[/false · ROLLOUT_MISS/]
 ```
 
-> `bucket` は `floorMod(SHA-256(flagKey + ":" + rolloutIdentity), 100)` です。`rolloutIdentity` には tenant ID があればそれを使い、なければ user ID を使います。同じフラグキーと `rolloutIdentity` の組み合わせは常に同じバケットに入るため、リクエストごとにランダムになるのではなく、安定した決定的なロールアウトになります。
+> `bucket` は `SHA-256(flagKey + ":" + rolloutIdentity)` の先頭 4 バイトを符号付きビッグエンディアン整数として読み取り、`floorMod(..., 100)` で `[0, 100)` に落とし込んだ値です。`rolloutIdentity` には tenant ID があればそれを使い、なければ user ID を使います。同じフラグキーと `rolloutIdentity` の組み合わせは常に同じバケットに入るため、リクエストごとにランダムになるのではなく、安定した決定的なロールアウトになります。
 
 ## 技術スタック
 
 | 領域 | 技術 |
 |---|---|
 | 言語 | Java 25（ツールチェーン）、Kotlin 2.3 |
-| フレームワーク | Spring Boot 4.0 — Web MVC、Security、Validation、Actuator |
+| フレームワーク | Spring Boot 4.1 — Web MVC、Security、Validation、Actuator |
 | 永続化 | Spring Data JDBC + PostgreSQL、Flyway マイグレーション |
 | API ドキュメント | springdoc-openapi 3.0（コードファースト）、コミット済み OpenAPI スナップショット |
 | オブザーバビリティ | Micrometer + Prometheus、ECS JSON ログ、Grafana |
@@ -300,6 +300,7 @@ Actuator のヘルスエンドポイントはプローブ用に公開し、Prome
 │   └── src/main/.../featureflags/
 │       ├── flags/                      # フラグドメイン・評価・永続化（Java）
 │       ├── audit/                      # 監査イベント（Java）
+│       ├── approval/                   # 更新承認ワークフロー（Java）
 │       ├── policy/                     # ロールアウトポリシー: validator は Java、API/service は Kotlin
 │       ├── preview/                    # プレビュー API（Kotlin）
 │       └── SecurityConfig, ...

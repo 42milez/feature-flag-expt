@@ -7,7 +7,7 @@ English | [日本語](README.ja.md)
 [![Codacy Badge](https://app.codacy.com/project/badge/Coverage/cebc85936bb24ea4987c0ee569ca7c7d)](https://app.codacy.com?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
 ![Java](https://img.shields.io/badge/Java-25-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0-6DB33F)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-kind-326CE5)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -166,7 +166,8 @@ flowchart TD
     B -- no --> R7[/false · ROLLOUT_MISS/]
 ```
 
-> `bucket` is `floorMod(SHA-256(flagKey + ":" + rolloutIdentity), 100)`.
+> `bucket` reads the first four bytes of `SHA-256(flagKey + ":" + rolloutIdentity)`
+> as a signed big-endian integer and reduces it with `floorMod(..., 100)` into `[0, 100)`.
 > `rolloutIdentity` uses the tenant ID when present, otherwise the user ID. The
 > same flag key and `rolloutIdentity` combination always lands in the same
 > bucket, so the rollout is stable and deterministic rather than random per
@@ -177,7 +178,7 @@ flowchart TD
 | Area | Technology |
 |---|---|
 | Language | Java 25 (toolchain), Kotlin 2.3 |
-| Framework | Spring Boot 4.0 — Web MVC, Security, Validation, Actuator |
+| Framework | Spring Boot 4.1 — Web MVC, Security, Validation, Actuator |
 | Persistence | Spring Data JDBC + PostgreSQL, Flyway migrations |
 | API docs | springdoc-openapi 3.0 (code-first), committed OpenAPI snapshot |
 | Observability | Micrometer + Prometheus, ECS JSON logging, Grafana |
@@ -414,6 +415,7 @@ packs.
 │   └── src/main/.../featureflags/
 │       ├── flags/                      # Flag domain, evaluator, persistence (Java)
 │       ├── audit/                      # Audit events (Java)
+│       ├── approval/                   # Update approval workflow (Java)
 │       ├── policy/                     # Rollout policy: validator Java, API/service Kotlin
 │       ├── preview/                    # Preview API (Kotlin)
 │       └── SecurityConfig, ...
