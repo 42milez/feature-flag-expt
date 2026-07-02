@@ -85,5 +85,8 @@ Format for each entry (add under the relevant category heading, creating the hea
 - **[API / Framework contract]** When enabling Spring Boot graceful shutdown, set
   `server.shutdown=graceful` in addition to the shutdown phase timeout, and keep that timeout below
   the platform termination grace period so the server actually drains requests before the pod exits.
+- **[Observability]** Pin provisioned Grafana datasource UIDs when dashboards reference datasource
+  variables as UIDs, so dashboard imports and pod restarts do not break panels by generating a new
+  datasource identifier.
 - **[Testability]** Build test request JSON with `ObjectMapper` when values are supplied through
   variables, so escaping stays correct and helpers do not become fragile string templates.
