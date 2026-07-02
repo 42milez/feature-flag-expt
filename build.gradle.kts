@@ -97,6 +97,12 @@ registerScriptTask(
 registerScriptTask("appHealth", "app-health.sh", "Check the local application health endpoints.")
 
 registerScriptTask(
+    "generateObservabilityTraffic",
+    "generate-observability-traffic.sh",
+    "Generate local feature flag traffic for the Grafana dashboard.",
+)
+
+registerScriptTask(
     "kindLoadImage",
     "kind-load-image.sh",
     "Build and load the local application image into kind.",

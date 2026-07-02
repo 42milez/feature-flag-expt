@@ -109,22 +109,21 @@ local verification; this repository is not adopting Enterprise-only features.
 Generate sample app traffic so dashboard panels are non-empty:
 
 ```bash
-kubectl -n feature-flag-platform port-forward service/feature-flag-platform 8080:8080
+./gradlew k8sPortForward
 ```
 
 In a separate terminal:
 
 ```bash
-curl -u featureflags-operator:featureflags-operator \
-  -H 'Content-Type: application/json' \
-  -d '{"flagKey":"checkout-redesign","status":"ENABLED","targetEnvironments":["production"],"killSwitchActive":false,"tenantAllowlist":["tenant-a"],"rolloutPercentage":25}' \
-  http://localhost:8080/api/flags
-
-curl -u featureflags-reader:featureflags-reader \
-  -H 'Content-Type: application/json' \
-  -d '{"flagKey":"checkout-redesign","environment":"production","tenantId":"tenant-a"}' \
-  http://localhost:8080/api/evaluate
+./gradlew generateObservabilityTraffic
 ```
+
+The generator creates or reuses a bounded deterministic set of local flags,
+sends reader-role evaluations, patches one staged rollout, and enables one kill
+switch when a fresh generated flag is available. Use a new `FLAG_PREFIX` when
+you need another fresh kill-switch event without deleting existing sample data.
+The script refuses non-local `BASE_URL` values unless `ALLOW_REMOTE=true`
+because it writes flag data.
 
 The stack uses fixed ConfigMap names. After changing rules, dashboards, or
 provisioning files, rerun:
