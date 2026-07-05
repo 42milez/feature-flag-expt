@@ -68,24 +68,28 @@ flowchart LR
         PolicyCtl["Rollout Policy<br/><b>(Kotlin)</b>"]
     end
 
-    subgraph Core["Domain & Services (Java)"]
+    subgraph Core["Domain & Services"]
+        Svc["Feature Flag Service<br/>(Java)"]
+        ApprovalSvc["Update Approval Service<br/>(Java)"]
+        PreviewSvc["Evaluation Preview Service<br/>(Kotlin)"]
+        PolicySvc["Rollout Policy Validation Service<br/>(Kotlin)"]
         Eval["Feature Flag Evaluator<br/>(Java)"]
-        Svc["Feature Flag Service"]
-        ApprovalSvc["Update Approval Service"]
         Policy["Rollout Policy Validator<br/>(Java)"]
-        Audit["Audit Event Service"]
+        Audit["Audit Event Service<br/>(Java)"]
     end
 
     Repo[["Spring Data JDBC"]]
-    DB[("PostgreSQL<br/>feature_flags, audit_events, feature_flag_update_approvals")]
+    DB[("PostgreSQL")]
 
     Client --> Auth
     Auth --> FlagCtl & ApprovalCtl & PreviewCtl & PolicyCtl
-    FlagCtl --> Svc & Eval
+    FlagCtl --> Svc
     ApprovalCtl --> ApprovalSvc
-    PreviewCtl --> Svc & Eval
-    PolicyCtl --> Svc & Policy
-    Svc --> Policy & ApprovalSvc & Audit & Repo
+    PreviewCtl --> PreviewSvc
+    PolicyCtl --> PolicySvc
+    PreviewSvc --> Svc & Eval
+    PolicySvc --> Svc & Policy
+    Svc --> Eval & Policy & ApprovalSvc & Audit & Repo
     ApprovalSvc --> Policy & Audit & Repo
     Audit --> Repo
     Repo --> DB
