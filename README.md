@@ -194,7 +194,7 @@ sequenceDiagram
     actor Op as operator
     actor Rd as reader
     participant API as Feature Flag API
-    participant DB as PostgreSQL · flags / audit_events
+    participant DB as PostgreSQL · feature_flags / audit_events
 
     Op->>API: POST /api/flags — create, 25% rollout
     API->>DB: persist flag + FLAG_CREATED audit
@@ -430,12 +430,12 @@ GitHub Actions uses three workflows:
 
 | Workflow | Trigger | Coverage |
 |---|---|---|
-| `CI` | Pushes to `main`, pull requests, manual dispatch | Formatting, Error Prone compilation, unit tests, Testcontainers integration tests, JaCoCo coverage report generation, Kubernetes render validation, OpenAPI snapshot drift detection, Prometheus alert rule validation |
+| `CI` | Pushes to `main`, pull requests, manual dispatch | Secret scanning, formatting, Error Prone compilation, unit tests, Testcontainers integration tests, JaCoCo coverage report generation, Kubernetes render validation, OpenAPI snapshot drift detection, Prometheus alert rule validation |
 | `Image Vulnerability Scan` | Pushes to `main`, pull requests, daily at 18:00 UTC (03:00 JST), manual dispatch | Service image buildability and Trivy image scanning, kept separate from test and deploy signals |
-| `Kind Smoke Test` | Daily at 18:00 UTC (03:00 JST), manual dispatch | Cluster startup verification in kind, with Kubernetes failure diagnostics on deploy failure |
+| `Kind Smoke Test` | Daily at 18:00 UTC (03:00 JST), manual dispatch | Cluster startup verification in kind, collecting Kubernetes diagnostics when any step fails |
 
-Pull request CI validates Prometheus alert rules with `promtool` without running
-a Prometheus server. The image workflow builds the service image locally and
+CI validates Prometheus alert rules with `promtool` without running a
+Prometheus server. The image workflow builds the service image locally and
 scans that exact image with Trivy.
 
 Codacy is included for coverage visibility, feedback on code issues, and
@@ -476,7 +476,8 @@ kept out of the application database; PostgreSQL is reserved for flag state,
 rollout configuration, validation behavior, and audit events.
 Route-to-authority mappings are kept hardcoded in `SecurityConfig` so the
 security boundary stays easy to inspect without extra indirection. CSRF token
-handling is disabled for the local stateless JSON API, and
+handling is disabled because the API is meant to be consumed as a stateless
+JSON API (for example from curl) rather than through browser sessions.
 [ADR-0010](docs/decisions/0010-use-http-basic-for-local-portfolio-security-boundary.md)
 documents the browser-client trade-off and the production direction of
 replacing Basic with OIDC or another organization-managed identity provider.
@@ -511,7 +512,7 @@ Application code, manifests, the observability stack, and CI all live in one
 repository so the validation path stays reviewable end to end, without depending
 on a second repository. In a production system, deployment configuration would
 typically live in a separate config repository reconciled by a GitOps controller
-such as Argo CD or Flux — enabling an independent deploy cadence, tighter access
+such as Argo CD — enabling an independent deploy cadence, tighter access
 control over cluster-affecting changes, and least-privilege credentials that
 keep cluster write access out of application CI. For this portfolio scope, the
 trade-off favors a compact, whole-picture example over that release-boundary
@@ -528,10 +529,10 @@ logging, Prometheus and Grafana artifacts, sample traffic commands, and the
 manual refresh steps after changing rules or dashboards.
 
 The observability stack is intentionally scoped to a self-contained local
-setup, without a production delivery stack or cluster-level log collection (see
+setup that can validate alerting end to end (see
 [ADR-0011](docs/decisions/0011-keep-observability-stack-alerting-ready-but-local.md)).
-A production deployment would add its own log collection, retention, and
-access-control middleware.
+A production deployment would add notification routing, persistent metrics
+retention, and cluster-wide log collection on top of it.
 
 ## Development & Setup
 
@@ -549,22 +550,22 @@ Repomix review packs.
 │       ├── flags/                           # Flag domain, evaluator, persistence (Java + Kotlin)
 │       ├── audit/                           # Audit events (Java)
 │       ├── approval/                        # Update approval workflow (Java)
-│       ├── policy/                          # Rollout policy: validator Java, API Kotlin
-│       ├── preview/                         # Preview API (Kotlin)
-│       ├── observability/                   # Prometheus metrics (Java)
+│       ├── policy/                          # Rollout policy: validation logic Java, API Kotlin
+│       ├── preview/                         # Preview: evaluator Java, API Kotlin
+│       ├── observability/                   # Metrics instrumentation (Java)
 │       ├── error/                           # Global error handling (Java)
 │       └── SecurityConfig, ...
 ├── deploy/
-│   ├── k8s/base/                            # App (Deployment + Service) + platform (Namespace)
+│   ├── k8s/base/                            # App (Deployment + Service) + Namespace
 │   ├── k8s/overlays/dev/                    # kind: in-cluster PostgreSQL, local config
 │   ├── k8s/overlays/dev-observability/      # Prometheus + Grafana + alert rules
 │   └── kind/cluster.yaml
-├── compose.yaml                             # Local Docker Compose app + PostgreSQL runtime
+├── compose.yaml                             # Local runtime with Docker Compose (app + PostgreSQL)
 ├── docs/
 │   ├── decisions/                           # ADRs
 │   ├── development.md                       # Local run and development reference (English)
 │   ├── development.ja.md                    # Local run and development reference (Japanese)
-│   ├── observability.md
+│   ├── observability.md                     # Observability reference
 │   ├── runtime-safety.md                    # JVM runtime safety baseline
 │   ├── openapi.yaml                         # OpenAPI snapshot
 │   └── notes/, issues/, plans/, references/ # Design and implementation working notes
