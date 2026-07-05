@@ -155,13 +155,13 @@ sequenceDiagram
     Rd->>API: POST /api/evaluate — tenant-c
     API-->>Rd: true / ROLLOUT_MATCH (bucket 23)
 
-    Op->>API: PATCH — enable kill switch
+    Op->>API: PATCH /api/flags/{flagKey} — enable kill switch
     API->>DB: update flag + KILL_SWITCH_ENABLED audit
     API-->>Op: 200 OK
 
     Rd->>API: POST /api/evaluate — tenant-a
     API-->>Rd: false / KILL_SWITCH_ACTIVE
-    Rd->>API: GET /audit-events
+    Rd->>API: GET /api/flags/{flagKey}/audit-events
     API-->>Rd: FLAG_CREATED, KILL_SWITCH_ENABLED
 ```
 
