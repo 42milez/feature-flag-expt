@@ -8,7 +8,7 @@ spring-boot = "4.1.0"
 spring-dependency-management = "1.1.7"
 springdoc-openapi-gradle-plugin = "1.9.0"
 springdoc-openapi = "3.0.3"
-testcontainers = "1.21.3"
+testcontainers = "1.21.4"
 
 [libraries]
 error-prone-gradle-plugin = { module = "net.ltgt.gradle:gradle-errorprone-plugin", version.ref = "error-prone-plugin" }
