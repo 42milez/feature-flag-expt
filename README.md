@@ -24,21 +24,19 @@ that support product development can be reviewed in one place.
 
 ## :warning: Flag Evaluation Approach: Current State and Roadmap
 
-This project currently manages feature flag configuration and evaluates flags
-at runtime. A calling service sends a flag key, environment, tenant ID, and
-optional user ID to `POST /api/evaluate`, and uses the returned `enabled` value
-to choose between the old and new behavior.
+In the current approach, the feature flag platform manages flag configuration
+and evaluates flags at runtime. A calling service sends a flag key,
+environment, tenant ID, and optional user ID to `POST /api/evaluate`, and uses
+the returned `enabled` value to choose between the old and new behavior.
 
-Flag evaluation runs on this service, and callers do not yet have a way to
-evaluate flags on their own side, so they call `POST /api/evaluate` every time
-they need to evaluate a flag. The implemented features are persisted flag
-configuration, environment targeting, kill switches, percentage rollouts,
-approval for high-risk changes, and audit events.
+Flag evaluation runs in the feature flag platform, and callers do not yet have
+a way to evaluate flags on their own side, so they call `POST /api/evaluate`
+every time they need to evaluate a flag.
 
 With this approach, every evaluation makes a network call, and callers depend on
-this service at runtime. Reducing that dependency — for example through
-application-side caching or distributing flag configuration so callers can
-evaluate locally — is a direction under consideration.
+the feature flag platform at runtime. Reducing that dependency — for example
+through application-side caching or distributing flag configuration so callers
+can evaluate locally — is a direction under consideration.
 
 ## Table of Contents
 
