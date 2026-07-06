@@ -28,7 +28,6 @@ In the current approach, the feature flag platform manages flag configuration
 and evaluates flags at runtime. A calling service sends a flag key,
 environment, tenant ID, and optional user ID to `POST /api/evaluate`, and uses
 the returned `enabled` value to choose between the old and new behavior.
-
 Flag evaluation runs in the feature flag platform, and callers do not yet have
 a way to evaluate flags on their own side, so they call `POST /api/evaluate`
 every time they need to evaluate a flag.
