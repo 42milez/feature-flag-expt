@@ -11,6 +11,11 @@
   wrap for readability.
 - When updating `docs/development.ja.md`, use natural Japanese phrasing rather than a literal
   translation of the English text.
+- Do not consult, summarize, cite, or rely on documents under `docs/plans/` unless the user
+  explicitly asks about those historical improvement documents or names a specific file under
+  `docs/plans/`. Treat that directory as an archive of past codebase improvement activities and a
+  portfolio-oriented collaboration signal for "growing a codebase with AI agents", not as the
+  product roadmap, implementation plan, backlog, or source of current project intent.
 - After completing any implementation task, run the following checks in order and confirm all pass before reporting the task as done **only when code under `service/` has changed**. Skip these checks when no files under `service/` were changed, such as documentation-only updates under `docs/`, local agent skill changes under `.agents/`, or edits to `AGENTS.md` itself.
   1. `./gradlew :service:spotlessCheck` — formatting
   2. `./gradlew :service:compileJava` — static analysis (Error Prone)
