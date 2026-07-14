@@ -11,7 +11,7 @@ COPY service/src ./service/src
 RUN --mount=type=cache,target=/root/.gradle \
     ./gradlew :service:bootJar --no-daemon
 
-FROM gcr.io/distroless/java25-debian13:nonroot@sha256:dade01b669efd3bea3977f73cc196c56f1ee678a71ec8305f84ec15fd5a23c8d
+FROM gcr.io/distroless/java25-debian13:nonroot@sha256:9ccf2b8bce700d9f450523e2055afabe4d4ee795e6d69a0647a2dcd6e180e411
 
 WORKDIR /app
 
